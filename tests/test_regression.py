@@ -113,6 +113,17 @@ def test_movable_quick_mode_writes_outputs_and_run_metadata(tmp_path):
     assert not re.search(r"[\u3400-\u9fff]", header)
 
 
+def test_ar_improvement_does_not_generate_unjustified_economic_estimates():
+    cfg = dict(sim.CFG, cell=2.0, margin=2.0, sa_iters=4, restarts=1)
+    result = sim.run_site("test-economic-units", sim.site_rect(), cfg, fixed_xy=True)
+
+    assert np.isfinite(result["water_saving"])
+    assert np.isnan(result["annual_m3"])
+    assert np.isnan(result["annual_cny"])
+    assert np.isnan(result["payback"])
+    assert np.isfinite(result["cost"])
+
+
 def test_markdown_documentation_is_english_only():
     markdown_files = list(ROOT.rglob("*.md"))
     assert markdown_files
