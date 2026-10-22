@@ -1,9 +1,12 @@
-"""Convenience launcher for the campOS simulation prototype.
-
-The simulation implementation lives in src/campos/campos_sim.py.
-"""
+"""Convenience launcher for the campOS simulation prototype."""
 from pathlib import Path
-import runpy
+import sys
+
+ROOT = Path(__file__).resolve().parent
+sys.path.insert(0, str(ROOT / "src"))
+
+from campos.campos_sim import main
+
 
 if __name__ == "__main__":
-    runpy.run_path(str(Path(__file__).parent / "src" / "campos" / "campos_sim.py"), run_name="__main__")
+    main()
