@@ -432,7 +432,7 @@ def test_cli_records_explicit_optimization_policy(tmp_path):
         ],
         cwd=ROOT, text=True, capture_output=True, timeout=180,
     )
-    assert completed.returncode == 0, completed.stdout + "\\n" + completed.stderr
+    assert completed.returncode == 0, completed.stdout + "\n" + completed.stderr
     metadata = json.loads((outdir / "run_metadata.json").read_text(encoding="utf-8"))
     policy = metadata["optimization_policy"]
     assert policy["dry_fraction_limit"] == 0.04
@@ -594,15 +594,15 @@ def test_design_report_builder_writes_standalone_html_and_markdown(tmp_path):
 def test_custom_site_csv_loaders_validate_geometry_and_head_layout(tmp_path):
     polygon_csv = tmp_path / "polygon.csv"
     polygon_csv.write_text(
-        "x_m,y_m\\n0,0\\n10,0\\n10,10\\n0,10\\n0,0\\n", encoding="utf-8"
+        "x_m,y_m\n0,0\n10,0\n10,10\n0,10\n0,0\n", encoding="utf-8"
     )
     polygon = sim.load_polygon_csv(polygon_csv)
     assert polygon.shape == (4, 2)
 
     heads_csv = tmp_path / "heads.csv"
     heads_csv.write_text(
-        "x_m,y_m,radius_m,start_angle_deg,arc_width_deg\\n"
-        "2,2,4,0,180\\n8,8,4,180,180\\n",
+        "x_m,y_m,radius_m,start_angle_deg,arc_width_deg\n"
+        "2,2,4,0,180\n8,8,4,180,180\n",
         encoding="utf-8",
     )
     cfg = dict(sim.CFG)
@@ -612,8 +612,8 @@ def test_custom_site_csv_loaders_validate_geometry_and_head_layout(tmp_path):
 
     bad_heads = tmp_path / "bad_heads.csv"
     bad_heads.write_text(
-        "x_m,y_m,radius_m,start_angle_deg,arc_width_deg\\n"
-        "12,2,4,0,180\\n", encoding="utf-8"
+        "x_m,y_m,radius_m,start_angle_deg,arc_width_deg\n"
+        "12,2,4,0,180\n", encoding="utf-8"
     )
     import pytest
     with pytest.raises(ValueError, match="inside the supplied polygon"):
@@ -622,15 +622,15 @@ def test_custom_site_csv_loaders_validate_geometry_and_head_layout(tmp_path):
 
 def test_custom_site_cli_records_input_provenance_and_runs_fixed_mode(tmp_path):
     polygon_csv = tmp_path / "polygon.csv"
-    polygon_csv.write_text("x_m,y_m\\n0,0\\n10,0\\n10,10\\n0,10\\n", encoding="utf-8")
+    polygon_csv.write_text("x_m,y_m\n0,0\n10,0\n10,10\n0,10\n", encoding="utf-8")
     heads_csv = tmp_path / "heads.csv"
     heads_csv.write_text(
-        "x_m,y_m,radius_m,start_angle_deg,arc_width_deg\\n"
-        "2,2,4,0,180\\n8,8,4,180,180\\n", encoding="utf-8"
+        "x_m,y_m,radius_m,start_angle_deg,arc_width_deg\n"
+        "2,2,4,0,180\n8,8,4,180,180\n", encoding="utf-8"
     )
     out_dir = tmp_path / "custom-run"
     completed = subprocess.run(
-        [sys.executable, str(SRC), "--mode", "fixed", "--quick",
+        [sys.executable, str(ROOT / "campos_sim.py"), "--mode", "fixed", "--quick",
          "--polygon-csv", str(polygon_csv), "--heads-csv", str(heads_csv),
          "--outdir", str(out_dir)],
         cwd=ROOT, capture_output=True, text=True, timeout=60,
