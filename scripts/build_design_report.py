@@ -99,6 +99,7 @@ def build_report(run_dir: Path, html_path: Path, md_path: Path) -> None:
     radial = metadata.get("radial_distribution", {})
     hydraulic = metadata.get("hydraulic_performance", {})
     profile = metadata.get("radial_profile", {})
+    site_input = metadata.get("site_input", {})
 
     md = [
         "# campOS simulation report",
@@ -117,6 +118,11 @@ def build_report(run_dir: Path, html_path: Path, md_path: Path) -> None:
         f"- Radial model: {radial.get('model', 'not recorded')}; slope: {radial.get('radial_slope', 'not recorded')}",
         f"- Radial profile status: {profile.get('status', 'not recorded')}",
         f"- Hydraulic performance status: {hydraulic.get('status', 'not recorded')}",
+        f"- Site input status: {site_input.get('status', 'not recorded')}",
+        f"- Polygon CSV SHA-256: {site_input.get('polygon_sha256', 'not supplied')}",
+        f"- Polygon vertices: {site_input.get('polygon_vertex_count', 'not recorded')}",
+        f"- Initial sprinkler count: {site_input.get('initial_head_count', 'generated or not recorded')}",
+        f"- Coordinate units: {site_input.get('coordinate_units', 'not recorded')}",
         "",
         "## Optimization policy",
         "",
@@ -170,6 +176,11 @@ def build_report(run_dir: Path, html_path: Path, md_path: Path) -> None:
         ("Radial slope", radial.get("radial_slope", "not recorded")),
         ("Radial profile", profile.get("status", "not recorded")),
         ("Hydraulic performance", hydraulic.get("status", "not recorded")),
+        ("Site input", site_input.get("status", "not recorded")),
+        ("Polygon CSV SHA-256", site_input.get("polygon_sha256", "not supplied")),
+        ("Polygon vertices", site_input.get("polygon_vertex_count", "not recorded")),
+        ("Initial sprinkler count", site_input.get("initial_head_count", "generated or not recorded")),
+        ("Coordinate units", site_input.get("coordinate_units", "not recorded")),
     ]
     for label, value in provenance:
         sections.append(f"<div><strong>{esc(str(label))}</strong><br>{esc(str(value))}</div>")
