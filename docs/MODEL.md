@@ -6,7 +6,7 @@ This document describes the current implementation in `src/campos/campos_sim.py`
 
 The five built-in lawn outlines are synthetic polygons. The surrounding simulation domain is rasterized to cell-center points at the configured `cell` resolution. A point-in-polygon mask separates lawn cells from surrounding cells. Reported lawn area is the number of masked cells multiplied by the cell area, so it is a grid-based approximation of polygon area.
 
-The baseline layout is a square grid with edge heads assigned preset arc angles. The implementation evaluates three candidate radii and nine grid offsets using the legacy AR score. A cached baseline is reused only when the site geometry and configuration match.
+Raster area is an approximation and can vary with `cell`. To quantify this, run `python scripts/grid_sensitivity.py --site 'C Kidney' --cell-sizes 2,1,0.5 --out out/grid_sensitivity.csv`. The script reports polygon area, raster area error, baseline head count, AR, overspray, CU, and dry-area fraction for each resolution. Because the baseline search is repeated at each resolution, metric changes reflect both raster sampling and possible layout changes; this is a diagnostic, not physical validation.\n\nThe baseline layout is a square grid with edge heads assigned preset arc angles. The implementation evaluates three candidate radii and nine grid offsets using the legacy AR score. A cached baseline is reused only when the site geometry and configuration match.
 
 ## Sprinkler field
 
