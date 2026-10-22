@@ -64,7 +64,7 @@ def load_radial_profile_csv(path):
     if np.any(np.diff(radius) <= 0) or np.any(rate <= 0):
         raise ValueError("radii must increase strictly and relative rates must be positive")
     # Axisymmetric area-weighted mean: integral(q*r dr) / integral(r dr).
-    mean_rate = 2.0 * np.trapz(rate * radius, radius)
+    mean_rate = 2.0 * np.sum(0.5 * (rate[1:] * radius[1:] + rate[:-1] * radius[:-1]) * np.diff(radius))
     if not np.isfinite(mean_rate) or mean_rate <= 0:
         raise ValueError("profile has an invalid area-weighted mean")
     profile[:, 1] /= mean_rate
