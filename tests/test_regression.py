@@ -272,3 +272,24 @@ def test_measured_radial_profile_rejects_invalid_radius_order(tmp_path):
         assert "increase strictly" in str(exc)
     else:
         raise AssertionError("invalid profile should be rejected")
+
+
+def test_performance_curve_interpolates_and_rejects_extrapolation(tmp_path):
+    curve = tmp_path / "performance.csv"
+    curve.write_text(
+        "pressure_kpa,flow_lpm,throw_m\n100,4,5\n200,6,7\n300,8,9\n",
+        encoding="utf-8",
+    )
+    point = sim.load_performance_curve_csv(curve, 150)
+    assert point == {"pressure_kpa": 150.0, "flow_lpm": 5.0, "throw_m": 6.0}
+    with np.testing.assert_raises_regex(ValueError, "outside measured range"):
+        sim.load_performance_curve_csv(curve, 350)
+
+
+def test_absolute_head_field_uses_flow_radius_and_arc_area():
+    X = np.array([[0.0, 1.0]])
+    Y = np.array([[0.0, 0.0]])
+    full = sim.head_field(X, Y, (0.0, 0.0, 2.0, 0.0, 360.0), flow_lpm=4.0)
+    quarter = sim.head_field(X, Y, (0.0, 0.0, 2.0, 0.0, 90.0), flow_lpm=4.0)
+    assert np.isclose(full[0, 0], 60.0 * 4.0 / (np.pi * 4.0) * 1.5)
+    assert np.isclose(quarter[0, 0], full[0, 0] * 4.0)
