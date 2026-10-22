@@ -28,6 +28,8 @@ python campos_sim.py --mode movable --quick --sites A --radial-slope 0 --outdir 
 python campos_sim.py --mode movable --quick --sites A --radial-slope 1 --outdir out/sensitivity-edge-heavy
 ```
 
+For raw catch-can observations, use `scripts/prepare_radial_profile.py` to convert repeated depth readings into the loader's profile format. The measurement checklist, required raw CSV columns, endpoint assumptions, and validation limits are documented in [the radial-profile protocol](docs/RADIAL_PROFILE_PROTOCOL.md). The checked-in [CSV template](data/templates/catch_can_observations_template.csv) is intentionally empty and is not a dataset.
+
 The profile is area-normalized and changes the radial distribution shape. It does **not** supply absolute flow or validate the model by itself. If you have no catch-can data, use the default uniform-depth null model and compare sensitivity scenarios with `--radial-slope` (valid values are greater than -1):
 
 ### Optional measured pressure-performance curve
