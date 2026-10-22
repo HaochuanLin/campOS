@@ -52,6 +52,10 @@ checks only: they do not verify survey accuracy, coordinate reference systems,
 site boundaries, sprinkler hydraulics, or real-world model performance.
 
 
+## Radial-profile normalization
+
+Measured radial rates are interpolated linearly between supplied radius fractions. The profile is normalized using the exact area-weighted integral for each piecewise-linear segment, so the continuous full-disk mean relative rate is 1 (up to floating-point precision). This is a numerical consistency property, not evidence that the profile represents a particular sprinkler, pressure, wind condition, or field installation. The profile still describes relative radial shape only; absolute flow must come from a separate performance curve or other documented input.
+
 ## Evaluate predictions against observations
 
 The error evaluator accepts paired depths in millimetres with explicit data
