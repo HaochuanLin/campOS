@@ -1,65 +1,30 @@
 #!/usr/bin/env python3
-"""
-campOS MVP simulation prototype  (v2)
-=====================================
-Optimizes rotary-sprinkler layouts on irregular lawns.  Two things are traded
-against each other, and v2 stops hiding that trade-off inside one number:
+"""campOS: a synthetic sprinkler-layout optimization research prototype.
 
-  * OVERSPRAY  - water that lands OUTSIDE the lawn polygon (runs onto
-                 pavement).  Pure loss.
-  * DEFICIT    - water missing INSIDE the lawn (dry patches / edge starvation).
-                 Pure agronomic risk.
+The simulator compares sprinkler layouts on generated, irregular lawn polygons.
+It supports four modes:
 
-Run modes (can be combined, see --help)
----------------------------------------
-  movable        ORIGINAL. Single objective AR, heads may move (xy) and be
-                 re-nozzled (r, a0, w).  Behaviour/numbers identical to v1.
-  fixed          NEW (task 1). Single objective AR, head xy FIXED at the
-                 baseline grid; only throw radius r, start angle a0 and arc
-                 width w are tuned = cheap retrofit (swap nozzle, re-set the
-                 arc stops, no digging).
-  pareto-fixed   NEW (task 2). Bi-objective (overspray, deficit), xy fixed.
-  pareto-movable NEW (task 2). Bi-objective (overspray, deficit), xy movable.
+- movable: optimize position, throw radius, and sector angles using the legacy
+  AR objective.
+- fixed: keep head coordinates fixed and optimize radius and sector angles.
+- pareto-movable: explore overspray/interior-deficit trade-offs with movable
+  heads.
+- pareto-fixed: explore the same trade-off without relocating heads.
 
-Examples
---------
-  python campos_sim.py                              # = old behaviour (movable, AR)
-  python campos_sim.py --mode fixed
-  python campos_sim.py --mode pareto-fixed
-  python campos_sim.py --mode all                   # everything (~5-6 min)
-  python campos_sim.py --mode all --quick           # smoke test (~1-2 min)
-  python campos_sim.py --mode fixed pareto-fixed --sites A C
+Quick examples::
 
-IMPORTANT - READ BEFORE QUOTING ANY NUMBER
-  * All lawns are SYNTHETIC shapes.  Nothing is field-validated.
-  * Sprinkler precipitation profile, throw range, tariff, costs: PLACEHOLDER.
-  * Wind, pressure loss, evaporation, drift, soil/slope are NOT modelled.
-  * Depths are RELATIVE units (1.0 = a single overlapping head at its peak
-    scale), so "water" below means relative volume, not litres.
+    python campos_sim.py --mode movable --quick --sites A --outdir out/demo
+    python campos_sim.py --mode fixed --sites A C --outdir out/fixed
+    python campos_sim.py --mode pareto-fixed --quick --sites C --outdir out/pareto
 
-Metrics
--------
-  Legacy single objective (modes movable / fixed):
-    AR = total applied water / (low-quarter depth x lawn area)
-       = water you must apply so the driest 25% of the lawn still gets the
-         target depth ("scheduling to the low quarter").  1/AR = low-quarter
-         application efficiency.  It folds overspray AND non-uniformity into
-         one scalar (that is exactly the v1 weakness).
-  Bi-objective (modes pareto-*), all normalised to the BASELINE layout of the
-  same site (same head count, standard grid):
-    W0 = total water the baseline applies (inside + outside the lawn)
-    T  = target depth = target_factor x mean depth the baseline puts on the lawn
-    f1 = overspray_ratio = (water landing outside the polygon) / W0
-    f2 = deficit         = area-mean of max(0, 1 - depth/T) over the lawn
-    constraint: dry_frac = share of lawn cells with depth < dry_thresh_frac*T
-                must be <= dry_frac_limit   (no large dry patches).
-    Reported only (not optimised): CU (Christiansen uniformity), AR,
-    overspray share of the layout's own total water.
-  No hidden aggregation: f1 and f2 are never added into one score for
-  *reporting*; a weight sweep is only used as a search device and every
-  visited feasible state feeds a non-dominated archive (the Pareto front).
+All built-in lawns are synthetic. Sprinkler precipitation, throw range, water
+tariffs, and retrofit costs include placeholders. The model does not include
+wind, pressure loss, evaporation, drift, slope, soil, or field validation.
+Reported savings and payback values are exploratory model outputs, not
+engineering recommendations or guarantees.
 
-Needs: numpy, matplotlib
+The default seed and optimization settings are part of the baseline behavior.
+Generated outputs include CSV summaries, plots, and run metadata.
 """
 import argparse
 import csv
