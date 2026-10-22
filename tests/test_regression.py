@@ -512,3 +512,34 @@ def test_catch_can_preparation_rejects_missing_endpoint_and_zero_depth(tmp_path)
     )
     assert result.returncode != 0
     assert "must be positive" in result.stderr
+
+
+
+def test_parameter_sensitivity_script_records_reproducible_configuration(tmp_path):
+    outdir = tmp_path / "parameter-sensitivity"
+    completed = subprocess.run(
+        [
+            sys.executable, str(ROOT / "scripts" / "parameter_sensitivity.py"),
+            "--quick", "--sites", "A", "--seeds", "19",
+            "--cell-sizes", "1.0", "--slopes", "0",
+            "--outdir", str(outdir),
+        ],
+        cwd=ROOT, capture_output=True, text=True, timeout=180,
+    )
+    assert completed.returncode == 0, completed.stdout + completed.stderr
+    with (outdir / "sensitivity_summary.csv").open(newline="", encoding="utf-8-sig") as handle:
+        rows = list(csv.DictReader(handle))
+    assert len(rows) == 1
+    assert rows[0]["site_id"] == "A"
+    assert rows[0]["seed"] == "19"
+    assert rows[0]["cell_size_m"] == "1"
+    assert rows[0]["radial_slope"] == "0"
+    assert rows[0]["status"] == "completed"
+    assert "not field validation" in rows[0]["interpretation"]
+    metadata = json.loads(
+        (outdir / "site_A_seed_19_cell_1_slope_0" / "run_metadata.json").read_text(encoding="utf-8")
+    )
+    assert metadata["config"]["seed"] == 19
+    assert metadata["config"]["cell"] == 1.0
+    assert metadata["radial_distribution"]["radial_slope"] == 0.0
+    assert (outdir / "README.md").is_file()
