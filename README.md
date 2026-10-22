@@ -217,7 +217,7 @@ python -m pip install -e ".[dev]"
 python -m pytest -q
 ```
 
-Tests cover fixed-position coordinate invariance, cache correctness across configurations, Pareto archive behavior, output generation, and the guard against deriving water-volume savings from AR. GitHub Actions runs the suite on Python 3.10, 3.11, and 3.12 for pushes and pull requests.
+Tests cover fixed-position coordinate invariance, cache correctness across configurations, Pareto archive behavior, output generation, radial-profile preparation, sensitivity-run metadata, and the guard against deriving water-volume savings from AR. GitHub Actions runs the suite on Python 3.10, 3.11, and 3.12 for pushes and pull requests.
 
 ## Project structure
 
@@ -237,7 +237,7 @@ results/                      Curated results only; no generated files committed
 - [ ] Publish reviewed CSV outputs, run metadata, and figures for selected synthetic cases.
 - [ ] Add input validation and support for imported lawn polygons.
 - [ ] Replace placeholder sprinkler profiles with manufacturer catch-can/precipitation data.
-- [ ] Add sensitivity and uncertainty analysis for wind, pressure, and model parameters.
+- [x] Add a reproducible sensitivity sweep for random seeds, grid resolution, and radial-shape assumptions (synthetic numerical robustness only).\n- [ ] Add uncertainty analysis for wind, pressure, and measured input parameters.
 - [ ] Validate against measured sites using a documented protocol and appropriate permission.
 - [ ] Add benchmark cases and broader regression tests before changing optimization logic.
 
