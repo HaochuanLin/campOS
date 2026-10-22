@@ -24,6 +24,16 @@ python campos_sim.py --mode movable --quick --sites A --profile-csv data/catch_c
 
 The profile is area-normalized and changes the radial distribution shape. It does **not** supply absolute flow or validate the model by itself. Without measured data, the simulator keeps its documented analytic placeholder.
 
+### Optional measured pressure-performance curve
+
+For a specific sprinkler, provide a measured table with `pressure_kpa,flow_lpm,throw_m` and choose a pressure within the table's measured range:
+
+```bash
+python campos_sim.py --mode fixed --quick --sites A --profile-csv data/catch_can_profile.csv --performance-csv data/performance.csv --pressure-kpa 250 --outdir out/calibrated
+```
+
+This is an invocation example, not a recommended pressure setting. The performance table must come from the actual sprinkler/nozzle or a documented test. When active, the model uses interpolated flow and throw and locks throw radius during optimization. The absolute field is an estimated precipitation rate in mm/h under uniform-sector assumptions, not field validation.
+
 ## Quick start
 
 Requires Python 3.10 or newer.
