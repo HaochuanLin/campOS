@@ -18,7 +18,7 @@ Each sprinkler contributes a stylized relative depth field. For distance `d` fro
 q(d) = 1.5 * (1 - 0.5 * d/r), for 0 <= d <= r
 ```
 
-Overlapping fields are added. This profile is a placeholder, not a calibrated manufacturer precipitation curve. Radius and arc angle are optimization parameters; there is no hydraulic flow, pressure, or weather model.
+Overlapping fields are added. This profile is a placeholder, not a calibrated manufacturer precipitation curve. Radius and arc angle are optimization parameters. By default the field is relative-only; optional flow/pressure inputs provide an absolute sector-average estimate but do not solve network hydraulics or weather effects.
 
 A measured radial profile can be supplied with `--profile-csv path/to/catch_can_profile.csv`. The CSV must have `radius_fraction,relative_rate` columns, at least three rows, radii strictly increasing from 0 to 1, and positive relative rates. The loader normalizes the curve so its area-weighted mean over the disk is 1; it therefore uses the measured *shape* but does not infer absolute flow or mm/h. Use data collected for the actual sprinkler/nozzle and operating pressure. The run metadata records the CSV path and SHA-256. Without this option, the analytic placeholder remains active.
 
@@ -30,11 +30,11 @@ With a normalized radial profile and a supplied flow `Q` in L/min, the model sca
 
 
 
-### Optional measured pressure-performance curve
+### Published manufacturer-chart consistency benchmark
 
-Provide `--performance-csv` together with `--pressure-kpa` to interpolate a measured curve. The CSV requires `pressure_kpa,flow_lpm,throw_m`, at least two rows, strictly increasing pressure values, and positive flow and throw values. The requested pressure must lie within the measured range; extrapolation is rejected. When active, the interpolated throw radius is locked during optimization so the optimizer cannot independently change throw without changing the selected operating point. The curve path, hash, pressure, flow, and throw are recorded in run metadata.
+Run `python scripts/benchmark_sprinkler_curve.py`. The checked-in CSV transcribes six pressure points for the Rain Bird 5000 Series standard-angle 1.5 nozzle from the [official performance chart](https://www.rainbird.com/sites/default/files/media/documents/2020-09/5000-series-rotor-nozzle-performance-chart.pdf). The chart gives flow, throw radius, and rounded precipitation rates for square and triangular spacing, based on half-circle operation and spacing equal to 50% of throw diameter (spacing = radius).
 
-When flow Q is supplied in L/min, the normalized radial profile is scaled to an estimated sector-average precipitation rate P = 60 Q / (pi r^2 f) mm/h, where f is the arc fraction. This assumes steady flow and uniform angular sweep, and that flow remains constant as arc width changes. Verify this assumption for the actual sprinkler. The model still does not calculate pipe-network pressure losses, head-to-head hydraulic interaction, or field conditions; using measured input data is not itself field validation.
+The benchmark calculates `60 * flow_lpm / (grid_cell_area * arc_fraction)` and compares the result with the chart. The default acceptance tolerance is 1 mm/h because the chart reports integer precipitation rates. This checks unit consistency and aggregate mass balance against published manufacturer data; it is **not** an independent field experiment and does not validate the local radial spray pattern. The bundled curve can be used as an example with `--performance-csv data/benchmarks/rainbird_5000_standard_1_5.csv` and a pressure in kPa from 200 to 450.
 
 ## Legacy single-objective metric
 
@@ -92,7 +92,7 @@ The standard-grid/preset-arc layout is the main baseline for AR and Pareto norma
 Even with a measured radial profile, this remains a relative-depth model until nozzle flow, operating pressure, and absolute precipitation are calibrated. The current implementation does not model:
 
 - Wind, spray drift, evaporation, or weather variation.
-- Pressure loss, hydraulic network behavior, flow-rate curves, or manufacturer-specific precipitation profiles.
+- Pressure loss, hydraulic network behavior, manufacturer-specific radial precipitation profiles.
 - Terrain slope, soil infiltration, runoff, or plant response.
 - Survey uncertainty, sensor noise, parameter uncertainty, or measured field validation.
 
