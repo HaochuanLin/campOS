@@ -696,3 +696,36 @@ def test_design_comparison_spec_locks_shared_inputs_and_limits_overrides():
                 {"name": "two", "overrides": {"mode": "fixed"}},
             ],
         })
+
+
+
+def test_polygon_loader_rejects_self_intersections_and_nonclosing_duplicate_vertices(tmp_path):
+    import pytest
+
+    cases = [
+        ("bow_tie", "x_m,y_m\\n0,0\\n10,10\\n0,10\\n10,0\\n",
+         "self-intersecting"),
+        ("repeated_vertex", "x_m,y_m\\n0,0\\n10,0\\n10,10\\n10,0\\n0,10\\n",
+         "duplicate vertices"),
+        ("non_adjacent_touch", "x_m,y_m\\n0,0\\n4,0\\n4,4\\n2,0\\n0,4\\n",
+         "self-intersecting"),
+    ]
+    for name, contents, message in cases:
+        path = tmp_path / f"{name}.csv"
+        path.write_text(contents, encoding="utf-8")
+        with pytest.raises(ValueError, match=message):
+            sim.load_polygon_csv(path)
+
+
+def test_polygon_loader_accepts_valid_concave_polygon_and_optional_closure(tmp_path):
+    path = tmp_path / "concave.csv"
+    path.write_text(
+        "x_m,y_m\\n0,0\\n6,0\\n6,2\\n2,2\\n2,6\\n0,6\\n0,0\\n",
+        encoding="utf-8",
+    )
+    points = sim.load_polygon_csv(path)
+    assert points.shape == (6, 2)
+    assert np.isclose(0.5 * np.sum(
+        points[:, 0] * np.roll(points[:, 1], -1)
+        - points[:, 1] * np.roll(points[:, 0], -1)
+    ), 20.0)
