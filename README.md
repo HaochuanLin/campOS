@@ -19,10 +19,16 @@ campOS compares four search modes for rotary-sprinkler layouts:
 If you have catch-can measurements for the actual nozzle and operating pressure, provide a CSV with `radius_fraction,relative_rate` columns and run:
 
 ```bash
+# With measured catch-can data
 python campos_sim.py --mode movable --quick --sites A --profile-csv data/catch_can_profile.csv --outdir out/profile-run
+
+# Without measurements: compare alternative assumed radial shapes
+python campos_sim.py --mode movable --quick --sites A --radial-slope -0.5 --outdir out/sensitivity-center-heavy
+python campos_sim.py --mode movable --quick --sites A --radial-slope 0 --outdir out/sensitivity-uniform
+python campos_sim.py --mode movable --quick --sites A --radial-slope 1 --outdir out/sensitivity-edge-heavy
 ```
 
-The profile is area-normalized and changes the radial distribution shape. It does **not** supply absolute flow or validate the model by itself. Without measured data, the simulator keeps its documented analytic placeholder.
+The profile is area-normalized and changes the radial distribution shape. It does **not** supply absolute flow or validate the model by itself. If you have no catch-can data, use the default uniform-depth null model and compare sensitivity scenarios with `--radial-slope` (valid values are greater than -1):
 
 ### Optional measured pressure-performance curve
 
