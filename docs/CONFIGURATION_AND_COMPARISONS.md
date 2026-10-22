@@ -29,7 +29,7 @@ python scripts/compare_design_configs.py \
 
 All scenarios inherit the same `shared` settings. Scenario-specific overrides are restricted to the selected mode and optimization policy (`dry_fraction_limit`, `target_factor`, `cu_drop_budget`, `pareto_weights`). Geometry, starting sprinkler layout, seed, grid cell size, radial model/profile, hydraulic-performance curve, operating pressure, and quick/full setting cannot be changed inside an individual scenario. Each scenario gets its own output directory and exact effective configuration; combined rows are written to `design_comparison.csv`, with a manifest and Markdown summary alongside them.
 
-The comparison script checks recorded shared settings when they are explicitly declared in `shared`. To make a comparison interpretable, declare all scientifically relevant shared inputs rather than relying on defaults. For the strongest reproducibility, set a seed, grid size, radial profile/slope, site inputs, and any available measured performance files explicitly. This is a matched model comparison, not proof that a scenario is better in the field.
+The comparison script checks recorded shared settings when they are explicitly declared in `shared`. It also generates a standalone HTML and Markdown report in each scenario directory and a comparison-level provenance table. To make a comparison interpretable, declare all scientifically relevant shared inputs rather than relying on defaults. For the strongest reproducibility, set a seed, grid size, radial profile/slope, site inputs, and any available measured performance files explicitly. This is a matched model comparison, not proof that a scenario is better in the field.
 
 ## Provenance vocabulary
 
