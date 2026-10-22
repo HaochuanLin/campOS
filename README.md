@@ -33,6 +33,8 @@ python campos_sim.py --mode movable --quick --sites A --outdir out/demo
 
 The command writes CSV summaries, PNG plots, and `run_metadata.json` to `out/demo/`. The metadata records the selected modes and sites, effective model configuration, Python/platform details, NumPy/Matplotlib versions, and a SHA-256 hash of the simulation source.
 
+For a single-objective run, the main artifacts are `results_<mode>.csv`, `layouts_<mode>.png`, and `ranking_<mode>.png`. Pareto runs write `pareto_<fixed|movable>.csv` and `pareto_<fixed|movable>.png`. When both single-objective modes run together, a `comparison_single_objective.csv` is also written.
+
 More examples:
 
 ```bash
@@ -59,14 +61,24 @@ python campos_sim.py --mode all --outdir out/full
 
 The built-in synthetic sites are **A** rectangle, **B** L-shape, **C** kidney, **D** wedge, and **E** roadside strip. They are generated polygons, not surveyed properties.
 
+```mermaid
+flowchart LR
+    A[Synthetic polygon] --> B[Grid discretization]
+    B --> C[Baseline layout]
+    C --> D[AR optimization]
+    C --> E[Pareto search]
+    D --> F[CSV, plots, run metadata]
+    E --> F
+```
+
 ## Metrics: read them carefully
 
 The model reports several metrics that answer different questions. They are not interchangeable.
 
 - **AR (legacy single-objective metric):** total modelled applied water divided by the product of lawn-cell count and the mean depth of the driest quarter of lawn cells. Lower is better for this objective.
-- **AR-based saving metric:** (1 - AR_{optimized}/AR_{baseline}). This is **not a measured or direct reduction in total water use**. It estimates a change in the low-quarter scheduling metric; optimized total discharge may increase.
-- **Overspray (f_1):** in Pareto mode, water outside the lawn divided by the baseline layout's total modelled water. The separate legacy overspray metric is the outside-water share of that layout's own total water. These denominators differ.
-- **Interior deficit (f_2):** average relative shortfall below a target depth over lawn cells. The target is a configurable multiple of the baseline mean lawn depth.
+- **AR-based saving metric:** `1 - AR_optimized / AR_baseline`. This is **not a measured or direct reduction in total water use**. It estimates a change in the low-quarter scheduling metric; optimized total discharge may increase.
+- **Overspray (`f1`):** in Pareto mode, water outside the lawn divided by the baseline layout's total modelled water. The separate legacy overspray metric is the outside-water share of that layout's own total water. These denominators differ.
+- **Interior deficit (`f2`):** average relative shortfall below a target depth over lawn cells. The target is a configurable multiple of the baseline mean lawn depth.
 - **Dry-area fraction:** share of lawn cells below a configured fraction of the target depth. Pareto candidates must satisfy the configured limit to enter the archive.
 - **CU:** a Christiansen-style uniformity metric reported for interpretation; it is not the Pareto search's primary objective.
 
