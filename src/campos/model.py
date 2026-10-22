@@ -3,6 +3,7 @@
 These functions define the current simplified research model; they are not a
 calibrated representation of real-world irrigation hydraulics.
 """
+import csv
 import numpy as np
 from matplotlib.path import Path
 
@@ -35,7 +36,42 @@ SITES = {
 }
 
 # ------------------------------------------------------------- water model
-def head_field(X, Y, h):
+def load_radial_profile_csv(path):
+    """Load and area-normalize a measured radial catch-can profile CSV.
+
+    Required columns: radius_fraction, relative_rate. The first radius must be
+    0, the last 1, and radii must increase strictly. Rates are relative values;
+    normalization makes the area-weighted mean over the swept disk equal 1.
+    This does not establish absolute flow or precipitation in mm/h.
+    """
+    with open(path, newline="", encoding="utf-8-sig") as fh:
+        reader = csv.DictReader(fh)
+        required = {"radius_fraction", "relative_rate"}
+        if reader.fieldnames is None or not required.issubset(reader.fieldnames):
+            raise ValueError("profile CSV must contain radius_fraction,relative_rate columns")
+        rows = list(reader)
+    if len(rows) < 3:
+        raise ValueError("profile CSV must contain at least three data rows")
+    try:
+        profile = np.array([[float(row["radius_fraction"]), float(row["relative_rate"])] for row in rows])
+    except (TypeError, ValueError) as exc:
+        raise ValueError("profile CSV values must be numeric") from exc
+    radius, rate = profile.T
+    if not np.all(np.isfinite(profile)):
+        raise ValueError("profile CSV values must be finite")
+    if not np.isclose(radius[0], 0.0) or not np.isclose(radius[-1], 1.0):
+        raise ValueError("radius_fraction must start at 0 and end at 1")
+    if np.any(np.diff(radius) <= 0) or np.any(rate <= 0):
+        raise ValueError("radii must increase strictly and relative rates must be positive")
+    # Axisymmetric area-weighted mean: integral(q*r dr) / integral(r dr).
+    mean_rate = 2.0 * np.trapz(rate * radius, radius)
+    if not np.isfinite(mean_rate) or mean_rate <= 0:
+        raise ValueError("profile has an invalid area-weighted mean")
+    profile[:, 1] /= mean_rate
+    return profile
+
+
+def head_field(X, Y, h, radial_profile=None):
     """Relative precipitation rate of one rotary head (matched-precipitation
     nozzle: rate does not change with radius/arc, total flow ~ swept area).
     Head tuple h = (x, y, r, a0, w):
@@ -53,12 +89,17 @@ def head_field(X, Y, h):
     if w < 359.99:
         ang = (np.degrees(np.arctan2(dy, dx)) - a0) % 360.0
         inr &= ang <= w
-    return np.where(inr, 1.5 * (1.0 - 0.5 * s), 0.0)
+    if radial_profile is None:
+        rate = 1.5 * (1.0 - 0.5 * s)
+    else:
+        rate = np.interp(s, radial_profile[:, 0], radial_profile[:, 1])
+    return np.where(inr, rate, 0.0)
 
 
 class Site:
     def __init__(self, poly, cfg):
         self.poly = poly
+        self.radial_profile = cfg.get("radial_profile")
         self.path = Path(poly)
         c = cfg["cell"]
         m = cfg["margin"]
@@ -77,7 +118,7 @@ class Site:
     def total(self, heads):
         t = np.zeros_like(self.X)
         for h in heads:
-            t += head_field(self.X, self.Y, h)
+            t += head_field(self.X, self.Y, h, self.radial_profile)
         return t
 
 
