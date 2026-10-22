@@ -147,7 +147,7 @@ def main():
         "- Synthetic sites and the default radial field are not field-calibrated. AR improvement is not a water-savings estimate; water, cost, and payback savings are not estimated.",
         "", "Raw CSVs, plots, metadata, and console log are in the simulation subdirectory.",
     ]
-    (out / "README.md").write_text("\\n".join(report) + "\\n", encoding="utf-8")
+    (out / "README.md").write_text("\n".join(report) + "\n", encoding="utf-8")
     print(f"Benchmark summary: {out / 'benchmark_summary.csv'}")
     return 0
 
