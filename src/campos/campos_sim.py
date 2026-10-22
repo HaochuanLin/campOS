@@ -100,7 +100,7 @@ CFG = dict(
 #   Monte-Carlo over those, and report whether each Pareto point stays on the
 #   front (robustness).  Currently NO wind, NO pressure loss, NO evaporation.
 
-from .model import SITES, Site, head_field, load_radial_profile_csv, score, site_rect, site_lshape, site_kidney, site_wedge, site_strip
+from .model import SITES, Site, head_field, load_performance_curve_csv, load_radial_profile_csv, score, site_rect, site_lshape, site_kidney, site_wedge, site_strip
 
 # ------------------------------------------------------- baseline layouts
 def preset_arc(site, x, y, r):
@@ -138,7 +138,8 @@ def baseline_layout(site, cfg):
     optimizer), so the baseline is a competent installer, not a straw man."""
     (minx, miny), (maxx, maxy) = site.bbox
     best, best_sc = None, np.inf
-    for r in (4.0, 5.0, cfg["base_radius"]):
+    radii = (cfg["base_radius"],) if cfg.get("hydraulics_locked_radius") else (4.0, 5.0, cfg["base_radius"])
+    for r in radii:
         sp = r
         for fx in (0.0, 0.33, 0.66):
             for fy in (0.0, 0.33, 0.66):
@@ -201,7 +202,11 @@ def _propose(site, heads, rng, cfg, frac, fixed_xy):
     sc = 0.3 + 0.7 * (1 - frac)
     i = rng.integers(n)
     h = heads[i].copy()
-    m = rng.integers(1, 4) if fixed_xy else rng.integers(4)
+    if cfg.get("hydraulics_locked_radius"):
+        moves = (2, 3) if fixed_xy else (0, 2, 3)
+        m = moves[int(rng.integers(len(moves)))]
+    else:
+        m = rng.integers(1, 4) if fixed_xy else rng.integers(4)
     if m == 0:
         h[0] += rng.normal(0, 1.5 * sc)
         h[1] += rng.normal(0, 1.5 * sc)
@@ -221,7 +226,7 @@ def optimize(site, heads0, cfg, seed, fixed_xy=False):
     fixed_xy=True  -> head coordinates never change (retrofit mode)."""
     rng = np.random.default_rng(seed)
     heads = heads0.copy()
-    fields = [head_field(site.X, site.Y, h, site.radial_profile) for h in heads]
+    fields = [head_field(site.X, site.Y, h, site.radial_profile, site.flow_lpm) for h in heads]
     total = np.sum(fields, axis=0)
     cur, _ = score(site, total, cfg)
     best, best_h = cur, heads.copy()
@@ -233,7 +238,7 @@ def optimize(site, heads0, cfg, seed, fixed_xy=False):
         i, h = _propose(site, heads, rng, cfg, frac, fixed_xy)
         if h is None:
             continue
-        newf = head_field(site.X, site.Y, h, site.radial_profile)
+        newf = head_field(site.X, site.Y, h, site.radial_profile, site.flow_lpm)
         new_total = total - fields[i] + newf
         new, _ = score(site, new_total, cfg)
         if new < cur or rng.random() < np.exp((cur - new) / T):
@@ -618,6 +623,10 @@ def main(argv=None):
                     help=f"grid cell size in metres (default: {CFG['cell']})")
     ap.add_argument("--profile-csv", default=None,
                     help="optional measured radial catch-can CSV with radius_fraction,relative_rate columns")
+    ap.add_argument("--performance-csv", default=None,
+                    help="measured pressure-performance CSV: pressure_kpa,flow_lpm,throw_m")
+    ap.add_argument("--pressure-kpa", type=float, default=None,
+                    help="operating pressure in kPa; requires --performance-csv")
     args = ap.parse_args(argv)
 
     if not np.isfinite(args.cell_size) or args.cell_size <= 0:
@@ -626,6 +635,23 @@ def main(argv=None):
     cfg = dict(CFG)
     cfg.update(seed=args.seed, cell=args.cell_size)
     profile_sha256 = None
+    performance_sha256 = None
+    if bool(args.performance_csv) != (args.pressure_kpa is not None):
+        ap.error("--performance-csv and --pressure-kpa must be supplied together")
+    if args.performance_csv:
+        try:
+            performance = load_performance_curve_csv(args.performance_csv, args.pressure_kpa)
+        except (OSError, ValueError) as exc:
+            ap.error(f"invalid --performance-csv / --pressure-kpa: {exc}")
+        cfg.update(
+            flow_lpm=performance["flow_lpm"],
+            base_radius=performance["throw_m"],
+            r_min=performance["throw_m"],
+            r_max=performance["throw_m"],
+            hydraulics_locked_radius=True,
+            operating_pressure_kpa=performance["pressure_kpa"],
+        )
+        performance_sha256 = hashlib.sha256(FilePath(args.performance_csv).read_bytes()).hexdigest()
     if args.profile_csv:
         try:
             cfg["radial_profile"] = load_radial_profile_csv(args.profile_csv)
@@ -667,6 +693,14 @@ def main(argv=None):
             "source_csv": args.profile_csv,
             "sha256": profile_sha256,
             "status": "measured_profile_loaded" if profile_sha256 else "unvalidated_analytic_placeholder",
+        },
+        "hydraulic_performance": {
+            "source_csv": args.performance_csv,
+            "sha256": performance_sha256,
+            "operating_pressure_kpa": cfg.get("operating_pressure_kpa"),
+            "flow_lpm": cfg.get("flow_lpm"),
+            "throw_m": cfg["base_radius"] if performance_sha256 else None,
+            "status": "measured_curve_interpolated" if performance_sha256 else "not_configured",
         },
     }
     with open(out("run_metadata.json"), "w", encoding="utf-8") as fh:
