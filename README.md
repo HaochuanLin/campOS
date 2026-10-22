@@ -159,6 +159,18 @@ By default, the script compares all five synthetic sites; omit `--quick` for the
 
 The comparison is matched at the scenario/configuration level, but the algorithms optimize different objective functions and Pareto search is a stochastic finite-search approximation. Pareto f1 and legacy overspray share different denominators; Pareto and legacy dry-area metrics also use different thresholds. The benchmark therefore reports both objective-specific and shared metrics instead of collapsing them into a single winner score. It is a synthetic model comparison, not field validation or a water-savings estimate.
 
+## Parameter sensitivity and numerical robustness
+
+Run a reproducible sweep across optimizer seeds, grid resolutions, and assumed radial distributions:
+
+```bash
+python scripts/parameter_sensitivity.py --quick --sites A --seeds 7 19 41 --cell-sizes 0.5 1.0 --slopes -0.5 0 1
+```
+
+By default, the sweep covers sites A–E, three seeds, two grid sizes, and three radial slopes. It writes one row per run to `sensitivity_summary.csv`, with the requested configuration cross-checked against each run's metadata; raw outputs and plots remain in scenario subfolders. Omit `--quick` for the simulator's full iteration budget. The full default sweep is computationally expensive.
+
+This study checks sensitivity to stochastic search initialization, raster resolution, and illustrative radial-shape assumptions. It is **not** a formal probabilistic uncertainty analysis or empirical validation. The slopes are not measured sprinkler properties, and changes in the grid also change the raster approximation. For independent validation, use surveyed site geometry and held-out catch-can or field observations collected under documented conditions. The staged experiment design, calibration/holdout split, reporting requirements, and acceptance-threshold policy are in [the validation plan](docs/VALIDATION_PLAN.md). Do not interpret AR improvement as water savings.
+
 ## Metrics: read them carefully
 
 The model reports several metrics that answer different questions. They are not interchangeable.
@@ -237,7 +249,8 @@ results/                      Curated results only; no generated files committed
 - [ ] Publish reviewed CSV outputs, run metadata, and figures for selected synthetic cases.
 - [ ] Add input validation and support for imported lawn polygons.
 - [ ] Replace placeholder sprinkler profiles with manufacturer catch-can/precipitation data.
-- [x] Add a reproducible sensitivity sweep for random seeds, grid resolution, and radial-shape assumptions (synthetic numerical robustness only).\n- [ ] Add uncertainty analysis for wind, pressure, and measured input parameters.
+- [x] Add a reproducible sensitivity sweep for random seeds, grid resolution, and radial-shape assumptions (synthetic numerical robustness only).
+- [ ] Add uncertainty analysis for wind, pressure, and measured input parameters.
 - [ ] Validate against measured sites using a documented protocol and appropriate permission.
 - [ ] Add benchmark cases and broader regression tests before changing optimization logic.
 
