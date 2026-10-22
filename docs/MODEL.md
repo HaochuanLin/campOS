@@ -89,7 +89,7 @@ The standard-grid/preset-arc layout is the main baseline for AR and Pareto norma
 
 ## Known omissions
 
-Even with a measured radial profile, this remains a relative-depth model until nozzle flow, operating pressure, and absolute precipitation are calibrated. The current implementation does not model:
+Without flow and pressure-performance inputs, the field is relative-only. With those inputs, the model can estimate absolute precipitation, but the spatial profile and overlap behavior remain unvalidated. The current implementation does not model:
 
 - Wind, spray drift, evaporation, or weather variation.
 - Pressure loss, hydraulic network behavior, manufacturer-specific radial precipitation profiles.
