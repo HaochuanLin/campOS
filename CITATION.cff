@@ -1,0 +1,9 @@
+cff-version: 1.2.0
+message: "If you use campOS, please cite the repository and the specific version or commit used."
+title: "campOS: Synthetic Sprinkler-Layout Optimization Prototype"
+type: software
+authors:
+  - name: HaochuanLin
+version: 0.1.0
+repository-code: "https://github.com/HaochuanLin/campOS"
+license: MIT
