@@ -147,7 +147,7 @@ def _segments_intersect(a, b, c, d, eps=1e-9):
     """Include proper crossings and collinear/touching intersections."""
     o1, o2 = _orientation(a, b, c, eps), _orientation(a, b, d, eps)
     o3, o4 = _orientation(c, d, a, eps), _orientation(c, d, b, eps)
-    if o1 != o2 and o3 != o4:
+    if o1 * o2 < 0 and o3 * o4 < 0:
         return True
     return ((o1 == 0 and _on_segment(a, b, c, eps))
             or (o2 == 0 and _on_segment(a, b, d, eps))
