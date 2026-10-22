@@ -1,226 +1,233 @@
-# campOS — Synthetic Irrigation Layout Optimization Prototype
+# campOS
 
-**English** | [简体中文](#简体中文)
+**Synthetic irrigation-layout optimization prototype** · Python · Research / simulation prototype
 
-campOS is an experimental Python simulation prototype for exploring irrigation-layout choices on irregular lawn shapes, such as campus greens, parks, and golf-course areas. It uses synthetic polygons and placeholder sprinkler/economic assumptions. It is **not field-validated** and is not a design or water-saving guarantee.
+[![Tests](https://github.com/HaochuanLin/campOS/actions/workflows/tests.yml/badge.svg)](https://github.com/HaochuanLin/campOS/actions/workflows/tests.yml)
+[![Python 3.10+](https://img.shields.io/badge/python-3.10%2B-blue)](https://www.python.org/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
 
-## What it explores
+[English](#english) · [简体中文](#简体中文)
 
-- A simulated-annealing search over sprinkler throw radius `r`, start angle `a0`, and sector width `w`.
-- **Fixed-position mode**: sprinkler `(x, y)` coordinates remain unchanged; only `r`, `a0`, and `w` are tuned.
-- **Movable mode**: sprinkler positions may also change.
-- **AR single-objective optimization** and a separate **bi-objective Pareto search** trading off overspray against interior deficit.
-- CSV summaries and PNG plots for the synthetic scenarios.
+campOS explores sprinkler-layout optimization on **synthetic irregular lawn shapes**. It compares fixed-position retrofits, movable sprinkler layouts, and Pareto trade-offs between overspray and interior water deficit.
 
-## Important interpretation limits
+> **Research prototype only.** Geometry and physical/economic inputs are synthetic or placeholders. There is no field validation. Outputs are not installation specifications or guaranteed water savings.
 
-- All lawn outlines are synthetic virtual shapes. There are no real-site measurements or field-validation results in this repository.
-- Sprinkler precipitation profile, throw ranges, water tariff, annual irrigation depth, and retrofit costs are **PLACEHOLDER** assumptions, not vendor specifications or measured prices.
-- Wind, pressure loss, evaporation, drift, slope, and soil are not modelled. Simulated depths are relative units, not litres.
-- The reported “water saving” is an **AR-based metric**: it compares the water required under the model to bring the driest quarter of the lawn to the target depth. It does **not** mean total water use decreases by that percentage.
-- Total discharge after optimization can be higher than the baseline. AR, total discharge, overspray, and deficit are different metrics and must not be conflated.
-- Against the **standard-grid + preset-arc baseline**, overspray was not reduced in the supplied project summary: the baseline already has low overspray (about 0–1%) while showing edge dry patches (5.6–8.1%).
-- The “naive full-circle” layout is a **reference-only** comparison, not a measured current installation. The project summary reports lower overspray and lower deficit after optimization versus this reference in the stated synthetic scenarios.
-- No claim in this repository should be interpreted as a guaranteed saving, payback, or field outcome.
+## Quick start
 
-## Methods at a glance
-
-### AR single objective
-The legacy objective minimizes an AR-based score with a penalty for excessive dry-cell share. It reports AR, overspray share of the layout's own total water, CU-style uniformity, and dry-cell share. AR combines application volume and low-quarter depth into one score, so it can hide the distinction between overspray and non-uniformity.
-
-### Bi-objective Pareto search
-The Pareto modes separately evaluate:
-
-- `f1`: overspray water relative to the baseline's total applied water;
-- `f2`: mean interior shortfall relative to a baseline-derived target depth;
-- a dry-cell fraction constraint.
-
-A weighted score is used as a **search device only**. The reported front keeps non-dominated `(f1, f2)` solutions rather than reporting the objectives as one combined score.
-
-## Requirements
-
-Python 3.10+ recommended. Dependencies are listed in `requirements.txt` (`numpy`, `matplotlib`); tests use `pytest`.
-
-## Run
-
-From the repository root:
+Requires Python 3.10 or newer.
 
 ```bash
+git clone https://github.com/HaochuanLin/campOS.git
+cd campOS
 python -m pip install -r requirements.txt
 python campos_sim.py --help
 ```
 
-Run one synthetic site in movable mode (quick smoke run):
+Run a quick smoke test on one synthetic site:
 
 ```bash
-python campos_sim.py --mode movable --quick --sites A --outdir results/run-movable
+python campos_sim.py --mode movable --quick --sites A --outdir out/demo
 ```
 
-Run fixed-position AR optimization:
+Run fixed-position optimization:
 
 ```bash
-python campos_sim.py --mode fixed --sites A C --outdir results/run-fixed
+python campos_sim.py --mode fixed --sites A C --outdir out/fixed
 ```
 
-Run Pareto search with fixed head coordinates:
+Explore the overspray/deficit Pareto front:
 
 ```bash
-python campos_sim.py --mode pareto-fixed --quick --sites C --outdir results/run-pareto-fixed
+python campos_sim.py --mode pareto-fixed --quick --sites C --outdir out/pareto
 ```
 
-Run all modes and sites (computationally expensive):
+Run all four modes across all five sites (computationally expensive):
 
 ```bash
-python campos_sim.py --mode all --outdir results/full-run
+python campos_sim.py --mode all --outdir out/full
 ```
 
-`--quick` reduces iteration counts for smoke testing; it is not equivalent to a full run. Available synthetic site letters are `A` (rectangle), `B` (L-shape), `C` (kidney), `D` (wedge), and `E` (roadside strip).
+Generated CSVs and PNGs are written to the chosen output directory. The default is `out/`. `--quick` reduces iteration counts for smoke testing; it is not a substitute for a full run.
 
-## Results
+## What is modelled?
 
-The current source attachment did not include the referenced result CSV files or PNG figures. The paths below are placeholders for figures generated by a run; copy selected outputs into `docs/images/` before publishing if you want stable README images.
+| Mode | What may change | Main purpose |
+|---|---|---|
+| `movable` | Sprinkler position, radius and sector angles | Explore a new layout |
+| `fixed` | Radius and sector angles; **x/y positions stay fixed** | Explore a retrofit without relocating heads |
+| `pareto-movable` | Position, radius and sector angles | Explore overspray/deficit trade-offs |
+| `pareto-fixed` | Radius and sector angles; **x/y positions stay fixed** | Explore retrofit trade-offs |
 
-![Pareto fixed](docs/images/pareto_fixed.png)
+The five built-in sites are generated shapes: **A** rectangle, **B** L-shape, **C** kidney, **D** wedge, and **E** roadside strip.
 
-![Pareto movable](docs/images/pareto_movable.png)
+```mermaid
+flowchart LR
+    A[Synthetic lawn geometry] --> B[Baseline sprinkler layout]
+    B --> C[AR single-objective search]
+    B --> D[Pareto search]
+    C --> E[CSV summaries and PNG plots]
+    D --> E
+```
 
-![Fixed-position layouts](docs/images/layouts_fixed.png)
+## Reading the metrics correctly
 
-### Supplied project-summary figures (synthetic scenarios; placeholder assumptions)
+- **AR-based saving metric is not total-water saving.** It estimates the modelled water required to bring the driest 25% of the lawn to a target depth. Total discharge after optimization can increase.
+- **Overspray and interior deficit are separate objectives.** The Pareto search retains non-dominated solutions instead of collapsing both into one reported score.
+- The standard-grid + preset-arc baseline already has low overspray (about 0–1%) but reported edge dry patches (5.6–8.1%) in the supplied project summary. That summary did **not** show an overspray reduction against this baseline.
+- The “full-circle sprinkler” is a reference scenario only, not a measured existing installation.
 
-The following values were supplied in the project brief, not independently re-extracted from the attached source file or CSVs. They are model outputs under synthetic scenarios, not field results. Payback uses placeholder costs.
+## Preliminary figures supplied with the project brief
 
-| Mode | Synthetic shape | AR-based saving metric | Placeholder payback |
+These figures were supplied in the project brief. The original result CSVs were not available for independent verification in this repository. Treat all figures below as **unverified synthetic-model outputs using placeholder assumptions**, not field measurements.
+
+| Mode | Synthetic shape | AR-based metric | Placeholder payback |
 |---|---|---:|---:|
 | Fixed position | Kidney | 35.3% | 12.1 years |
 | Fixed position | L-shape | 25.5% | 22.6 years |
 | Movable | Kidney | 38.0% | 65.5 years |
 | Movable | L-shape | 24.0% | 137.1 years |
 
-Supplied comparison against the **full-circle reference only**:
+Reported comparison against the **full-circle reference only**:
 
 | Synthetic shape | Overspray | Interior deficit |
 |---|---:|---:|
 | Kidney | 21% → 14% | 6.8% → 0.9% |
 | Roadside strip | 54% → 11.6% | 6.6% → 1.1% |
 
-These comparisons must not be described as measured real-world improvements. The source CSVs should be added and checked before treating these figures as reproducible repository results. Against the standard-grid baseline, overspray did not decrease according to the supplied summary.
+No result images are included yet. Do not interpret the figures as verified until the corresponding CSVs and run configuration are published and checked.
 
-## Tests
+## Assumptions and limitations
+
+- Lawn outlines are synthetic; no real-site survey or field validation is included.
+- Sprinkler precipitation profile and throw range are placeholders, not manufacturer specifications.
+- Water tariff, annual irrigation depth and retrofit costs are placeholders, not verified prices.
+- Wind, pressure loss, evaporation, drift, slope and soil are not modelled.
+- Simulated water depth uses relative model units, not litres.
+- There is no calibrated vendor profile, lifecycle-cost study or operational safety assessment.
+
+Use the output for exploratory comparison only—not construction, irrigation scheduling, procurement, or promised savings.
+
+## Development
+
+Install dependencies and run the regression suite:
 
 ```bash
 python -m pip install -r requirements.txt
 python -m pytest -q
 ```
 
-The regression tests check that fixed mode preserves every head's `(x, y)` coordinate and that `--mode movable --quick` completes for one synthetic site and writes output files.
+The tests check fixed-mode coordinate invariance and that a movable quick run completes and writes its expected files. GitHub Actions runs the test suite on pushes and pull requests.
 
-## Limitations
+### Roadmap
 
-This prototype uses synthetic geometry, a stylized radial precipitation profile, placeholder range and economic inputs, and a simplified grid-based depth calculation. It does not model wind, pressure loss, evaporation, drift, slope, or soil. It has no field validation, calibrated vendor profile, verified lifecycle costs, or operational safety assessment. Outputs are exploratory only and should not be used as an installation specification, irrigation schedule, procurement estimate, or promised savings calculation.
-
-## Roadmap / TODO
-
-- [ ] Import manufacturer precipitation/catch-can profiles and throw-vs-pressure tables from documented data files.
-- [ ] Add wind-speed/direction and pressure sensitivity analysis; evaluate robustness of Pareto solutions.
-- [ ] Add uncertainty and sensitivity reporting for placeholder economic inputs.
-- [ ] Validate against measured data from real sites, with permission and documented protocols.
-- [ ] Add user-supplied lawn polygon import and input validation.
-- [ ] Store reproducible run metadata (configuration, seed, dependency versions) alongside CSV outputs.
+- [ ] Add source CSVs, run configuration and verified result figures.
+- [ ] Support imported lawn polygons with validation.
+- [ ] Add manufacturer precipitation profiles and throw-vs-pressure data.
+- [ ] Add wind/pressure sensitivity and uncertainty analysis.
+- [ ] Validate against measured sites with permission and a documented protocol.
+- [ ] Save seed, configuration and dependency versions with each result.
 
 ## License
 
-MIT is included provisionally. Confirm that you own or have permission to release all code and that no third-party code/data has incompatible terms before publishing. The MIT license is permissive and may be appropriate for a standalone prototype, but it is a project-owner decision.
+MIT. See [LICENSE](LICENSE). Confirm code ownership and third-party licensing before redistribution.
 
 ---
 
-<a id="简体中文"></a>
 ## 简体中文
 
-campOS 是一个用于探索校园绿地、公园和高尔夫球场等异形草坪灌溉布局的 Python 仿真原型。它使用合成多边形和占位喷头/经济参数，**未经真实场地验证**，不构成工程设计或节水承诺。
+campOS 是一个用于探索**合成异形草坪**喷灌布局的 Python 仿真原型，比较固定喷头位置改造、可移动布局，以及溢出与草坪内缺水之间的 Pareto 权衡。
 
-### 功能
+> **仅供研究与探索。** 草坪几何为合成数据，喷头物理参数和经济参数含占位值，未经真实场地验证。输出不是施工方案，也不构成节水保证。
 
-- 使用模拟退火调整旋转喷头的射程 `r`、起始角 `a0` 和扇区角 `w`。
-- **固定位置模式**：喷头 `(x, y)` 坐标保持不变，只调整 `r`、`a0`、`w`。
-- **可移动模式**：允许同时调整喷头位置。
-- 提供 AR 单目标优化，以及分别权衡边界溢出与草坪内缺水的双目标 Pareto 搜索。
-- 输出 CSV 指标表和 PNG 图表。
+### 快速开始
 
-### 事实边界与结果解释
-
-- 所有草坪轮廓均为合成虚拟形状，没有实地数据，也没有实地验证。
-- 喷头降水分布、射程、水价、年灌溉深度和改造成本均为 `PLACEHOLDER` 占位参数，不是真实厂商数据或实测价格。
-- 模型没有考虑风、压力损失、蒸发、飘移、坡度和土壤；仿真水深为相对单位，不是升或立方米。
-- “节水”采用 **AR 口径**，表示使草坪最干的 25% 达到目标水深所需水量的模型指标，不等于总用水量下降相同比例。
-- 优化后的总出水量可能高于基线。不能把 AR、总出水量、溢出和缺水混为一谈。
-- 根据项目简介，相对“标准网格 + 预设弧度”基线，溢出没有降低：基线溢出本来约为 0–1%，但边缘干斑约为 5.6–8.1%。
-- “全圆喷头”仅为参照方案，不是实测现状。项目简介所述的改善仅指给定合成场景和占位模型下的仿真对比。
-- 不得将任何结果解释为真实场地保证、确定的投资回收期或承诺节水量。
-
-### 方法概述
-
-**AR 单目标**：优化 AR 相关评分，并对干斑比例超限进行惩罚。该指标把应用水量和低四分位水深合并为单一指标，可能掩盖溢出与均匀度之间的差异。
-
-**双目标 Pareto**：分别评估 `f1`（相对基线总出水量的溢出比例）和 `f2`（相对目标水深的草坪内平均缺水），并施加干斑比例约束。加权评分仅用于搜索，最终输出非支配解，不把两个目标合并成一个报告分数。
-
-### 安装与运行
-
-建议使用 Python 3.10 或更新版本。
+需要 Python 3.10 或更新版本。
 
 ```bash
+git clone https://github.com/HaochuanLin/campOS.git
+cd campOS
 python -m pip install -r requirements.txt
 python campos_sim.py --help
-python campos_sim.py --mode movable --quick --sites A --outdir results/run-movable
-python campos_sim.py --mode fixed --sites A C --outdir results/run-fixed
-python campos_sim.py --mode pareto-fixed --quick --sites C --outdir results/run-pareto-fixed
+python campos_sim.py --mode movable --quick --sites A --outdir out/demo
 ```
 
-`--quick` 只适用于快速冒烟测试，不能代替完整迭代。合成场地为 `A` 矩形、`B` L 形、`C` 肾形、`D` 楔形、`E` 路边窄条。
+其他常用命令：
 
-### 结果图占位符
+```bash
+python campos_sim.py --mode fixed --sites A C --outdir out/fixed
+python campos_sim.py --mode pareto-fixed --quick --sites C --outdir out/pareto
+python campos_sim.py --mode all --outdir out/full
+```
 
-当前附件只有源码，没有附带结果 CSV 或 PNG，因此以下为预留路径，不能视为已提供的结果图。
+生成的 CSV 和 PNG 会写入指定目录，默认是 `out/`。`--quick` 只用于快速冒烟测试，不等于完整优化。
 
-![固定位置 Pareto 图](docs/images/pareto_fixed.png)
+### 模式与场地
 
-![可移动 Pareto 图](docs/images/pareto_movable.png)
+| 模式 | 可调整内容 | 用途 |
+|---|---|---|
+| `movable` | 喷头位置、射程和扇区角 | 探索新布局 |
+| `fixed` | 射程和扇区角，**喷头坐标不变** | 探索不移动喷头的改造 |
+| `pareto-movable` | 位置、射程和扇区角 | 分析溢出/缺水权衡 |
+| `pareto-fixed` | 射程和扇区角，**喷头坐标不变** | 分析固定位置改造方案 |
 
-![固定位置布局图](docs/images/layouts_fixed.png)
+内置场地均为合成形状：**A** 矩形、**B** L 形、**C** 肾形、**D** 楔形、**E** 路边窄条。
 
-### 项目简介中提供的合成场景数值
+### 如何理解结果
 
-以下数值来自用户提供的项目简介，尚未通过附件 CSV 独立复核；均为合成场景和占位参数下的模型结果，不是实测结果。回收期采用占位成本。
+- **AR 口径指标不等于总用水量节省比例。** 它估算模型中让草坪最干的 25% 达到目标水深所需的水量；优化后的总出水量可能增加。
+- **溢出与草坪内缺水是不同指标。** Pareto 搜索保留非支配解，不把两者合并成一个最终报告分数。
+- 项目简介称，“标准网格 + 预设弧度”基线的溢出约为 0–1%，但边缘干斑约为 5.6–8.1%；因此不能声称相对该基线降低了溢出。
+- “全圆喷头”仅是参照场景，不是实测的现有安装布局。
 
-| 模式 | 合成形状 | AR 口径节水指标 | 占位回收期 |
+### 项目简介提供的初步数值
+
+以下数字来自项目简介，当前仓库没有原始结果 CSV 可供独立复核。它们是采用占位参数的合成模型结果，**不是实测结果**。
+
+| 模式 | 合成形状 | AR 口径指标 | 占位回收期 |
 |---|---|---:|---:|
 | 固定位置 | 肾形 | 35.3% | 12.1 年 |
 | 固定位置 | L 形 | 25.5% | 22.6 年 |
 | 可移动 | 肾形 | 38.0% | 65.5 年 |
 | 可移动 | L 形 | 24.0% | 137.1 年 |
 
-相对“全圆喷头”参照方案：
+相对**全圆喷头参照方案**的项目简介数据：
 
 | 合成形状 | 溢出比例 | 草坪内缺水指标 |
 |---|---:|---:|
 | 肾形 | 21% → 14% | 6.8% → 0.9% |
 | 路边窄条 | 54% → 11.6% | 6.6% → 1.1% |
 
-发布前应补齐并核验原始 CSV。相对标准网格基线，不应声称溢出降低。
+当前尚未提供结果图。补齐并核验对应 CSV 和运行配置之前，不应将上述数字当作已复现的结果。
 
-### 局限性
+### 假设与局限
 
-当前模型使用合成几何、简化的径向降水分布、占位射程和经济参数，以及基于网格的水深估算。模型没有考虑风、压力损失、蒸发、飘移、坡度或土壤；没有真实场地验证、厂商分布标定、经核验的全生命周期成本或运行安全评估。结果仅供探索，不应直接用于施工、灌溉排程、采购报价或节水承诺。
+- 草坪轮廓是合成数据，没有真实场地测绘或实地验证。
+- 喷头降水分布和射程为占位参数，不是厂商规格。
+- 水价、年灌溉深度和改造成本均为占位值，不是已核实价格。
+- 模型未考虑风、压力损失、蒸发、飘移、坡度和土壤。
+- 仿真水深为相对单位，不是升。
+- 尚无厂商曲线标定、全生命周期成本分析或运行安全评估。
 
-### TODO 路线图
+结果仅用于探索性比较，不应用于施工、灌溉排程、采购或节水承诺。
 
-- [ ] 导入厂商降水/集水杯测试分布及射程—压力表。
-- [ ] 增加风速、风向和压力敏感性分析，评估 Pareto 解的稳健性。
-- [ ] 对占位经济参数增加不确定性和敏感性报告。
-- [ ] 在取得许可并制定记录方案后，使用真实场地测量数据验证。
-- [ ] 支持用户导入草坪多边形并验证输入。
-- [ ] 在 CSV 旁保存配置、随机种子和依赖版本等可复现元数据。
+### 测试与开发
+
+```bash
+python -m pip install -r requirements.txt
+python -m pytest -q
+```
+
+测试检查固定模式下喷头坐标不变，以及可移动模式的快速运行能否完成并生成预期文件。GitHub Actions 会在 push 和 pull request 时运行测试。
+
+### 后续计划
+
+- [ ] 添加原始 CSV、运行配置和核验后的结果图。
+- [ ] 支持导入草坪多边形并验证输入。
+- [ ] 增加厂商降水分布和射程—压力数据。
+- [ ] 增加风/压力敏感性及不确定性分析。
+- [ ] 在获得许可并记录验证方案后，使用真实场地数据验证。
+- [ ] 每次运行保存随机种子、配置和依赖版本。
 
 ### 许可证
 
-暂放 MIT 许可证。公开前请确认你拥有代码版权或有权发布全部代码，并确认没有许可证冲突的第三方代码或数据。MIT 较宽松，可能适合独立原型，但最终应由项目所有者决定。
+采用 MIT，详见 [LICENSE](LICENSE)。再分发前请确认代码权属及第三方许可证兼容性。
