@@ -366,3 +366,50 @@ def test_orifice_flow_follows_bernoulli_scaling():
     assert np.isclose(q3 / q1, 4.0)  # Q proportional to diameter squared
     with np.testing.assert_raises_regex(ValueError, "discharge_coefficient"):
         orifice_flow_lpm(100.0, 1.0, discharge_coefficient=1.2)
+
+
+
+def test_radial_slope_family_is_area_normalized_and_uniform_at_zero():
+    # Integrate q(s) over annuli: area weighting is proportional to s ds.
+    s = np.linspace(0.0, 1.0, 20001)
+    for slope in (-0.8, 0.0, 2.0):
+        rate = (1.0 + slope * s) / (1.0 + 2.0 * slope / 3.0)
+        area_mean = 2.0 * np.trapz(rate * s, s)
+        assert np.isclose(area_mean, 1.0, atol=1e-7)
+    assert np.allclose((1.0 + 0.0 * s) / (1.0 + 0.0), 1.0)
+
+
+def test_head_field_radial_slope_validation_and_measured_profile_precedence():
+    X = np.array([[0.0, 1.0, 2.0]])
+    Y = np.zeros_like(X)
+    head = (0.0, 0.0, 2.0, 0.0, 360.0)
+    uniform = sim.head_field(X, Y, head)
+    assert np.allclose(uniform, sim.head_field(X, Y, head, radial_slope=0.0))
+    with np.testing.assert_raises_regex(ValueError, "radial_slope"):
+        sim.head_field(X, Y, head, radial_slope=-1.0)
+
+    profile = np.array([[0.0, 1.5], [0.5, 1.0], [1.0, 0.5]])
+    from_profile = sim.head_field(X, Y, head, radial_profile=profile, radial_slope=2.0)
+    profile_only = sim.head_field(X, Y, head, radial_profile=profile)
+    assert np.allclose(from_profile, profile_only)
+
+
+def test_cli_rejects_invalid_radial_slope(tmp_path):
+    completed = subprocess.run(
+        [
+            sys.executable,
+            str(ROOT / "campos_sim.py"),
+            "--radial-slope",
+            "-1",
+            "--quick",
+            "--outdir",
+            str(tmp_path / "invalid-radial-slope"),
+        ],
+        cwd=ROOT,
+        text=True,
+        capture_output=True,
+        timeout=30,
+    )
+    assert completed.returncode != 0
+    assert "--radial-slope must be finite and greater than -1" in completed.stderr
+    assert not (tmp_path / "invalid-radial-slope" / "run_metadata.json").exists()
