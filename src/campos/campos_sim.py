@@ -359,7 +359,7 @@ def pareto_search(site, heads0, cfg, fixed_xy, seed, ref, warm=None):
         rng = np.random.default_rng(seed + 101 * wi)
         T0, T1 = cfg["pareto_T0"] * tfac, cfg["pareto_T1"]
         heads = start.copy()
-        fields = [head_field(site.X, site.Y, h) for h in heads]
+        fields = [head_field(site.X, site.Y, h, site.radial_profile) for h in heads]
         total = np.sum(fields, axis=0)
 
         def J(tot):
@@ -376,7 +376,7 @@ def pareto_search(site, heads0, cfg, fixed_xy, seed, ref, warm=None):
             i, h = _propose(site, heads, rng, cfg, frac, fixed_xy)
             if h is None:
                 continue
-            newf = head_field(site.X, site.Y, h)
+            newf = head_field(site.X, site.Y, h, site.radial_profile)
             new_total = total - fields[i] + newf
             new, f1, f2, dry = J(new_total)
             if new < cur or rng.random() < np.exp((cur - new) / T):
