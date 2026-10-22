@@ -98,6 +98,27 @@ def load_performance_curve_csv(path, pressure_kpa):
     return {"pressure_kpa": p, "flow_lpm": float(np.interp(p, pressure, flow)), "throw_m": float(np.interp(p, pressure, throw))}
 
 
+def orifice_flow_lpm(pressure_kpa, diameter_mm, discharge_coefficient=0.62, water_density_kg_m3=998.0):
+    """Estimate idealized nozzle flow from Bernoulli/orifice theory.
+
+    Q = Cd * A * sqrt(2 * delta_p / rho). This is a theoretical estimate for
+    a simple orifice, not a substitute for a rotor's measured flow curve;
+    use the manufacturer's coefficient/geometry only when known.
+    """
+    pressure = float(pressure_kpa)
+    diameter = float(diameter_mm)
+    cd = float(discharge_coefficient)
+    density = float(water_density_kg_m3)
+    values = np.array([pressure, diameter, cd, density], dtype=float)
+    if not np.all(np.isfinite(values)):
+        raise ValueError("orifice inputs must be finite")
+    if pressure <= 0 or diameter <= 0 or density <= 0 or not (0 < cd <= 1):
+        raise ValueError("pressure, diameter, density must be positive and discharge_coefficient in (0, 1]")
+    area_m2 = np.pi * (diameter / 1000.0) ** 2 / 4.0
+    velocity_m_s = np.sqrt(2.0 * pressure * 1000.0 / density)
+    return float(cd * area_m2 * velocity_m_s * 60000.0)
+
+
 def spacing_precipitation_mm_h(flow_lpm, spacing_m, arrangement="square", arc_fraction=0.5):
     """Estimate application rate from flow and sprinkler-grid cell area.
 
