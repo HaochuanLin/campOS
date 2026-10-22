@@ -293,3 +293,49 @@ def test_absolute_head_field_uses_flow_radius_and_arc_area():
     quarter = sim.head_field(X, Y, (0.0, 0.0, 2.0, 0.0, 90.0), flow_lpm=4.0)
     assert np.isclose(full[0, 0], 60.0 * 4.0 / (np.pi * 4.0) * 1.5)
     assert np.isclose(quarter[0, 0], full[0, 0] * 4.0)
+
+
+def test_public_rainbird_chart_benchmark_is_within_rounding_tolerance():
+    from campos.model import spacing_precipitation_mm_h
+
+    benchmark = ROOT / "data" / "benchmarks" / "rainbird_5000_standard_1_5.csv"
+    with benchmark.open(newline="", encoding="utf-8") as fh:
+        rows = list(csv.DictReader(fh))
+    assert len(rows) == 6
+    errors = []
+    for row in rows:
+        pressure = float(row["pressure_kpa"])
+        # Check that the same public data can drive the pressure-curve loader.
+        curve = sim.load_performance_curve_csv(benchmark, pressure)
+        assert np.isclose(curve["flow_lpm"], float(row["flow_lpm"]))
+        assert np.isclose(curve["throw_m"], float(row["throw_m"]))
+        for arrangement, key in (
+            ("square", "square_precip_mm_h"),
+            ("triangular", "triangular_precip_mm_h"),
+        ):
+            estimate = spacing_precipitation_mm_h(
+                curve["flow_lpm"], curve["throw_m"], arrangement, arc_fraction=0.5
+            )
+            errors.append(abs(estimate - float(row[key])))
+    assert max(errors) <= 1.0  # manufacturer chart rates are rounded to integer mm/h
+
+
+def test_spacing_precipitation_rejects_invalid_inputs():
+    from campos.model import spacing_precipitation_mm_h
+
+    with np.testing.assert_raises_regex(ValueError, "arrangement"):
+        spacing_precipitation_mm_h(4.0, 10.0, "hexagonal")
+    with np.testing.assert_raises_regex(ValueError, "arc_fraction"):
+        spacing_precipitation_mm_h(4.0, 10.0, "square", arc_fraction=0.0)
+
+
+def test_public_sprinkler_benchmark_script_runs():
+    result = subprocess.run(
+        [sys.executable, str(ROOT / "scripts" / "benchmark_sprinkler_curve.py")],
+        cwd=ROOT,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    assert result.returncode == 0, result.stdout + result.stderr
+    assert "PASS: all chart comparisons" in result.stdout
