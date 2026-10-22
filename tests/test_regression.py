@@ -703,7 +703,7 @@ def test_polygon_loader_rejects_self_intersections_and_nonclosing_duplicate_vert
     import pytest
 
     cases = [
-        ("bow_tie", "x_m,y_m\\n0,0\\n10,10\\n0,10\\n10,0\\n",
+        ("bow_tie", "x_m,y_m\\n0,0\\n10,10\\n0,8\\n8,0\\n",
          "self-intersecting"),
         ("repeated_vertex", "x_m,y_m\\n0,0\\n10,0\\n10,10\\n10,0\\n0,10\\n",
          "duplicate vertices"),
