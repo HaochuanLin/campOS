@@ -131,6 +131,6 @@ def test_installed_console_script_help():
         capture_output=True,
         timeout=30,
     )
-    assert completed.returncode == 0, completed.stdout + "\\n" + completed.stderr
+    assert completed.returncode == 0, completed.stdout + "\n" + completed.stderr
     assert "--mode" in completed.stdout
     assert "--outdir" in completed.stdout
