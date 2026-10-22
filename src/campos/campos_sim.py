@@ -63,7 +63,9 @@ Needs: numpy, matplotlib
 """
 import argparse
 import csv
+import json
 import os
+import platform
 import time
 
 import numpy as np
@@ -78,12 +80,12 @@ from matplotlib.path import Path
 # results can never be confused.
 MODE_MOVABLE = dict(
     key="movable",
-    csv="可移动喷头模式(原) MOVABLE-HEADS",
+    csv="MOVABLE-HEADS (legacy single-objective mode)",
     plot="MOVABLE-HEADS mode (xy AND r,a0,w tuned)",
 )
 MODE_FIXED = dict(
     key="fixed",
-    csv="固定喷头位置模式(新) FIXED-POSITION",
+    csv="FIXED-POSITION (retrofit single-objective mode)",
     plot="FIXED-POSITION mode (xy fixed; only r,a0,w tuned)",
 )
 MODES = {"movable": MODE_MOVABLE, "fixed": MODE_FIXED}
@@ -219,7 +221,7 @@ def score(site, total, cfg):
         return 1e6, dict(AR=np.inf, overspray=1.0, CU=0.0, dry=1.0)
     mean = lawn.mean()
     ar = total.sum() / (lq * n)
-    dry = float(np.mean(lawn < 0.3 * mean))
+    dry = float(np.mean(lawn < cfg["dry_thresh_frac"] * mean))
     pen = 5.0 * max(0.0, dry - cfg["dry_frac_limit"])
     over = 1.0 - lawn.sum() / total.sum()          # overspray share of OWN total water
     cu = 1.0 - np.mean(np.abs(lawn - mean)) / mean  # Christiansen-style uniformity
@@ -282,12 +284,23 @@ _SITE_CACHE = {}
 
 
 def get_site_and_baseline(name, poly, cfg):
-    """Build the site grid and the baseline once; every mode reuses it so all
-    modes are compared against the identical baseline."""
-    if name not in _SITE_CACHE:
-        site = Site(poly, cfg)
-        _SITE_CACHE[name] = (site, baseline_layout(site, cfg))
-    return _SITE_CACHE[name]
+    """Build and cache a baseline for this exact site geometry and config.
+
+    The cache key includes the polygon and every config value so callers that
+    compare multiple resolutions or parameter sets cannot accidentally reuse
+    a stale grid or baseline from an earlier run.
+    """
+    polygon = np.asarray(poly, dtype=float)
+    key = (
+        name,
+        tuple(polygon.shape),
+        tuple(polygon.ravel()),
+        tuple(sorted((k, repr(v)) for k, v in cfg.items())),
+    )
+    if key not in _SITE_CACHE:
+        site = Site(polygon, cfg)
+        _SITE_CACHE[key] = (site, baseline_layout(site, cfg))
+    return _SITE_CACHE[key]
 
 
 def naive_full_circle(heads0):
@@ -553,10 +566,13 @@ def write_results_csv(results, fn):
     rows = sorted(results, key=lambda r: r["payback"])
     with open(fn, "w", newline="", encoding="utf-8-sig") as fh:
         w = csv.writer(fh)
-        w.writerow(["模式 mode", "排名", "场地", "面积m2", "喷头数", "需移位数", "改动喷头数",
-                    "基线AR", "优化AR", "基线溢出%", "优化溢出%", "基线CU", "优化CU",
-                    "基线干斑%", "优化干斑%", "节水%(AR口径)",
-                    "年节水m3(占位)", "年节省CNY(占位)", "改造成本CNY(占位)", "回收期年(占位)"])
+        w.writerow(["mode", "rank", "site", "area_m2", "sprinkler_count", "heads_moved",
+                    "heads_changed", "baseline_AR", "optimized_AR",
+                    "baseline_overspray_pct_of_own_water", "optimized_overspray_pct_of_own_water",
+                    "baseline_CU", "optimized_CU", "baseline_dry_area_pct", "optimized_dry_area_pct",
+                    "AR_based_saving_metric_pct", "annual_water_saving_m3_placeholder",
+                    "annual_cost_saving_CNY_placeholder", "retrofit_cost_CNY_placeholder",
+                    "payback_years_placeholder"])
         for i, r in enumerate(rows, 1):
             w.writerow([r["mode"]["csv"], i, r["name"], f"{r['area']:.0f}", r["n_heads"],
                         r["moved"], r["changed"],
@@ -610,8 +626,9 @@ def write_comparison_csv(by_mode, fn):
     """Long-format table: baseline vs each single-objective mode, per site."""
     with open(fn, "w", newline="", encoding="utf-8-sig") as fh:
         w = csv.writer(fh)
-        w.writerow(["模式 mode", "场地", "AR", "溢出%(占自身总水量)", "CU", "干斑%", "节水%(AR口径)",
-                    "需移位数", "改动喷头数", "改造成本CNY(占位)", "回收期年(占位)"])
+        w.writerow(["mode", "site", "AR", "overspray_pct_of_own_water", "CU", "dry_area_pct",
+                    "AR_based_saving_metric_pct", "heads_moved", "heads_changed",
+                    "retrofit_cost_CNY_placeholder", "payback_years_placeholder"])
         names = [r["name"] for r in next(iter(by_mode.values()))]
         for nm in names:
             first = True
@@ -631,9 +648,10 @@ def write_comparison_csv(by_mode, fn):
 def write_pareto_csv(results, fn, cfg):
     with open(fn, "w", newline="", encoding="utf-8-sig") as fh:
         w = csv.writer(fh)
-        w.writerow(["模式 mode", "场地", "类型 kind", "点编号", "已选权衡点 selected",
-                    "溢出比例%(占基线总水量)=f1", "缺水指标%=f2", f"干斑占比%(约束<={cfg['dry_frac_limit'] * 100:.0f}%)",
-                    "CU", "AR(legacy)", "溢出%(占自身总水量)", "总水量/基线"])
+        w.writerow(["mode", "site", "point_type", "point_index", "selected_tradeoff",
+                    "overspray_pct_of_baseline_total_water_f1", "interior_deficit_pct_f2",
+                    f"dry_area_pct_constraint_le_{cfg['dry_frac_limit'] * 100:.0f}",
+                    "CU", "AR_legacy", "overspray_pct_of_own_water", "total_water_relative_to_baseline"])
         for r in results:
             def row(kind, i, p, selected=""):
                 w.writerow([r["mode"]["csv"], r["name"], kind, i, selected,
@@ -720,6 +738,25 @@ def main(argv=None):
         raise SystemExit("no sites selected")
     os.makedirs(args.outdir, exist_ok=True)
     out = lambda f: os.path.join(args.outdir, f)
+
+    # Persist the exact run configuration and software versions beside outputs.
+    # This adds provenance metadata without changing the simulation algorithm.
+    metadata = {
+        "schema_version": 1,
+        "project": "campOS",
+        "project_version": "0.1.0",
+        "python_version": platform.python_version(),
+        "numpy_version": np.__version__,
+        "matplotlib_version": matplotlib.__version__,
+        "arguments": vars(args),
+        "selected_modes": modes,
+        "selected_sites": list(sites.keys()),
+        "config": cfg,
+    }
+    with open(out("run_metadata.json"), "w", encoding="utf-8") as fh:
+        json.dump(metadata, fh, indent=2, sort_keys=True)
+        fh.write("\\n")
+
     t0 = time.time()
     single = {}                                   # key -> list of run_site results
 
