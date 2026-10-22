@@ -729,3 +729,53 @@ def test_polygon_loader_accepts_valid_concave_polygon_and_optional_closure(tmp_p
         points[:, 0] * np.roll(points[:, 1], -1)
         - points[:, 1] * np.roll(points[:, 0], -1)
     ), 20.0)
+
+
+
+def test_observation_error_evaluator_reports_separate_holdout_metrics(tmp_path):
+    import importlib.util
+    import pytest
+
+    path = ROOT / "scripts" / "evaluate_observation_errors.py"
+    spec = importlib.util.spec_from_file_location("evaluate_observation_errors", path)
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    rows = [
+        {"measured_mm": 10.0, "predicted_mm": 12.0, "split": "calibration"},
+        {"measured_mm": 20.0, "predicted_mm": 19.0, "split": "calibration"},
+        {"measured_mm": 10.0, "predicted_mm": 11.0, "split": "holdout"},
+        {"measured_mm": 20.0, "predicted_mm": 18.0, "split": "holdout"},
+    ]
+    report = module.evaluate(rows)
+    assert report["split_counts"] == {"calibration": 2, "holdout": 2}
+    assert report["metrics"]["holdout"]["mae_mm"] == 1.5
+    assert report["metrics"]["holdout"]["bias_mm_predicted_minus_measured"] == -0.5
+    assert report["metrics"]["holdout"]["rmse_mm"] == pytest.approx((2.5) ** 0.5)
+    assert "not a pass/fail certification" in report["metrics"]["holdout"]["interpretation"]
+    with pytest.raises(ValueError, match="independent holdout"):
+        module.evaluate([rows[0], rows[1], rows[2]])
+
+
+def test_observation_error_evaluator_rejects_nonfinite_and_negative_depths(tmp_path):
+    import importlib.util
+    import pytest
+
+    spec = importlib.util.spec_from_file_location(
+        "evaluate_observation_errors", ROOT / "scripts" / "evaluate_observation_errors.py"
+    )
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    for measured, predicted, message in [
+        ("nan", "1", "finite"),
+        ("-1", "1", "non-negative"),
+        ("1", "inf", "finite"),
+    ]:
+        path = tmp_path / "pairs.csv"
+        path.write_text(
+            "measured_mm,predicted_mm,split\\n"
+            f"{measured},{predicted},holdout\\n"
+            "2,2,holdout\\n",
+            encoding="utf-8",
+        )
+        with pytest.raises(ValueError, match=message):
+            module.load_pairs(path)
