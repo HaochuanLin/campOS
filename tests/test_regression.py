@@ -38,6 +38,19 @@ def test_baseline_cache_respects_geometry_and_configuration(monkeypatch):
         sim._SITE_CACHE.clear()
 
 
+def test_raster_area_error_shrinks_for_wedge_as_grid_is_refined():
+    polygon = sim.site_wedge()
+    exact_area = 0.5 * 50.0 * 30.0
+    errors = {}
+    for cell in (2.0, 1.0, 0.5):
+        site = sim.Site(polygon, dict(sim.CFG, cell=cell))
+        errors[cell] = abs(site.area - exact_area) / exact_area
+
+    assert errors[1.0] < errors[2.0]
+    assert errors[0.5] < errors[1.0]
+    assert errors[0.5] < 0.01
+
+
 def test_legacy_dry_metric_uses_configured_threshold():
     cfg = dict(sim.CFG, cell=2.0, margin=2.0)
     site = sim.Site(sim.site_rect(), cfg)
