@@ -464,3 +464,51 @@ def test_cli_rejects_invalid_optimization_policy_values(tmp_path):
         assert completed.returncode != 0
         assert expected_error in completed.stderr
         assert not (tmp_path / f"invalid-policy-{index}" / "run_metadata.json").exists()
+
+
+def test_catch_can_preparation_script_converts_and_averages_rates(tmp_path):
+    raw = tmp_path / "raw-catch-cans.csv"
+    prepared = tmp_path / "profile.csv"
+    raw.write_text(
+        "radius_fraction,depth_mm,run_minutes\n"
+        "0,2,10\n0,4,10\n0.5,1.5,10\n0.5,2.5,10\n1,1,10\n1,1,10\n",
+        encoding="utf-8",
+    )
+    result = subprocess.run(
+        [sys.executable, str(ROOT / "scripts" / "prepare_radial_profile.py"), str(raw), str(prepared)],
+        cwd=ROOT, capture_output=True, text=True, check=False,
+    )
+    assert result.returncode == 0, result.stdout + result.stderr
+    profile = sim.load_radial_profile_csv(prepared)
+    assert profile.shape == (3, 2)
+    assert np.all(np.diff(profile[:, 0]) > 0)
+    assert np.all(profile[:, 1] > 0)
+    assert "Wrote 3 radial bins" in result.stdout
+
+
+def test_catch_can_preparation_rejects_missing_endpoint_and_zero_depth(tmp_path):
+    raw = tmp_path / "raw-catch-cans.csv"
+    prepared = tmp_path / "profile.csv"
+    raw.write_text(
+        "radius_fraction,depth_mm,run_minutes\n"
+        "0.1,2,10\n0.5,1,10\n1,1,10\n",
+        encoding="utf-8",
+    )
+    result = subprocess.run(
+        [sys.executable, str(ROOT / "scripts" / "prepare_radial_profile.py"), str(raw), str(prepared)],
+        cwd=ROOT, capture_output=True, text=True, check=False,
+    )
+    assert result.returncode != 0
+    assert "cover both 0 and 1" in result.stderr
+
+    raw.write_text(
+        "radius_fraction,depth_mm,run_minutes\n"
+        "0,2,10\n0.5,0,10\n1,1,10\n",
+        encoding="utf-8",
+    )
+    result = subprocess.run(
+        [sys.executable, str(ROOT / "scripts" / "prepare_radial_profile.py"), str(raw), str(prepared)],
+        cwd=ROOT, capture_output=True, text=True, check=False,
+    )
+    assert result.returncode != 0
+    assert "must be positive" in result.stderr
