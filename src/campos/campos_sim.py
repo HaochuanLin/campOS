@@ -132,6 +132,48 @@ def near_inside(site, x, y, tol=0.6):
 
 
 
+def _orientation(a, b, c, eps=1e-9):
+    """Return the orientation sign of three 2D points, with a small tolerance."""
+    cross = (b[0] - a[0]) * (c[1] - a[1]) - (b[1] - a[1]) * (c[0] - a[0])
+    return 0 if abs(cross) <= eps else (1 if cross > 0 else -1)
+
+
+def _on_segment(a, b, p, eps=1e-9):
+    return (min(a[0], b[0]) - eps <= p[0] <= max(a[0], b[0]) + eps
+            and min(a[1], b[1]) - eps <= p[1] <= max(a[1], b[1]) + eps)
+
+
+def _segments_intersect(a, b, c, d, eps=1e-9):
+    """Include proper crossings and collinear/touching intersections."""
+    o1, o2 = _orientation(a, b, c, eps), _orientation(a, b, d, eps)
+    o3, o4 = _orientation(c, d, a, eps), _orientation(c, d, b, eps)
+    if o1 != o2 and o3 != o4:
+        return True
+    return ((o1 == 0 and _on_segment(a, b, c, eps))
+            or (o2 == 0 and _on_segment(a, b, d, eps))
+            or (o3 == 0 and _on_segment(c, d, a, eps))
+            or (o4 == 0 and _on_segment(c, d, b, eps)))
+
+
+def validate_simple_polygon(points):
+    """Reject duplicate vertices and non-adjacent edge intersections."""
+    points = np.asarray(points, dtype=float)
+    if len(np.unique(points, axis=0)) != len(points):
+        raise ValueError("polygon contains duplicate vertices (apart from optional closing vertex)")
+    n = len(points)
+    for i in range(n):
+        a, b = points[i], points[(i + 1) % n]
+        for j in range(i + 1, n):
+            # Adjacent edges share an endpoint by definition; skip that pair.
+            if j == i or j == (i + 1) % n or i == (j + 1) % n:
+                continue
+            c, d = points[j], points[(j + 1) % n]
+            if _segments_intersect(a, b, c, d):
+                raise ValueError(
+                    f"polygon is self-intersecting or touches itself at edges {i + 1} and {j + 1}"
+                )
+
+
 def load_polygon_csv(path):
     """Load a site polygon CSV with x_m,y_m columns."""
     with open(path, newline="", encoding="utf-8-sig") as fh:
@@ -158,6 +200,7 @@ def load_polygon_csv(path):
     signed_area = 0.5 * np.sum(x * np.roll(y, -1) - np.roll(x, -1) * y)
     if abs(signed_area) <= 1e-8:
         raise ValueError("polygon area must be greater than zero")
+    validate_simple_polygon(points)
     return points
 
 
