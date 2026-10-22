@@ -239,3 +239,36 @@ def test_installed_console_script_help():
     assert completed.returncode == 0, completed.stdout + "\n" + completed.stderr
     assert "--mode" in completed.stdout
     assert "--outdir" in completed.stdout
+
+
+def test_measured_radial_profile_is_area_normalized_and_used(tmp_path):
+    profile_csv = tmp_path / "profile.csv"
+    profile_csv.write_text(
+        "radius_fraction,relative_rate\n0,2.0\n0.5,1.2\n1,0.4\n",
+        encoding="utf-8",
+    )
+    profile = sim.load_radial_profile_csv(profile_csv)
+    assert profile.shape == (3, 2)
+    assert np.isclose(2.0 * np.trapz(profile[:, 1] * profile[:, 0], profile[:, 0]), 1.0)
+
+    X = np.array([[0.0, 1.0, 2.0]])
+    Y = np.zeros_like(X)
+    head = (0.0, 0.0, 2.0, 0.0, 360.0)
+    default = sim.head_field(X, Y, head)
+    measured = sim.head_field(X, Y, head, profile)
+    assert not np.allclose(default, measured)
+    assert measured[0, 2] > 0.0
+
+
+def test_measured_radial_profile_rejects_invalid_radius_order(tmp_path):
+    profile_csv = tmp_path / "bad-profile.csv"
+    profile_csv.write_text(
+        "radius_fraction,relative_rate\n0,1.0\n0.8,1.0\n0.7,1.0\n1,1.0\n",
+        encoding="utf-8",
+    )
+    try:
+        sim.load_radial_profile_csv(profile_csv)
+    except ValueError as exc:
+        assert "increase strictly" in str(exc)
+    else:
+        raise AssertionError("invalid profile should be rejected")
