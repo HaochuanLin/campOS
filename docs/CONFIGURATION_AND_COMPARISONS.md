@@ -39,3 +39,14 @@ The comparison script checks recorded shared settings when they are explicitly d
 - **Not configured / placeholder:** hydraulic or economic quantities that have not been supplied or calibrated.
 
 A measured input does not validate the full model. Reports should not claim field validation, actual water savings, or economic payback without independent evidence.
+
+
+## Imported polygon topology checks
+
+Custom polygon CSVs are checked for finite coordinates, at least three distinct
+vertices, zero-length edges, non-zero signed area, repeated vertices, and
+self-intersections or non-adjacent edge touches before they are used to build
+the simulation grid. A repeated first/last coordinate is accepted as a normal
+closed-ring representation and removed. These are deterministic geometry-input
+checks only: they do not verify survey accuracy, coordinate reference systems,
+site boundaries, sprinkler hydraulics, or real-world model performance.
