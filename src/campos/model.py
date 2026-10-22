@@ -142,7 +142,10 @@ def head_field(X, Y, h, radial_profile=None, flow_lpm=None):
         ang = (np.degrees(np.arctan2(dy, dx)) - a0) % 360.0
         inr &= ang <= w
     if radial_profile is None:
-        rate = 1.5 * (1.0 - 0.5 * s)
+        # Neutral mass-conserving null model: constant precipitation per unit
+        # area inside the wetted sector. Do not invent a radial gradient when
+        # no nozzle-specific catch-can profile is available.
+        rate = np.ones_like(s, dtype=float)
     else:
         rate = np.interp(s, radial_profile[:, 0], radial_profile[:, 1])
     if flow_lpm is not None:
