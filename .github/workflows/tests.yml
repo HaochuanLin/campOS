@@ -25,3 +25,14 @@ jobs:
         run: python -m pip install -e ".[dev]"
       - name: Run tests
         run: python -m pytest -q
+      - name: Run radial sensitivity scenarios
+        if: matrix.python-version == '3.10'
+        run: python scripts/radial_sensitivity.py --outdir out/radial-sensitivity
+      - name: Upload sensitivity results
+        if: always() && matrix.python-version == '3.10'
+        uses: actions/upload-artifact@v4
+        with:
+          name: campos-radial-sensitivity
+          path: out/radial-sensitivity/
+          if-no-files-found: warn
+          retention-days: 14
