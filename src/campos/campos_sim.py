@@ -627,15 +627,41 @@ def main(argv=None):
                     help="measured pressure-performance CSV: pressure_kpa,flow_lpm,throw_m")
     ap.add_argument("--pressure-kpa", type=float, default=None,
                     help="operating pressure in kPa; requires --performance-csv")
+    ap.add_argument("--dry-fraction-limit", type=float, default=CFG["dry_frac_limit"],
+                    help="maximum share of lawn cells allowed below the dry threshold (0..1)")
+    ap.add_argument("--target-factor", type=float, default=CFG["target_factor"],
+                    help="Pareto target depth as a multiple of baseline mean lawn depth (> 0)")
+    ap.add_argument("--cu-drop-budget", type=float, default=CFG["cu_drop_budget"],
+                    help="maximum absolute CU loss from the most uniform feasible Pareto point (0..1)")
+    ap.add_argument("--pareto-weights", default=",".join(str(x) for x in CFG["pareto_weights"]),
+                    help="comma-separated overspray weights in [0,1] for Pareto search, e.g. 0,0.25,0.5,0.75,1")
     args = ap.parse_args(argv)
 
     if not np.isfinite(args.cell_size) or args.cell_size <= 0:
         ap.error("--cell-size must be a finite number greater than zero")
     if not np.isfinite(args.radial_slope) or args.radial_slope <= -1.0:
         ap.error("--radial-slope must be finite and greater than -1")
+    if not np.isfinite(args.dry_fraction_limit) or not 0.0 <= args.dry_fraction_limit <= 1.0:
+        ap.error("--dry-fraction-limit must be finite and between 0 and 1")
+    if not np.isfinite(args.target_factor) or args.target_factor <= 0.0:
+        ap.error("--target-factor must be finite and greater than zero")
+    if not np.isfinite(args.cu_drop_budget) or not 0.0 <= args.cu_drop_budget <= 1.0:
+        ap.error("--cu-drop-budget must be finite and between 0 and 1")
+    try:
+        pareto_weights = tuple(float(x.strip()) for x in args.pareto_weights.split(","))
+    except ValueError:
+        ap.error("--pareto-weights must be comma-separated numbers between 0 and 1")
+    if (not pareto_weights or any(not np.isfinite(x) or not 0.0 <= x <= 1.0 for x in pareto_weights)):
+        ap.error("--pareto-weights must contain at least one finite number between 0 and 1")
+    if len(set(pareto_weights)) != len(pareto_weights):
+        ap.error("--pareto-weights must not contain duplicate values")
 
     cfg = dict(CFG)
-    cfg.update(seed=args.seed, cell=args.cell_size, radial_slope=args.radial_slope)
+    cfg.update(
+        seed=args.seed, cell=args.cell_size, radial_slope=args.radial_slope,
+        dry_frac_limit=args.dry_fraction_limit, target_factor=args.target_factor,
+        cu_drop_budget=args.cu_drop_budget, pareto_weights=pareto_weights,
+    )
     profile_sha256 = None
     performance_sha256 = None
     if bool(args.performance_csv) != (args.pressure_kpa is not None):
@@ -691,6 +717,18 @@ def main(argv=None):
         "selected_modes": modes,
         "selected_sites": list(sites.keys()),
         "config": {k: v for k, v in cfg.items() if k != "radial_profile"},
+        "optimization_policy": {
+            "legacy_modes": ["movable", "fixed"],
+            "pareto_objectives": {
+                "f1": "water outside lawn / baseline total modelled water",
+                "f2": "mean relative shortfall below target depth over lawn cells",
+            },
+            "dry_fraction_limit": cfg["dry_frac_limit"],
+            "target_factor": cfg["target_factor"],
+            "cu_drop_budget": cfg["cu_drop_budget"],
+            "pareto_overspray_weights": list(cfg["pareto_weights"]),
+            "note": "weights guide stochastic search; selected trade-off is chosen by CU-drop budget and lowest f1, not a single weighted score",
+        },
         "radial_distribution": {
             "model": "measured_profile" if profile_sha256 else "normalized_linear_sensitivity_family",
             "radial_slope": cfg.get("radial_slope", 0.0),
