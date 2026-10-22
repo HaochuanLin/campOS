@@ -79,6 +79,21 @@ python campos_sim.py --mode movable --quick --sites A --outdir out/demo
 
 The command writes CSV summaries, PNG plots, and `run_metadata.json` to `out/demo/`. The metadata records the selected modes and sites, effective model configuration, Python/platform details, NumPy/Matplotlib versions, and a SHA-256 hash of the simulation source.
 
+### Import a measured site polygon and existing sprinkler positions
+
+Custom input CSVs use metre-based coordinates. See the [input format and limitations](docs/CUSTOM_SITE_INPUTS.md); starter templates are in `data/templates/`.
+
+```bash
+python campos_sim.py --mode fixed --quick \
+  --polygon-csv data/templates/site_polygon_template.csv \
+  --heads-csv data/templates/sprinkler_layout_template.csv \
+  --outdir out/custom-site
+python scripts/build_design_report.py --input-dir out/custom-site
+```
+
+The checked-in templates contain **illustrative example coordinates only**, not a surveyed site or installation recommendation. Replace them with surveyed geometry and actual sprinkler coordinates. The run metadata records hashes and counts for the input files. If you provide only `--polygon-csv`, campOS generates its own baseline layout. Custom geometry runs as one site and cannot be combined with `--sites`.
+
+
 Generate a shareable, self-contained HTML report and a Markdown copy from any completed run:
 
 ```bash
