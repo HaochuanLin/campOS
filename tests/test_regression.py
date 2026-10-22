@@ -1,3 +1,4 @@
+import csv
 from pathlib import Path
 import json
 import re
@@ -109,8 +110,15 @@ def test_movable_quick_mode_writes_outputs_and_run_metadata(tmp_path):
 
     with (outdir / "results_movable.csv").open(encoding="utf-8-sig", newline="") as fh:
         header = fh.readline()
-    assert "AR_based_saving_metric_pct" in header
+    assert "AR_metric_improvement_pct" in header
     assert not re.search(r"[\u3400-\u9fff]", header)
+
+    with (outdir / "results_movable.csv").open(encoding="utf-8-sig", newline="") as fh:
+        row = next(csv.DictReader(fh))
+    assert row["annual_water_saving_m3_not_estimated"] == ""
+    assert row["annual_cost_saving_CNY_not_estimated"] == ""
+    assert row["payback_years_not_estimated"] == ""
+    assert row["retrofit_cost_CNY_placeholder"] != ""
 
 
 def test_ar_improvement_does_not_generate_unjustified_economic_estimates():
