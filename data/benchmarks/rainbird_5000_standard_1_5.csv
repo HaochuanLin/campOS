@@ -1,0 +1,7 @@
+pressure_kpa,flow_lpm,throw_m,square_precip_mm_h,triangular_precip_mm_h,nozzle,source
+200,4.8,10.2,5,6,1.5,Rain Bird 5000 Series standard-angle nozzle performance chart
+250,5.4,10.4,6,7,1.5,Rain Bird 5000 Series standard-angle nozzle performance chart
+300,6.0,10.6,6,7,1.5,Rain Bird 5000 Series standard-angle nozzle performance chart
+350,6.0,10.7,7,8,1.5,Rain Bird 5000 Series standard-angle nozzle performance chart
+400,6.6,10.6,7,8,1.5,Rain Bird 5000 Series standard-angle nozzle performance chart
+450,7.2,10.4,8,9,1.5,Rain Bird 5000 Series standard-angle nozzle performance chart
