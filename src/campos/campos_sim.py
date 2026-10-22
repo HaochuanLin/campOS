@@ -67,9 +67,9 @@ CFG = dict(
     sa_iters=12000,         # simulated-annealing steps per restart (single objective)
     restarts=2,
     seed=7,
-    dry_frac_limit=0.02,    # allowed share of lawn below dry_thresh_frac of reference depth
+    dry_frac_limit=0.02,    # allowed dry-cell share; threshold reference differs by objective family
     # --- bi-objective / Pareto settings (search device, not physics) ---
-    dry_thresh_frac=0.3,    # a lawn cell is "dry" if depth < 0.3 x reference depth
+    dry_thresh_frac=0.3,    # applied to own mean depth (AR) or target depth (Pareto)
     target_factor=1.0,      # PLACEHOLDER: target depth T = factor x baseline mean lawn depth
     pareto_weights=(0.02, 0.10, 0.25, 0.50, 0.75, 0.92),  # weight on overspray in the sweep
     pareto_iters=8000,      # SA steps per (weight, start)
