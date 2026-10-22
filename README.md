@@ -113,6 +113,28 @@ The seed and cell size are recorded in `run_metadata.json`. Smaller cells increa
 
 The built-in synthetic sites are **A** rectangle, **B** L-shape, **C** kidney, **D** wedge, and **E** roadside strip. They are generated polygons, not surveyed properties.
 
+### Explicit optimization policy
+
+The legacy `movable` and `fixed` modes remain available as a comparison baseline. Use `pareto-movable` or `pareto-fixed` when you want to examine the trade-off between overspray and interior deficit instead of optimizing AR alone.
+
+The Pareto policy can be set explicitly and is recorded in `run_metadata.json`:
+
+```bash
+python campos_sim.py --mode pareto-fixed --quick --sites C \
+  --dry-fraction-limit 0.02 \
+  --target-factor 1.0 \
+  --cu-drop-budget 0.03 \
+  --pareto-weights 0,0.25,0.5,0.75,1 \
+  --outdir out/pareto-policy
+```
+
+- `--dry-fraction-limit`: maximum fraction of lawn cells allowed below the configured dry threshold. This is a model constraint, not a plant-health guarantee.
+- `--target-factor`: target depth as a multiple of the baseline lawn mean. The default of 1.0 is a comparison convention, not an agronomic prescription.
+- `--cu-drop-budget`: maximum absolute CU loss allowed relative to the most uniform feasible point when selecting the displayed trade-off.
+- `--pareto-weights`: weights used to guide stochastic exploration toward different parts of the Pareto front. They are search controls, not evidence-based utility weights; the final selected point is chosen using the CU-drop budget and lowest overspray ratio.
+
+These settings make assumptions explicit; they do not make the model field-validated. Compare several settings and report the full trade-off before treating any one selection as a preferred design.
+
 ```mermaid
 flowchart LR
     A[Synthetic polygon] --> B[Grid discretization]
