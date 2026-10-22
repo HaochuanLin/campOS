@@ -100,7 +100,7 @@ CFG = dict(
 #   Monte-Carlo over those, and report whether each Pareto point stays on the
 #   front (robustness).  Currently NO wind, NO pressure loss, NO evaporation.
 
-from .model import SITES, Site, head_field, score, site_rect, site_lshape, site_kidney, site_wedge, site_strip
+from .model import SITES, Site, head_field, load_radial_profile_csv, score, site_rect, site_lshape, site_kidney, site_wedge, site_strip
 
 # ------------------------------------------------------- baseline layouts
 def preset_arc(site, x, y, r):
@@ -221,7 +221,7 @@ def optimize(site, heads0, cfg, seed, fixed_xy=False):
     fixed_xy=True  -> head coordinates never change (retrofit mode)."""
     rng = np.random.default_rng(seed)
     heads = heads0.copy()
-    fields = [head_field(site.X, site.Y, h) for h in heads]
+    fields = [head_field(site.X, site.Y, h, site.radial_profile) for h in heads]
     total = np.sum(fields, axis=0)
     cur, _ = score(site, total, cfg)
     best, best_h = cur, heads.copy()
@@ -233,7 +233,7 @@ def optimize(site, heads0, cfg, seed, fixed_xy=False):
         i, h = _propose(site, heads, rng, cfg, frac, fixed_xy)
         if h is None:
             continue
-        newf = head_field(site.X, site.Y, h)
+        newf = head_field(site.X, site.Y, h, site.radial_profile)
         new_total = total - fields[i] + newf
         new, _ = score(site, new_total, cfg)
         if new < cur or rng.random() < np.exp((cur - new) / T):
@@ -616,6 +616,8 @@ def main(argv=None):
                     help=f"random seed for reproducible optimization (default: {CFG['seed']})")
     ap.add_argument("--cell-size", type=float, default=CFG["cell"],
                     help=f"grid cell size in metres (default: {CFG['cell']})")
+    ap.add_argument("--profile-csv", default=None,
+                    help="optional measured radial catch-can CSV with radius_fraction,relative_rate columns")
     args = ap.parse_args(argv)
 
     if not np.isfinite(args.cell_size) or args.cell_size <= 0:
@@ -623,6 +625,13 @@ def main(argv=None):
 
     cfg = dict(CFG)
     cfg.update(seed=args.seed, cell=args.cell_size)
+    profile_sha256 = None
+    if args.profile_csv:
+        try:
+            cfg["radial_profile"] = load_radial_profile_csv(args.profile_csv)
+        except (OSError, ValueError) as exc:
+            ap.error(f"invalid --profile-csv: {exc}")
+        profile_sha256 = hashlib.sha256(FilePath(args.profile_csv).read_bytes()).hexdigest()
     if args.quick:
         cfg.update(sa_iters=2500, restarts=1, pareto_iters=1200)
     modes = ALL_MODES if "all" in args.mode else [m for m in ALL_MODES if m in args.mode]
@@ -653,7 +662,12 @@ def main(argv=None):
         "arguments": vars(args),
         "selected_modes": modes,
         "selected_sites": list(sites.keys()),
-        "config": cfg,
+        "config": {k: v for k, v in cfg.items() if k != "radial_profile"},
+        "radial_profile": {
+            "source_csv": args.profile_csv,
+            "sha256": profile_sha256,
+            "status": "measured_profile_loaded" if profile_sha256 else "unvalidated_analytic_placeholder",
+        },
     }
     with open(out("run_metadata.json"), "w", encoding="utf-8") as fh:
         json.dump(metadata, fh, indent=2, sort_keys=True)
