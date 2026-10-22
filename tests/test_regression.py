@@ -354,3 +354,15 @@ def test_integrated_single_head_field_conserves_supplied_flow():
         field = head_field(X, Y, (0.0, 0.0, 2.0, 0.0, arc), flow_lpm=flow_lpm)
         deposited_lph = float(np.sum(field) * step * step)
         assert abs(deposited_lph - expected_lph) / expected_lph < 0.02
+
+
+def test_orifice_flow_follows_bernoulli_scaling():
+    from campos.model import orifice_flow_lpm
+
+    q1 = orifice_flow_lpm(100.0, 1.0, discharge_coefficient=0.62)
+    q2 = orifice_flow_lpm(400.0, 1.0, discharge_coefficient=0.62)
+    q3 = orifice_flow_lpm(100.0, 2.0, discharge_coefficient=0.62)
+    assert np.isclose(q2 / q1, 2.0)  # Q proportional to sqrt(pressure)
+    assert np.isclose(q3 / q1, 4.0)  # Q proportional to diameter squared
+    with np.testing.assert_raises_regex(ValueError, "discharge_coefficient"):
+        orifice_flow_lpm(100.0, 1.0, discharge_coefficient=1.2)
