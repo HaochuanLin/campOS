@@ -12,15 +12,9 @@ The baseline layout is a square grid with edge heads assigned preset arc angles.
 
 ## Sprinkler field
 
-Each sprinkler contributes a stylized relative depth field. For distance `d` from a head and throw radius `r`, the radial profile inside the radius and sector is:
+Each sprinkler contributes a field inside its circular throw radius and angular sector; overlapping fields are added. When no catch-can profile is provided, the default is now a **uniform-depth null model** (`q(d) = 1` inside the wetted sector). This choice is deliberate: flow and throw radius alone do not determine the real radial precipitation pattern, so the code no longer invents a declining radial gradient. The uniform null model is useful for geometry, overlap, and conservation checks, but is not a claim that a real rotor distributes water uniformly. Radius and arc angle are optimization parameters. By default the field is relative-only; optional flow/pressure inputs scale it to an absolute sector-average estimate but do not solve network hydraulics or weather effects.
 
-```text
-q(d) = 1.5 * (1 - 0.5 * d/r), for 0 <= d <= r
-```
-
-Overlapping fields are added. This profile is a placeholder, not a calibrated manufacturer precipitation curve. Radius and arc angle are optimization parameters. By default the field is relative-only; optional flow/pressure inputs provide an absolute sector-average estimate but do not solve network hydraulics or weather effects.
-
-A measured radial profile can be supplied with `--profile-csv path/to/catch_can_profile.csv`. The CSV must have `radius_fraction,relative_rate` columns, at least three rows, radii strictly increasing from 0 to 1, and positive relative rates. The loader normalizes the curve so its area-weighted mean over the disk is 1; it therefore uses the measured *shape* but does not infer absolute flow or mm/h. Use data collected for the actual sprinkler/nozzle and operating pressure. The run metadata records the CSV path and SHA-256. Without this option, the analytic placeholder remains active.
+A measured radial profile can be supplied with `--profile-csv path/to/catch_can_profile.csv`. The CSV must have `radius_fraction,relative_rate` columns, at least three rows, radii strictly increasing from 0 to 1, and positive relative rates. The loader normalizes the curve so its area-weighted mean over the disk is 1; it therefore uses the measured *shape* but does not infer absolute flow or mm/h. Use data collected for the actual sprinkler/nozzle and operating pressure. The run metadata records the CSV path and SHA-256. Without this option, the uniform-depth null model remains active.
 
 ### Optional pressure-performance curve and absolute depth
 
@@ -89,7 +83,7 @@ The standard-grid/preset-arc layout is the main baseline for AR and Pareto norma
 
 ## Known omissions
 
-Without flow and pressure-performance inputs, the field is relative-only. With those inputs, the model can estimate absolute precipitation, but the spatial profile and overlap behavior remain unvalidated. The current implementation does not model:
+Without flow and pressure-performance inputs, the field is relative-only. With those inputs, the model can estimate absolute precipitation, but the spatial profile and overlap behavior remain unvalidated. The uniform-depth default is a neutral null model, not a calibrated prediction of real spray distribution. The current implementation does not model:
 
 - Wind, spray drift, evaporation, or weather variation.
 - Pressure loss, hydraulic network behavior, manufacturer-specific radial precipitation profiles.
