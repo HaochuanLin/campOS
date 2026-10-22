@@ -31,7 +31,7 @@ Run a short smoke test on one synthetic rectangular site:
 python campos_sim.py --mode movable --quick --sites A --outdir out/demo
 ```
 
-The command writes CSV summaries, PNG plots, and `run_metadata.json` to `out/demo/`. The metadata records the selected modes and sites, model configuration, Python version, and NumPy/Matplotlib versions.
+The command writes CSV summaries, PNG plots, and `run_metadata.json` to `out/demo/`. The metadata records the selected modes and sites, effective model configuration, Python/platform details, NumPy/Matplotlib versions, and a SHA-256 hash of the simulation source.
 
 More examples:
 
