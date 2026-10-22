@@ -647,3 +647,52 @@ def test_custom_site_cli_records_input_provenance_and_runs_fixed_mode(tmp_path):
         row = next(csv.DictReader(fh))
     assert row["site"] == "Custom site"
     assert int(row["sprinkler_count"]) == 2
+
+
+def test_json_config_supports_cli_override_and_records_provenance(tmp_path):
+    config_path = tmp_path / "run.json"
+    config_path.write_text(json.dumps({
+        "mode": ["fixed"], "sites": ["A"], "quick": True,
+        "seed": 11, "cell_size": 1.0, "radial_slope": 0.0,
+    }), encoding="utf-8")
+    out_dir = tmp_path / "configured-run"
+    completed = subprocess.run(
+        [sys.executable, str(ROOT / "campos_sim.py"), "--config", str(config_path),
+         "--seed", "19", "--outdir", str(out_dir)],
+        cwd=ROOT, capture_output=True, text=True, timeout=60,
+    )
+    assert completed.returncode == 0, completed.stdout + completed.stderr
+    metadata = json.loads((out_dir / "run_metadata.json").read_text(encoding="utf-8"))
+    assert metadata["config"]["seed"] == 19
+    assert metadata["config"]["cell"] == 1.0
+    assert metadata["configuration_input"]["parameter_sources"]["seed"] == "command_line"
+    assert metadata["configuration_input"]["parameter_sources"]["cell_size"] == "config_file"
+    assert len(metadata["configuration_input"]["sha256"]) == 64
+    assert metadata["data_classification"]["site_geometry"] == "synthetic_builtin"
+
+
+def test_design_comparison_spec_locks_shared_inputs_and_limits_overrides():
+    import importlib.util
+    spec = importlib.util.spec_from_file_location(
+        "compare_design_configs", ROOT / "scripts" / "compare_design_configs.py"
+    )
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    shared, scenarios = module.validate_spec({
+        "shared": {"sites": ["A"], "seed": 7, "cell_size": 0.5, "quick": True},
+        "scenarios": [
+            {"name": "fixed", "overrides": {"mode": "fixed"}},
+            {"name": "movable", "overrides": {"mode": "movable"}},
+        ],
+    })
+    assert shared["seed"] == 7
+    assert [scenario[1] for scenario in scenarios] == ["fixed", "movable"]
+    import pytest
+    with pytest.raises(ValueError, match="unsupported override"):
+        module.validate_spec({
+            "shared": {"sites": ["A"], "seed": 7},
+            "scenarios": [
+                {"name": "one", "overrides": {"seed": 9}},
+                {"name": "two", "overrides": {"mode": "fixed"}},
+            ],
+        })
