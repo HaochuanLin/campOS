@@ -68,7 +68,7 @@ import json
 import os
 import platform
 import time
-from pathlib import Path
+from pathlib import Path as FilePath
 
 import numpy as np
 import matplotlib
@@ -751,7 +751,7 @@ def main(argv=None):
         "platform": platform.platform(),
         "numpy_version": np.__version__,
         "matplotlib_version": matplotlib.__version__,
-        "source_sha256": hashlib.sha256(Path(__file__).read_bytes()).hexdigest(),
+        "source_sha256": hashlib.sha256(FilePath(__file__).read_bytes()).hexdigest(),
         "arguments": vars(args),
         "selected_modes": modes,
         "selected_sites": list(sites.keys()),
