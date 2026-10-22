@@ -183,6 +183,25 @@ By default, the script compares all five synthetic sites; omit `--quick` for the
 
 The comparison is matched at the scenario/configuration level, but the algorithms optimize different objective functions and Pareto search is a stochastic finite-search approximation. Pareto f1 and legacy overspray share different denominators; Pareto and legacy dry-area metrics also use different thresholds. The benchmark therefore reports both objective-specific and shared metrics instead of collapsing them into a single winner score. It is a synthetic model comparison, not field validation or a water-savings estimate.
 
+
+## JSON configuration and matched design comparisons
+
+Run a reproducible configuration file (CLI flags override JSON values):
+
+```bash
+python campos_sim.py --config configs/run.example.json
+```
+
+Compare named scenarios while keeping geometry, seed, grid, radial assumptions, and measurement files fixed:
+
+```bash
+python scripts/compare_design_configs.py \
+  --spec configs/design_comparison.example.json \
+  --outdir out/design-comparison
+```
+
+The script writes `design_comparison.csv`, `comparison_manifest.json`, a Markdown summary, and a separate raw run directory per scenario. Scenario overrides are deliberately restricted; see [configuration and comparison rules](docs/CONFIGURATION_AND_COMPARISONS.md). Run metadata and generated reports distinguish user-supplied files, illustrative assumptions, unconfigured physics, and placeholder economics. A supplied measurement file is not by itself proof that the model is validated.
+
 ## Parameter sensitivity and numerical robustness
 
 Run a reproducible sweep across optimizer seeds, grid resolutions, and assumed radial distributions:
