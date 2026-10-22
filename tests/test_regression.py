@@ -703,11 +703,11 @@ def test_polygon_loader_rejects_self_intersections_and_nonclosing_duplicate_vert
     import pytest
 
     cases = [
-        ("bow_tie", "x_m,y_m\\n0,0\\n10,10\\n0,8\\n8,0\\n",
+        ("bow_tie", "x_m,y_m\n0,0\n10,10\n0,8\n8,0\n",
          "self-intersecting"),
-        ("repeated_vertex", "x_m,y_m\\n0,0\\n10,0\\n10,10\\n10,0\\n0,10\\n",
+        ("repeated_vertex", "x_m,y_m\n0,0\n10,0\n10,10\n10,0\n0,10\n",
          "duplicate vertices"),
-        ("non_adjacent_touch", "x_m,y_m\\n0,0\\n4,0\\n4,4\\n2,0\\n0,4\\n",
+        ("non_adjacent_touch", "x_m,y_m\n0,0\n4,0\n4,4\n2,0\n0,4\n",
          "self-intersecting"),
     ]
     for name, contents, message in cases:
@@ -720,7 +720,7 @@ def test_polygon_loader_rejects_self_intersections_and_nonclosing_duplicate_vert
 def test_polygon_loader_accepts_valid_concave_polygon_and_optional_closure(tmp_path):
     path = tmp_path / "concave.csv"
     path.write_text(
-        "x_m,y_m\\n0,0\\n6,0\\n6,2\\n2,2\\n2,6\\n0,6\\n0,0\\n",
+        "x_m,y_m\n0,0\n6,0\n6,2\n2,2\n2,6\n0,6\n0,0\n",
         encoding="utf-8",
     )
     points = sim.load_polygon_csv(path)
@@ -772,9 +772,9 @@ def test_observation_error_evaluator_rejects_nonfinite_and_negative_depths(tmp_p
     ]:
         path = tmp_path / "pairs.csv"
         path.write_text(
-            "measured_mm,predicted_mm,split\\n"
-            f"{measured},{predicted},holdout\\n"
-            "2,2,holdout\\n",
+            "measured_mm,predicted_mm,split\n"
+            f"{measured},{predicted},holdout\n"
+            "2,2,holdout\n",
             encoding="utf-8",
         )
         with pytest.raises(ValueError, match=message):
