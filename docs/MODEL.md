@@ -63,7 +63,7 @@ The Pareto archive is approximate: points within the configured objective tolera
 - **Overspray share of own water:** outside-field total divided by that layout's own total field. This denominator differs from `W0` used by `f1`.
 - **CU:** a Christiansen-style uniformity statistic computed over lawn cells.
 - **Dry-area fraction:** share of lawn cells below the selected threshold.
-- **Placeholder economics:** annual water volume, annual cost savings, retrofit cost, and payback use placeholder tariff, irrigation-depth, and retrofit-cost assumptions. The current annual-volume and payback fields multiply the AR difference by placeholder annual depth, area, tariff, and retrofit costs. Because the target-depth interpretation and economic inputs are not validated, these fields are illustrative bookkeeping only and must not be interpreted as credible real-world savings or payback estimates.
+- **Economic outputs:** retrofit cost is still a placeholder estimate based on configured per-head costs. Annual water savings, annual monetary savings, and payback are deliberately not estimated and are written as blank CSV fields. The legacy AR metric is dimensionless; its difference cannot be multiplied by annual irrigation depth and lawn area to obtain a physical water volume. A defensible payback estimate requires a calibrated water-volume or flow model, verified irrigation demand, tariffs, and installation costs.
 
 ## Baselines and comparisons
 
