@@ -102,7 +102,7 @@ def main() -> None:
         parser.error("--minimum-holdout must be at least 2")
     report = evaluate(load_pairs(args.input), args.minimum_holdout)
     args.out.parent.mkdir(parents=True, exist_ok=True)
-    args.out.write_text(json.dumps(report, indent=2, ensure_ascii=False) + "\\n", encoding="utf-8")
+    args.out.write_text(json.dumps(report, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
     print(f"Wrote {args.out}; holdout n={report['split_counts']['holdout']}, "
           f"holdout RMSE={report['metrics']['holdout']['rmse_mm']:.4g} mm")
 
