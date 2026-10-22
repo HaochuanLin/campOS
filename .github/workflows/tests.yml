@@ -35,6 +35,28 @@ jobs:
           python scripts/build_design_report.py --input-dir out/report-smoke
           test -s out/report-smoke/design_report.html
           test -s out/report-smoke/design_report.md
+      - name: Run matched JSON design comparison smoke test
+        if: matrix.python-version == '3.10'
+        run: |
+          mkdir -p out
+          cat > out/design-comparison-spec.json <<'JSON'
+          {
+            "shared": {
+              "sites": ["A"],
+              "seed": 7,
+              "cell_size": 1.0,
+              "radial_slope": 0.0,
+              "quick": true
+            },
+            "scenarios": [
+              {"name": "fixed", "overrides": {"mode": "fixed"}},
+              {"name": "movable", "overrides": {"mode": "movable"}}
+            ]
+          }
+          JSON
+          python scripts/compare_design_configs.py --spec out/design-comparison-spec.json --outdir out/design-comparison
+          test -s out/design-comparison/design_comparison.csv
+          test -s out/design-comparison/comparison_manifest.json
       - name: Run parameter sensitivity smoke test
         if: matrix.python-version == '3.10'
         run: python scripts/parameter_sensitivity.py --quick --sites A --seeds 7 19 --cell-sizes 1.0 --slopes -0.5 0 1 --outdir out/parameter-sensitivity
@@ -55,6 +77,14 @@ jobs:
         with:
           name: campos-design-report-smoke
           path: out/report-smoke/
+          if-no-files-found: warn
+          retention-days: 14
+      - name: Upload matched design comparison
+        if: always() && matrix.python-version == '3.10'
+        uses: actions/upload-artifact@v4
+        with:
+          name: campos-design-comparison
+          path: out/design-comparison/
           if-no-files-found: warn
           retention-days: 14
       - name: Upload parameter sensitivity results
