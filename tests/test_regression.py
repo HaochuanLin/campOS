@@ -249,7 +249,7 @@ def test_measured_radial_profile_is_area_normalized_and_used(tmp_path):
     )
     profile = sim.load_radial_profile_csv(profile_csv)
     assert profile.shape == (3, 2)
-    assert np.isclose(2.0 * np.trapz(profile[:, 1] * profile[:, 0], profile[:, 0]), 1.0)
+    assert np.isclose(2.0 * np.sum(0.5 * (profile[1:, 1] * profile[1:, 0] + profile[:-1, 1] * profile[:-1, 0]) * np.diff(profile[:, 0])), 1.0)
 
     X = np.array([[0.0, 1.0, 2.0]])
     Y = np.zeros_like(X)
