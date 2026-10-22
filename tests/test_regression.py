@@ -415,3 +415,52 @@ def test_cli_rejects_invalid_radial_slope(tmp_path):
     assert completed.returncode != 0
     assert "--radial-slope must be finite and greater than -1" in completed.stderr
     assert not (tmp_path / "invalid-radial-slope" / "run_metadata.json").exists()
+
+
+
+def test_cli_records_explicit_optimization_policy(tmp_path):
+    outdir = tmp_path / "policy-output"
+    completed = subprocess.run(
+        [
+            sys.executable, str(ROOT / "campos_sim.py"),
+            "--mode", "movable", "--quick", "--sites", "A",
+            "--dry-fraction-limit", "0.04",
+            "--target-factor", "1.1",
+            "--cu-drop-budget", "0.05",
+            "--pareto-weights", "0,0.5,1",
+            "--outdir", str(outdir),
+        ],
+        cwd=ROOT, text=True, capture_output=True, timeout=180,
+    )
+    assert completed.returncode == 0, completed.stdout + "\\n" + completed.stderr
+    metadata = json.loads((outdir / "run_metadata.json").read_text(encoding="utf-8"))
+    policy = metadata["optimization_policy"]
+    assert policy["dry_fraction_limit"] == 0.04
+    assert policy["target_factor"] == 1.1
+    assert policy["cu_drop_budget"] == 0.05
+    assert policy["pareto_overspray_weights"] == [0.0, 0.5, 1.0]
+    assert "not a single weighted score" in policy["note"]
+    assert metadata["config"]["pareto_weights"] == [0.0, 0.5, 1.0]
+
+
+def test_cli_rejects_invalid_optimization_policy_values(tmp_path):
+    cases = [
+        (["--dry-fraction-limit", "1.1"], "--dry-fraction-limit"),
+        (["--target-factor", "0"], "--target-factor"),
+        (["--cu-drop-budget", "-0.1"], "--cu-drop-budget"),
+        (["--pareto-weights", "0,0.5,1.2"], "--pareto-weights"),
+        (["--pareto-weights", "0,0.5,0.5"], "duplicate"),
+    ]
+    for index, (extra_args, expected_error) in enumerate(cases):
+        completed = subprocess.run(
+            [
+                sys.executable, str(ROOT / "campos_sim.py"),
+                "--mode", "movable", "--sites", "A",
+                "--outdir", str(tmp_path / f"invalid-policy-{index}"),
+                *extra_args,
+            ],
+            cwd=ROOT, text=True, capture_output=True, timeout=30,
+        )
+        assert completed.returncode != 0
+        assert expected_error in completed.stderr
+        assert not (tmp_path / f"invalid-policy-{index}" / "run_metadata.json").exists()
