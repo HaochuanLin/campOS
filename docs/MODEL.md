@@ -6,7 +6,9 @@ This document describes the current implementation in `src/campos/campos_sim.py`
 
 The five built-in lawn outlines are synthetic polygons. The surrounding simulation domain is rasterized to cell-center points at the configured `cell` resolution. A point-in-polygon mask separates lawn cells from surrounding cells. Reported lawn area is the number of masked cells multiplied by the cell area, so it is a grid-based approximation of polygon area.
 
-Raster area is an approximation and can vary with `cell`. To quantify this, run `python scripts/grid_sensitivity.py --site 'C Kidney' --cell-sizes 2,1,0.5 --out out/grid_sensitivity.csv`. The script reports polygon area, raster area error, baseline head count, AR, overspray, CU, and dry-area fraction for each resolution. Because the baseline search is repeated at each resolution, metric changes reflect both raster sampling and possible layout changes; this is a diagnostic, not physical validation.\n\nThe baseline layout is a square grid with edge heads assigned preset arc angles. The implementation evaluates three candidate radii and nine grid offsets using the legacy AR score. A cached baseline is reused only when the site geometry and configuration match.
+Raster area is an approximation and can vary with `cell`. To quantify this, run `python scripts/grid_sensitivity.py --site 'C Kidney' --cell-sizes 2,1,0.5 --out out/grid_sensitivity.csv`. The script reports polygon area, raster area error, baseline head count, AR, overspray, CU, and dry-area fraction for each resolution. Because the baseline search is repeated at each resolution, metric changes reflect both raster sampling and possible layout changes; this is a diagnostic, not physical validation.
+
+The baseline layout is a square grid with edge heads assigned preset arc angles. The implementation evaluates three candidate radii and nine grid offsets using the legacy AR score. A cached baseline is reused only when the site geometry and configuration match.
 
 ## Sprinkler field
 
@@ -19,6 +21,12 @@ q(d) = 1.5 * (1 - 0.5 * d/r), for 0 <= d <= r
 Overlapping fields are added. This profile is a placeholder, not a calibrated manufacturer precipitation curve. Radius and arc angle are optimization parameters; there is no hydraulic flow, pressure, or weather model.
 
 A measured radial profile can be supplied with `--profile-csv path/to/catch_can_profile.csv`. The CSV must have `radius_fraction,relative_rate` columns, at least three rows, radii strictly increasing from 0 to 1, and positive relative rates. The loader normalizes the curve so its area-weighted mean over the disk is 1; it therefore uses the measured *shape* but does not infer absolute flow or mm/h. Use data collected for the actual sprinkler/nozzle and operating pressure. The run metadata records the CSV path and SHA-256. Without this option, the analytic placeholder remains active.
+
+### Optional pressure-performance curve and absolute depth
+
+Supply `--performance-csv` together with `--pressure-kpa` to interpolate a measured manufacturer or test-bench curve. The CSV requires `pressure_kpa,flow_lpm,throw_m`, at least two rows, strictly increasing pressures, and positive flow/throw values. The requested pressure must be within the measured range; the loader does not extrapolate. When active, the selected throw radius is fixed to the interpolated throw rather than allowing the optimizer to change radius independently of pressure. Flow and pressure are recorded in run metadata.
+
+With a normalized radial profile and a supplied flow `Q` in L/min, the model scales the shape to sector-average precipitation `P = 60 Q / (pi r^2 f)` mm/h, where `f` is the arc fraction. This assumes constant flow for the selected nozzle as the arc changes and uniform angular sweep. Confirm that assumption for the actual product; some matched-precipitation systems use different nozzle/flow behavior. This is a stronger physical link than relative-only units, but still does not model pipe-network pressure loss, head-to-head hydraulic interaction, or field conditions. It is only as reliable as the supplied curve and profile.
 
 ## Legacy single-objective metric
 
