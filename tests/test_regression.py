@@ -589,3 +589,61 @@ def test_design_report_builder_writes_standalone_html_and_markdown(tmp_path):
     assert "A Rectangle" in html_report
     assert "AR metric improvement is not a water-savings estimate" in md_report
     assert "annual_water_saving_m3_not_estimated" in md_report
+
+
+def test_custom_site_csv_loaders_validate_geometry_and_head_layout(tmp_path):
+    polygon_csv = tmp_path / "polygon.csv"
+    polygon_csv.write_text(
+        "x_m,y_m\\n0,0\\n10,0\\n10,10\\n0,10\\n0,0\\n", encoding="utf-8"
+    )
+    polygon = sim.load_polygon_csv(polygon_csv)
+    assert polygon.shape == (4, 2)
+
+    heads_csv = tmp_path / "heads.csv"
+    heads_csv.write_text(
+        "x_m,y_m,radius_m,start_angle_deg,arc_width_deg\\n"
+        "2,2,4,0,180\\n8,8,4,180,180\\n",
+        encoding="utf-8",
+    )
+    cfg = dict(sim.CFG)
+    heads = sim.load_heads_csv(heads_csv, polygon, cfg)
+    assert heads.shape == (2, 5)
+    assert np.allclose(heads[:, :2], [[2, 2], [8, 8]])
+
+    bad_heads = tmp_path / "bad_heads.csv"
+    bad_heads.write_text(
+        "x_m,y_m,radius_m,start_angle_deg,arc_width_deg\\n"
+        "12,2,4,0,180\\n", encoding="utf-8"
+    )
+    import pytest
+    with pytest.raises(ValueError, match="inside the supplied polygon"):
+        sim.load_heads_csv(bad_heads, polygon, cfg)
+
+
+def test_custom_site_cli_records_input_provenance_and_runs_fixed_mode(tmp_path):
+    polygon_csv = tmp_path / "polygon.csv"
+    polygon_csv.write_text("x_m,y_m\\n0,0\\n10,0\\n10,10\\n0,10\\n", encoding="utf-8")
+    heads_csv = tmp_path / "heads.csv"
+    heads_csv.write_text(
+        "x_m,y_m,radius_m,start_angle_deg,arc_width_deg\\n"
+        "2,2,4,0,180\\n8,8,4,180,180\\n", encoding="utf-8"
+    )
+    out_dir = tmp_path / "custom-run"
+    completed = subprocess.run(
+        [sys.executable, str(SRC), "--mode", "fixed", "--quick",
+         "--polygon-csv", str(polygon_csv), "--heads-csv", str(heads_csv),
+         "--outdir", str(out_dir)],
+        cwd=ROOT, capture_output=True, text=True, timeout=60,
+    )
+    assert completed.returncode == 0, completed.stdout + completed.stderr
+    metadata = json.loads((out_dir / "run_metadata.json").read_text(encoding="utf-8"))
+    assert metadata["site_input"]["status"] == "user_supplied_geometry_and_heads"
+    assert metadata["site_input"]["polygon_vertex_count"] == 4
+    assert metadata["site_input"]["initial_head_count"] == 2
+    assert metadata["site_input"]["coordinate_units"] == "metres"
+    assert len(metadata["site_input"]["polygon_sha256"]) == 64
+    assert len(metadata["site_input"]["heads_sha256"]) == 64
+    with (out_dir / "results_fixed.csv").open(newline="", encoding="utf-8") as fh:
+        row = next(csv.DictReader(fh))
+    assert row["site"] == "Custom site"
+    assert int(row["sprinkler_count"]) == 2
