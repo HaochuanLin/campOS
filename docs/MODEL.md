@@ -18,6 +18,8 @@ q(d) = 1.5 * (1 - 0.5 * d/r), for 0 <= d <= r
 
 Overlapping fields are added. This profile is a placeholder, not a calibrated manufacturer precipitation curve. Radius and arc angle are optimization parameters; there is no hydraulic flow, pressure, or weather model.
 
+A measured radial profile can be supplied with `--profile-csv path/to/catch_can_profile.csv`. The CSV must have `radius_fraction,relative_rate` columns, at least three rows, radii strictly increasing from 0 to 1, and positive relative rates. The loader normalizes the curve so its area-weighted mean over the disk is 1; it therefore uses the measured *shape* but does not infer absolute flow or mm/h. Use data collected for the actual sprinkler/nozzle and operating pressure. The run metadata records the CSV path and SHA-256. Without this option, the analytic placeholder remains active.
+
 ## Legacy single-objective metric
 
 Let:
@@ -71,7 +73,7 @@ The standard-grid/preset-arc layout is the main baseline for AR and Pareto norma
 
 ## Known omissions
 
-The current implementation does not model:
+Even with a measured radial profile, this remains a relative-depth model until nozzle flow, operating pressure, and absolute precipitation are calibrated. The current implementation does not model:
 
 - Wind, spray drift, evaporation, or weather variation.
 - Pressure loss, hydraulic network behavior, flow-rate curves, or manufacturer-specific precipitation profiles.
