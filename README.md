@@ -48,6 +48,14 @@ python campos_sim.py --mode pareto-fixed --quick --sites C --outdir out/pareto
 python campos_sim.py --mode all --outdir out/full
 ```
 
+Use `--seed` to set the random seed and `--cell-size` to change the spatial grid resolution (in metres), for example:
+
+```bash
+python campos_sim.py --mode movable --quick --sites A --seed 19 --cell-size 1.0 --outdir out/coarse-grid
+```
+
+The seed and cell size are recorded in `run_metadata.json`. Smaller cells increase spatial resolution and runtime; results from different cell sizes should be treated as a sensitivity comparison, not directly interchangeable measurements. Invalid site IDs and non-positive or non-finite cell sizes are rejected with a clear CLI error.
+
 `--quick` reduces optimization iterations for smoke testing. It is not a substitute for a full run. Generated output is ignored by Git by default; publish results only after reviewing the CSVs, metadata, and figures.
 
 ## Optimization modes
