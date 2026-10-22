@@ -63,6 +63,7 @@ Needs: numpy, matplotlib
 """
 import argparse
 import csv
+import hashlib
 import json
 import os
 import platform
@@ -746,8 +747,10 @@ def main(argv=None):
         "project": "campOS",
         "project_version": "0.1.0",
         "python_version": platform.python_version(),
+        "platform": platform.platform(),
         "numpy_version": np.__version__,
         "matplotlib_version": matplotlib.__version__,
+        "source_sha256": hashlib.sha256(open(__file__, "rb").read()).hexdigest(),
         "arguments": vars(args),
         "selected_modes": modes,
         "selected_sites": list(sites.keys()),
