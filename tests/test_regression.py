@@ -76,6 +76,10 @@ def test_movable_quick_mode_writes_outputs_and_run_metadata(tmp_path):
             "--quick",
             "--sites",
             "A",
+            "--seed",
+            "19",
+            "--cell-size",
+            "1.0",
             "--outdir",
             str(outdir),
         ],
@@ -90,7 +94,10 @@ def test_movable_quick_mode_writes_outputs_and_run_metadata(tmp_path):
     assert (outdir / "ranking_movable.png").is_file()
 
     metadata = json.loads((outdir / "run_metadata.json").read_text(encoding="utf-8"))
-    assert metadata["config"]["seed"] == 7
+    assert metadata["config"]["seed"] == 19
+    assert metadata["config"]["cell"] == 1.0
+    assert metadata["arguments"]["seed"] == 19
+    assert metadata["arguments"]["cell_size"] == 1.0
     assert metadata["arguments"]["quick"] is True
     assert metadata["selected_modes"] == ["movable"]
     assert metadata["selected_sites"] == ["A Rectangle"]
@@ -122,6 +129,48 @@ def test_readme_relative_links_resolve():
         relative_path = target.split("#", 1)[0]
         if relative_path:
             assert (ROOT / relative_path).exists(), f"Broken README link: {target}"
+
+
+def test_cli_rejects_unknown_site_id(tmp_path):
+    completed = subprocess.run(
+        [
+            sys.executable,
+            str(ROOT / "campos_sim.py"),
+            "--sites",
+            "Z",
+            "--quick",
+            "--outdir",
+            str(tmp_path / "invalid-site"),
+        ],
+        cwd=ROOT,
+        text=True,
+        capture_output=True,
+        timeout=30,
+    )
+    assert completed.returncode != 0
+    assert "unknown site ID" in completed.stderr
+    assert not (tmp_path / "invalid-site" / "run_metadata.json").exists()
+
+
+def test_cli_rejects_nonpositive_grid_cell_size(tmp_path):
+    completed = subprocess.run(
+        [
+            sys.executable,
+            str(ROOT / "campos_sim.py"),
+            "--cell-size",
+            "0",
+            "--quick",
+            "--outdir",
+            str(tmp_path / "invalid-cell"),
+        ],
+        cwd=ROOT,
+        text=True,
+        capture_output=True,
+        timeout=30,
+    )
+    assert completed.returncode != 0
+    assert "--cell-size must be a finite number greater than zero" in completed.stderr
+    assert not (tmp_path / "invalid-cell" / "run_metadata.json").exists()
 
 
 def test_installed_console_script_help():
