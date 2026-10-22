@@ -635,7 +635,7 @@ def write_comparison_csv(by_mode, fn):
             for key, res in by_mode.items():
                 r = next(x for x in res if x["name"] == nm)
                 if first:
-                    w.writerow(["基线 BASELINE (standard grid)", nm, f"{r['m0']['AR']:.3f}",
+                    w.writerow(["BASELINE (standard grid)", nm, f"{r['m0']['AR']:.3f}",
                                 f"{r['m0']['overspray']*100:.1f}", f"{r['m0']['CU']:.3f}",
                                 f"{r['m0']['dry']*100:.1f}", "0.0", 0, 0, 0, ""])
                     first = False
