@@ -98,6 +98,32 @@ def load_performance_curve_csv(path, pressure_kpa):
     return {"pressure_kpa": p, "flow_lpm": float(np.interp(p, pressure, flow)), "throw_m": float(np.interp(p, pressure, throw))}
 
 
+def spacing_precipitation_mm_h(flow_lpm, spacing_m, arrangement="square", arc_fraction=0.5):
+    """Estimate application rate from flow and sprinkler-grid cell area.
+
+    Flow is L/min, spacing is m, and arc_fraction is the fraction of a full
+    circle operated. This is a layout-level mass-balance estimate, not the
+    local radial distribution from a single sprinkler. For triangular spacing,
+    the idealized cell area is sqrt(3)/2 * spacing**2.
+    """
+    q = float(flow_lpm)
+    spacing = float(spacing_m)
+    fraction = float(arc_fraction)
+    if not np.isfinite(q) or q <= 0:
+        raise ValueError("flow_lpm must be finite and positive")
+    if not np.isfinite(spacing) or spacing <= 0:
+        raise ValueError("spacing_m must be finite and positive")
+    if not np.isfinite(fraction) or fraction <= 0 or fraction > 1:
+        raise ValueError("arc_fraction must be in (0, 1]")
+    if arrangement == "square":
+        cell_area = spacing * spacing
+    elif arrangement == "triangular":
+        cell_area = (np.sqrt(3.0) / 2.0) * spacing * spacing
+    else:
+        raise ValueError("arrangement must be 'square' or 'triangular'")
+    return 60.0 * q / (cell_area * fraction)
+
+
 def head_field(X, Y, h, radial_profile=None, flow_lpm=None):
     """Return a relative field, or estimated precipitation in mm/h if flow is set.
 
