@@ -755,7 +755,7 @@ def main(argv=None):
     }
     with open(out("run_metadata.json"), "w", encoding="utf-8") as fh:
         json.dump(metadata, fh, indent=2, sort_keys=True)
-        fh.write("\\n")
+        fh.write("\n")
 
     t0 = time.time()
     single = {}                                   # key -> list of run_site results
