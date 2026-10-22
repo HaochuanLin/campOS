@@ -249,7 +249,15 @@ def test_measured_radial_profile_is_area_normalized_and_used(tmp_path):
     )
     profile = sim.load_radial_profile_csv(profile_csv)
     assert profile.shape == (3, 2)
-    assert np.isclose(2.0 * np.sum(0.5 * (profile[1:, 1] * profile[1:, 0] + profile[:-1, 1] * profile[:-1, 0]) * np.diff(profile[:, 0])), 1.0)
+    radius, rate = profile.T
+    r0, r1 = radius[:-1], radius[1:]
+    q0, q1 = rate[:-1], rate[1:]
+    slope = (q1 - q0) / (r1 - r0)
+    exact_mean = 2.0 * np.sum(
+        (q0 - slope * r0) * (r1**2 - r0**2) / 2.0
+        + slope * (r1**3 - r0**3) / 3.0
+    )
+    assert np.isclose(exact_mean, 1.0, rtol=1e-12, atol=1e-12)
 
     X = np.array([[0.0, 1.0, 2.0]])
     Y = np.zeros_like(X)
