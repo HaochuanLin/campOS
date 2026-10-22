@@ -120,8 +120,18 @@ def main() -> int:
             f"{row['baseline_overspray_pct_of_own_water']} | "
             f"{row['optimized_overspray_pct_of_own_water']} |"
         )
+    ar_improved = sum(float(row["AR_metric_improvement_pct"]) > 0 for row in rows)
+    overspray_increased = sum(
+        float(row["optimized_overspray_pct_of_own_water"])
+        > float(row["baseline_overspray_pct_of_own_water"])
+        for row in rows
+    )
     report += [
         "",
+        f"Across these {len(rows)} scenario/site combinations, the legacy AR metric improved in {ar_improved};",
+        f"the reported overspray share increased in {overspray_increased}. These metrics can trade off.",
+        "The single-objective movable run minimizes legacy AR; it does not independently minimize overspray.",
+        "For an explicit overspray-versus-deficit tradeoff, use the project's Pareto mode and inspect its front.",
         "Do not interpret these outputs as measured irrigation savings. Water savings, cost savings, and payback remain unestimated.",
         "Each scenario's full CSV, PNGs, metadata, and console log are stored in its subdirectory.",
     ]
