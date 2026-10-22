@@ -543,3 +543,49 @@ def test_parameter_sensitivity_script_records_reproducible_configuration(tmp_pat
     assert metadata["config"]["cell"] == 1.0
     assert metadata["radial_distribution"]["radial_slope"] == 0.0
     assert (outdir / "README.md").is_file()
+
+
+def test_design_report_builder_writes_standalone_html_and_markdown(tmp_path):
+    run_dir = tmp_path / "run"
+    run_dir.mkdir()
+    metadata = {
+        "project_version": "0.1.0",
+        "python_version": "3.12.0",
+        "numpy_version": "2.0.0",
+        "matplotlib_version": "3.9.0",
+        "selected_modes": ["movable"],
+        "selected_sites": ["A Rectangle"],
+        "config": {"seed": 19, "cell": 1.0},
+        "optimization_policy": {
+            "legacy_modes": ["movable", "fixed"],
+            "pareto_objectives": {"f1": "outside water / baseline total"},
+            "dry_fraction_limit": 0.02,
+            "target_factor": 1.0,
+            "cu_drop_budget": 0.03,
+            "pareto_overspray_weights": [0.0, 0.5, 1.0],
+        },
+        "radial_distribution": {"model": "normalized_linear_sensitivity_family", "radial_slope": 0.0},
+        "radial_profile": {"status": "uniform_null_model_unvalidated"},
+        "hydraulic_performance": {"status": "not_configured"},
+    }
+    (run_dir / "run_metadata.json").write_text(json.dumps(metadata), encoding="utf-8")
+    (run_dir / "results_movable.csv").write_text(
+        "site,area_m2,sprinkler_count,baseline_AR,optimized_AR,AR_metric_improvement_pct,"
+        "annual_water_saving_m3_not_estimated\n"
+        "A Rectangle,100,8,1.5,1.2,20,\n",
+        encoding="utf-8",
+    )
+    (run_dir / "layouts_movable.png").write_bytes(b"fake-png-for-embed-test")
+    completed = subprocess.run(
+        [sys.executable, str(ROOT / "scripts" / "build_design_report.py"), "--input-dir", str(run_dir)],
+        cwd=ROOT, capture_output=True, text=True, timeout=30,
+    )
+    assert completed.returncode == 0, completed.stdout + completed.stderr
+    html_report = (run_dir / "design_report.html").read_text(encoding="utf-8")
+    md_report = (run_dir / "design_report.md").read_text(encoding="utf-8")
+    assert "simulation summary only" in html_report.lower()
+    assert "AR metric improvement is not a water-savings estimate" in html_report
+    assert "data:image/png;base64," in html_report
+    assert "A Rectangle" in html_report
+    assert "AR metric improvement is not a water-savings estimate" in md_report
+    assert "annual_water_saving_m3_not_estimated" in md_report
