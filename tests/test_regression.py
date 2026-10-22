@@ -95,8 +95,10 @@ def test_movable_quick_mode_writes_outputs_and_run_metadata(tmp_path):
     assert metadata["selected_modes"] == ["movable"]
     assert metadata["selected_sites"] == ["A Rectangle"]
     assert metadata["python_version"]
+    assert metadata["platform"]
     assert metadata["numpy_version"]
     assert metadata["matplotlib_version"]
+    assert re.fullmatch(r"[0-9a-f]{64}", metadata["source_sha256"])
 
     with (outdir / "results_movable.csv").open(encoding="utf-8-sig", newline="") as fh:
         header = fh.readline()
@@ -110,3 +112,13 @@ def test_markdown_documentation_is_english_only():
     for path in markdown_files:
         content = path.read_text(encoding="utf-8")
         assert not re.search(r"[\u3400-\u9fff]", content), f"Non-English text found in {path.relative_to(ROOT)}"
+
+
+def test_readme_relative_links_resolve():
+    readme = (ROOT / "README.md").read_text(encoding="utf-8")
+    for target in re.findall(r"\[[^\]]+\]\(([^)]+)\)", readme):
+        if target.startswith(("https://", "http://", "#")):
+            continue
+        relative_path = target.split("#", 1)[0]
+        if relative_path:
+            assert (ROOT / relative_path).exists(), f"Broken README link: {target}"
