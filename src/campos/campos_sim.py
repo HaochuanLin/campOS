@@ -580,6 +580,14 @@ def plot_layouts(results, cfg, fn, tag=""):
 
 def plot_ranking(rows, fn, tag=""):
     fig, ax = plt.subplots(figsize=(7.5, 3.9), constrained_layout=True)
+    if not any(np.isfinite(r["payback"]) for r in rows):
+        ax.axis("off")
+        ax.text(0.5, 0.5, "Payback not estimable\\nA calibrated water-volume model is required",
+                transform=ax.transAxes, ha="center", va="center", fontsize=11)
+        ax.set_title(f"[{tag}] economic ranking unavailable", fontsize=10)
+        fig.savefig(fn, dpi=110)
+        plt.close(fig)
+        return
     names = [r["name"] for r in rows]
     vals = [r["payback"] if np.isfinite(r["payback"]) else 0.0 for r in rows]
     bars = ax.barh(names[::-1], vals[::-1], color="#3b7ddd")
