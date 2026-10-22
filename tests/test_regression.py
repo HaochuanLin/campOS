@@ -268,6 +268,32 @@ def test_measured_radial_profile_is_area_normalized_and_used(tmp_path):
     assert measured[0, 2] > 0.0
 
 
+def test_radial_field_conserves_flow_for_measured_profile_and_sector(tmp_path):
+    profile_csv = tmp_path / "flow-profile.csv"
+    profile_csv.write_text(
+        "radius_fraction,relative_rate\n0,2.0\n0.5,1.2\n1,0.4\n",
+        encoding="utf-8",
+    )
+    profile = sim.load_radial_profile_csv(profile_csv)
+    flow_lpm = 12.5
+    radius_m = 4.0
+    arc_deg = 120.0
+    n_r, n_theta = 1000, 180
+    dr = radius_m / n_r
+    dtheta = np.radians(arc_deg) / n_theta
+    radial_centres = (np.arange(n_r) + 0.5) * dr
+    theta_centres = (np.arange(n_theta) + 0.5) * dtheta
+    rr, tt = np.meshgrid(radial_centres, theta_centres, indexing="ij")
+    field = sim.head_field(
+        rr * np.cos(tt), rr * np.sin(tt),
+        (0.0, 0.0, radius_m, 0.0, arc_deg),
+        radial_profile=profile, flow_lpm=flow_lpm,
+    )
+    # Integrate mm/h over m² -> L/h, then convert to L/min.
+    integrated_flow_lpm = np.sum(field * rr * dr * dtheta) / 60.0
+    assert np.isclose(integrated_flow_lpm, flow_lpm, rtol=1e-4, atol=1e-4)
+
+
 def test_measured_radial_profile_rejects_invalid_radius_order(tmp_path):
     profile_csv = tmp_path / "bad-profile.csv"
     profile_csv.write_text(
