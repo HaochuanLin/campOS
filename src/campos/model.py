@@ -145,15 +145,18 @@ def spacing_precipitation_mm_h(flow_lpm, spacing_m, arrangement="square", arc_fr
     return 60.0 * q / (cell_area * fraction)
 
 
-def head_field(X, Y, h, radial_profile=None, flow_lpm=None):
+def head_field(X, Y, h, radial_profile=None, flow_lpm=None, radial_slope=0.0):
     """Return a relative field, or estimated precipitation in mm/h if flow is set.
 
     Head tuple h = (x, y, r, a0, w): position [m], throw radius [m], sector
     start angle [degrees CCW from +x], and sector width [degrees].
-    The default radial profile is an analytic placeholder; a supplied profile
-    is normalized to area-weighted mean 1. When flow_lpm is provided, its
-    shape is scaled using flow divided by swept sector area.
-    Wind, pressure loss, evaporation, drift, and network hydraulics are omitted.
+    Without a measured profile, radial_slope defines a sensitivity family
+    q(s) = (1 + radial_slope*s) / (1 + 2*radial_slope/3), where s is radius
+    divided by throw radius and radial_slope > -1. This has unit area-weighted
+    mean over a disk. The default slope 0 is uniform; nonzero values are
+    scenarios, not inferred nozzle physics. A supplied measured profile takes
+    precedence. If flow_lpm is provided, the shape is scaled by flow / sector
+    area. Wind, pressure loss, evaporation, drift, and network hydraulics are omitted.
     """
     x, y, r, a0, w = h
     dx, dy = X - x, Y - y
@@ -163,10 +166,12 @@ def head_field(X, Y, h, radial_profile=None, flow_lpm=None):
         ang = (np.degrees(np.arctan2(dy, dx)) - a0) % 360.0
         inr &= ang <= w
     if radial_profile is None:
-        # Neutral mass-conserving null model: constant precipitation per unit
-        # area inside the wetted sector. Do not invent a radial gradient when
-        # no nozzle-specific catch-can profile is available.
-        rate = np.ones_like(s, dtype=float)
+        slope = float(radial_slope)
+        if not np.isfinite(slope) or slope <= -1.0:
+            raise ValueError("radial_slope must be finite and greater than -1")
+        # A normalized linear radial family for explicit sensitivity studies.
+        # Its area-weighted mean is 1 because the area-weighted mean of s is 2/3.
+        rate = (1.0 + slope * s) / (1.0 + 2.0 * slope / 3.0)
     else:
         rate = np.interp(s, radial_profile[:, 0], radial_profile[:, 1])
     if flow_lpm is not None:
@@ -180,6 +185,7 @@ class Site:
     def __init__(self, poly, cfg):
         self.poly = poly
         self.radial_profile = cfg.get("radial_profile")
+        self.radial_slope = cfg.get("radial_slope", 0.0)
         self.flow_lpm = cfg.get("flow_lpm")
         self.path = Path(poly)
         c = cfg["cell"]
@@ -199,7 +205,7 @@ class Site:
     def total(self, heads):
         t = np.zeros_like(self.X)
         for h in heads:
-            t += head_field(self.X, self.Y, h, self.radial_profile, self.flow_lpm)
+            t += head_field(self.X, self.Y, h, self.radial_profile, self.flow_lpm, self.radial_slope)
         return t
 
 
