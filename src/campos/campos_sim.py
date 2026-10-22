@@ -691,10 +691,15 @@ def main(argv=None):
         "selected_modes": modes,
         "selected_sites": list(sites.keys()),
         "config": {k: v for k, v in cfg.items() if k != "radial_profile"},
+        "radial_distribution": {
+            "model": "measured_profile" if profile_sha256 else "normalized_linear_sensitivity_family",
+            "radial_slope": cfg.get("radial_slope", 0.0),
+            "interpretation": "user-selected sensitivity scenario; not calibrated",
+        },
         "radial_profile": {
             "source_csv": args.profile_csv,
             "sha256": profile_sha256,
-            "status": "measured_profile_loaded" if profile_sha256 else "unvalidated_analytic_placeholder",
+            "status": "measured_profile_loaded" if profile_sha256 else "uniform_null_model_unvalidated",
         },
         "hydraulic_performance": {
             "source_csv": args.performance_csv,
