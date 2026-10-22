@@ -90,11 +90,8 @@ CFG = dict(
     changed_tol_deg=3.0,    # [deg] ... or |da0| / |dw| > this
 )
 
-# TODO(vendor-profile): replace the assumed radial profile in head_field() with
-#   the manufacturer's catch-can / precipitation distribution (radius vs rate,
-#   per nozzle and per operating pressure; import from CSV) and the real
-#   throw-vs-pressure table for r_min/r_max.  Until then every depth below is
-#   a stylised placeholder.
+# Optional measured radial profiles and pressure-performance curves are
+# imported via CLI; without them, the model retains stylized placeholder inputs.
 # TODO(wind): add a wind / pressure sensitivity module: wind speed + direction
 #   (throw shortening upwind, drift downwind), pressure +-X% on r and flow,
 #   Monte-Carlo over those, and report whether each Pareto point stays on the
@@ -364,7 +361,7 @@ def pareto_search(site, heads0, cfg, fixed_xy, seed, ref, warm=None):
         rng = np.random.default_rng(seed + 101 * wi)
         T0, T1 = cfg["pareto_T0"] * tfac, cfg["pareto_T1"]
         heads = start.copy()
-        fields = [head_field(site.X, site.Y, h, site.radial_profile) for h in heads]
+        fields = [head_field(site.X, site.Y, h, site.radial_profile, site.flow_lpm) for h in heads]
         total = np.sum(fields, axis=0)
 
         def J(tot):
@@ -381,7 +378,7 @@ def pareto_search(site, heads0, cfg, fixed_xy, seed, ref, warm=None):
             i, h = _propose(site, heads, rng, cfg, frac, fixed_xy)
             if h is None:
                 continue
-            newf = head_field(site.X, site.Y, h, site.radial_profile)
+            newf = head_field(site.X, site.Y, h, site.radial_profile, site.flow_lpm)
             new_total = total - fields[i] + newf
             new, f1, f2, dry = J(new_total)
             if new < cur or rng.random() < np.exp((cur - new) / T):
