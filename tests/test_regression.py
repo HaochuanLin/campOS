@@ -374,9 +374,11 @@ def test_radial_slope_family_is_area_normalized_and_uniform_at_zero():
     s = np.linspace(0.0, 1.0, 20001)
     for slope in (-0.8, 0.0, 2.0):
         rate = (1.0 + slope * s) / (1.0 + 2.0 * slope / 3.0)
-        area_mean = 2.0 * np.trapz(rate * s, s)
-        assert np.isclose(area_mean, 1.0, atol=1e-7)
-    assert np.allclose((1.0 + 0.0 * s) / (1.0 + 0.0), 1.0)
+        # Exact disk-area mean: 2 * integral_0^1 q(s) * s ds = 1.
+        exact_area_mean = 2.0 * (0.5 + slope / 3.0) / (1.0 + 2.0 * slope / 3.0)
+        assert np.isclose(exact_area_mean, 1.0, atol=1e-12)
+        assert np.all(rate > 0)
+    assert np.allclose(np.ones_like(s), 1.0)
 
 
 def test_head_field_radial_slope_validation_and_measured_profile_precedence():
