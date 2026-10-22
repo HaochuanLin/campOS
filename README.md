@@ -79,6 +79,15 @@ python campos_sim.py --mode movable --quick --sites A --outdir out/demo
 
 The command writes CSV summaries, PNG plots, and `run_metadata.json` to `out/demo/`. The metadata records the selected modes and sites, effective model configuration, Python/platform details, NumPy/Matplotlib versions, and a SHA-256 hash of the simulation source.
 
+Generate a shareable, self-contained HTML report and a Markdown copy from any completed run:
+
+```bash
+python scripts/build_design_report.py --input-dir out/demo
+```
+
+This creates `design_report.html` (figures embedded, no external assets required) and `design_report.md` alongside the run outputs. The report records the run configuration and available CSV results, and explicitly states the model's validation and economics limits. It does not convert AR changes into water savings or certify a real-site layout.
+
+
 For a single-objective run, the main artifacts are `results_<mode>.csv`, `layouts_<mode>.png`, and `ranking_<mode>.png`. Pareto runs write `pareto_<fixed|movable>.csv` and `pareto_<fixed|movable>.png`. When both single-objective modes run together, a `comparison_single_objective.csv` is also written.
 
 More examples:
