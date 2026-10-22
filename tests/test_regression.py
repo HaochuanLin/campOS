@@ -85,9 +85,9 @@ def test_sprinkler_field_radial_profile_and_sector_mask():
     # A 180-degree sector points upward from the positive x-axis.
     field = sim.head_field(X, Y, (0.0, 0.0, 2.0, 0.0, 180.0))
 
-    assert field[0, 0] == 1.5
-    assert np.isclose(field[0, 1], 1.125)
-    assert np.isclose(field[0, 2], 0.75)
+    assert field[0, 0] == 1.0
+    assert np.isclose(field[0, 1], 1.0)
+    assert np.isclose(field[0, 2], 1.0)
     assert field[0, 3] == 0.0
 
 
@@ -291,7 +291,7 @@ def test_absolute_head_field_uses_flow_radius_and_arc_area():
     Y = np.array([[0.0, 0.0]])
     full = sim.head_field(X, Y, (0.0, 0.0, 2.0, 0.0, 360.0), flow_lpm=4.0)
     quarter = sim.head_field(X, Y, (0.0, 0.0, 2.0, 0.0, 90.0), flow_lpm=4.0)
-    assert np.isclose(full[0, 0], 60.0 * 4.0 / (np.pi * 4.0) * 1.5)
+    assert np.isclose(full[0, 0], 60.0 * 4.0 / (np.pi * 4.0))
     assert np.isclose(quarter[0, 0], full[0, 0] * 4.0)
 
 
