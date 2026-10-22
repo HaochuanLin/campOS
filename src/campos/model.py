@@ -71,7 +71,34 @@ def load_radial_profile_csv(path):
     return profile
 
 
-def head_field(X, Y, h, radial_profile=None):
+def load_performance_curve_csv(path, pressure_kpa):
+    """Interpolate flow and throw from a measured pressure-performance CSV."""
+    with open(path, newline="", encoding="utf-8-sig") as fh:
+        reader = csv.DictReader(fh)
+        required = {"pressure_kpa", "flow_lpm", "throw_m"}
+        if reader.fieldnames is None or not required.issubset(reader.fieldnames):
+            raise ValueError("performance CSV must contain pressure_kpa,flow_lpm,throw_m columns")
+        rows = list(reader)
+    if len(rows) < 2:
+        raise ValueError("performance CSV must contain at least two data rows")
+    try:
+        data = np.array([[float(row["pressure_kpa"]), float(row["flow_lpm"]), float(row["throw_m"])] for row in rows])
+    except (TypeError, ValueError) as exc:
+        raise ValueError("performance CSV values must be numeric") from exc
+    pressure, flow, throw = data.T
+    if not np.all(np.isfinite(data)):
+        raise ValueError("performance CSV values must be finite")
+    if np.any(np.diff(pressure) <= 0):
+        raise ValueError("performance pressure_kpa values must increase strictly")
+    if np.any(flow <= 0) or np.any(throw <= 0):
+        raise ValueError("flow_lpm and throw_m must be positive")
+    p = float(pressure_kpa)
+    if not np.isfinite(p) or p < pressure[0] or p > pressure[-1]:
+        raise ValueError(f"pressure {p:g} kPa is outside measured range {pressure[0]:g}..{pressure[-1]:g} kPa")
+    return {"pressure_kpa": p, "flow_lpm": float(np.interp(p, pressure, flow)), "throw_m": float(np.interp(p, pressure, throw))}
+
+
+def head_field(X, Y, h, radial_profile=None, flow_lpm=None):
     """Relative precipitation rate of one rotary head (matched-precipitation
     nozzle: rate does not change with radius/arc, total flow ~ swept area).
     Head tuple h = (x, y, r, a0, w):
@@ -93,6 +120,10 @@ def head_field(X, Y, h, radial_profile=None):
         rate = 1.5 * (1.0 - 0.5 * s)
     else:
         rate = np.interp(s, radial_profile[:, 0], radial_profile[:, 1])
+    if flow_lpm is not None:
+        arc_fraction = min(float(w), 360.0) / 360.0
+        mean_mm_h = 60.0 * float(flow_lpm) / (np.pi * r * r * arc_fraction)
+        rate = rate * mean_mm_h
     return np.where(inr, rate, 0.0)
 
 
@@ -100,6 +131,7 @@ class Site:
     def __init__(self, poly, cfg):
         self.poly = poly
         self.radial_profile = cfg.get("radial_profile")
+        self.flow_lpm = cfg.get("flow_lpm")
         self.path = Path(poly)
         c = cfg["cell"]
         m = cfg["margin"]
@@ -118,7 +150,7 @@ class Site:
     def total(self, heads):
         t = np.zeros_like(self.X)
         for h in heads:
-            t += head_field(self.X, self.Y, h, self.radial_profile)
+            t += head_field(self.X, self.Y, h, self.radial_profile, self.flow_lpm)
         return t
 
 
