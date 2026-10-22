@@ -100,6 +100,9 @@ def build_report(run_dir: Path, html_path: Path, md_path: Path) -> None:
     hydraulic = metadata.get("hydraulic_performance", {})
     profile = metadata.get("radial_profile", {})
     site_input = metadata.get("site_input", {})
+    config_input = metadata.get("configuration_input", {})
+    classification = metadata.get("data_classification", {})
+    parameter_sources = config_input.get("parameter_sources", {})
 
     md = [
         "# campOS simulation report",
@@ -124,6 +127,9 @@ def build_report(run_dir: Path, html_path: Path, md_path: Path) -> None:
         f"- Polygon vertices: {site_input.get('polygon_vertex_count', 'not recorded')}",
         f"- Initial sprinkler count: {site_input.get('initial_head_count', 'generated or not recorded')}",
         f"- Coordinate units: {site_input.get('coordinate_units', 'not recorded')}",
+        f"- Configuration file SHA-256: {config_input.get('sha256', 'not supplied')}",
+        f"- Parameter source map: {json.dumps(parameter_sources, sort_keys=True)}",
+        f"- Input classification: {json.dumps(classification, sort_keys=True)}",
         "",
         "## Optimization policy",
         "",
@@ -183,6 +189,9 @@ def build_report(run_dir: Path, html_path: Path, md_path: Path) -> None:
         ("Polygon vertices", site_input.get("polygon_vertex_count", "not recorded")),
         ("Initial sprinkler count", site_input.get("initial_head_count", "generated or not recorded")),
         ("Coordinate units", site_input.get("coordinate_units", "not recorded")),
+        ("Configuration file SHA-256", config_input.get("sha256", "not supplied")),
+        ("Parameter source map", json.dumps(parameter_sources, sort_keys=True)),
+        ("Input classification", json.dumps(classification, sort_keys=True)),
     ]
     for label, value in provenance:
         sections.append(f"<div><strong>{esc(str(label))}</strong><br>{esc(str(value))}</div>")
