@@ -145,6 +145,18 @@ flowchart LR
     E --> F
 ```
 
+## Matched optimization benchmark
+
+Run the legacy AR modes and Pareto modes against the same synthetic site, seed, grid, radial field, and baseline layout:
+
+```bash
+python scripts/compare_optimization_modes.py --quick --sites A
+```
+
+By default, the script compares all five synthetic sites; omit `--quick` for the configured full optimization iterations. It writes `benchmark_summary.csv`, a concise `README.md` report, and the raw simulation CSVs, plots, metadata, and console log under `out/optimization-benchmark/`. Set `--seed`, `--cell-size`, `--radial-slope`, `--dry-fraction-limit`, `--target-factor`, `--cu-drop-budget`, and `--pareto-weights` to reproduce or vary assumptions.
+
+The comparison is matched at the scenario/configuration level, but the algorithms optimize different objective functions and Pareto search is a stochastic finite-search approximation. Pareto f1 and legacy overspray share different denominators; Pareto and legacy dry-area metrics also use different thresholds. The benchmark therefore reports both objective-specific and shared metrics instead of collapsing them into a single winner score. It is a synthetic model comparison, not field validation or a water-savings estimate.
+
 ## Metrics: read them carefully
 
 The model reports several metrics that answer different questions. They are not interchangeable.
