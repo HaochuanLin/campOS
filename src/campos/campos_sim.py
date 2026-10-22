@@ -81,6 +81,7 @@ CFG = dict(
     cu_drop_budget=0.03,    # PLACEHOLDER: "accept this much CU loss vs. the most uniform
                             # Pareto point to buy lower overspray" -> marked as 'selected'
     # --- economics: ALL PLACEHOLDERS, replace with real numbers ---
+    radial_slope=0.0,       # sensitivity parameter; 0 = uniform null model
     price_per_m3=5.0,       # UNUSED until a calibrated water-volume model is implemented
     annual_depth_mm=450.0,  # UNUSED until a calibrated water-volume model is implemented
     cost_adjust_head=300.0, # re-aim / change nozzle per head [CNY]
@@ -223,7 +224,7 @@ def optimize(site, heads0, cfg, seed, fixed_xy=False):
     fixed_xy=True  -> head coordinates never change (retrofit mode)."""
     rng = np.random.default_rng(seed)
     heads = heads0.copy()
-    fields = [head_field(site.X, site.Y, h, site.radial_profile, site.flow_lpm) for h in heads]
+    fields = [head_field(site.X, site.Y, h, site.radial_profile, site.flow_lpm, site.radial_slope) for h in heads]
     total = np.sum(fields, axis=0)
     cur, _ = score(site, total, cfg)
     best, best_h = cur, heads.copy()
@@ -620,6 +621,8 @@ def main(argv=None):
                     help=f"grid cell size in metres (default: {CFG['cell']})")
     ap.add_argument("--profile-csv", default=None,
                     help="optional measured radial catch-can CSV with radius_fraction,relative_rate columns")
+    ap.add_argument("--radial-slope", type=float, default=CFG["radial_slope"],
+                    help="radial-distribution sensitivity scenario (> -1; 0 = uniform; ignored when --profile-csv is used)")
     ap.add_argument("--performance-csv", default=None,
                     help="measured pressure-performance CSV: pressure_kpa,flow_lpm,throw_m")
     ap.add_argument("--pressure-kpa", type=float, default=None,
@@ -628,9 +631,11 @@ def main(argv=None):
 
     if not np.isfinite(args.cell_size) or args.cell_size <= 0:
         ap.error("--cell-size must be a finite number greater than zero")
+    if not np.isfinite(args.radial_slope) or args.radial_slope <= -1.0:
+        ap.error("--radial-slope must be finite and greater than -1")
 
     cfg = dict(CFG)
-    cfg.update(seed=args.seed, cell=args.cell_size)
+    cfg.update(seed=args.seed, cell=args.cell_size, radial_slope=args.radial_slope)
     profile_sha256 = None
     performance_sha256 = None
     if bool(args.performance_csv) != (args.pressure_kpa is not None):
