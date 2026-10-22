@@ -14,6 +14,16 @@ campOS compares four search modes for rotary-sprinkler layouts:
 - **Fixed-position retrofit optimization:** sprinkler coordinates remain unchanged; only radii and sector angles may change.
 - **Pareto search:** explores the trade-off between overspray and interior water deficit, with a dry-area constraint.
 
+### Use a measured sprinkler radial profile
+
+If you have catch-can measurements for the actual nozzle and operating pressure, provide a CSV with `radius_fraction,relative_rate` columns and run:
+
+```bash
+python campos_sim.py --mode movable --quick --sites A --profile-csv data/catch_can_profile.csv --outdir out/profile-run
+```
+
+The profile is area-normalized and changes the radial distribution shape. It does **not** supply absolute flow or validate the model by itself. Without measured data, the simulator keeps its documented analytic placeholder.
+
 ## Quick start
 
 Requires Python 3.10 or newer.
