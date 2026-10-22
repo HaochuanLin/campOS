@@ -84,7 +84,7 @@ flowchart LR
 The model reports several metrics that answer different questions. They are not interchangeable.
 
 - **AR (legacy single-objective metric):** total modelled applied water divided by the product of lawn-cell count and the mean depth of the driest quarter of lawn cells. Lower is better for this objective.
-- **AR-based saving metric:** `1 - AR_optimized / AR_baseline`. This is **not a measured or direct reduction in total water use**. It estimates a change in the low-quarter scheduling metric; optimized total discharge may increase.
+- **AR metric improvement:** `1 - AR_optimized / AR_baseline`. This is **not water savings**. It expresses the relative change in a dimensionless low-quarter metric; optimized total discharge may increase.
 - **Overspray (`f1`):** in Pareto mode, water outside the lawn divided by the baseline layout's total modelled water. The separate legacy overspray metric is the outside-water share of that layout's own total water. These denominators differ.
 - **Interior deficit (`f2`):** average relative shortfall below a target depth over lawn cells. The target is a configurable multiple of the baseline mean lawn depth.
 - **Dry-area fraction:** share of lawn cells below a configured fraction of the target depth. Pareto candidates must satisfy the configured limit to enter the archive.
@@ -98,12 +98,14 @@ See [the model definition and limitations](docs/MODEL.md) for formulas and assum
 
 The following values were supplied in the project brief, but the original result CSVs and run configuration were not available for independent verification in this repository. They are **unverified synthetic-model outputs using placeholder assumptions**, not field measurements.
 
-| Mode | Synthetic shape | AR-based metric | Placeholder payback period |
-|---|---|---:|---:|
-| Fixed position | Kidney | 35.3% | 12.1 years |
-| Fixed position | L-shape | 25.5% | 22.6 years |
-| Movable | Kidney | 38.0% | 65.5 years |
-| Movable | L-shape | 24.0% | 137.1 years |
+| Mode | Synthetic shape | AR-based metric reported in the original brief |
+|---|---|---:|
+| Fixed position | Kidney | 35.3% |
+| Fixed position | L-shape | 25.5% |
+| Movable | Kidney | 38.0% |
+| Movable | L-shape | 24.0% |
+
+The historical payback figures are intentionally omitted: the previous implementation derived water volume from a dimensionless AR difference, which is dimensionally invalid. The current code leaves annual water savings, annual cost savings, and payback blank until a calibrated water-volume model and verified economic inputs exist.
 
 Reported comparison against the **full-circle reference only**:
 
@@ -118,7 +120,7 @@ No result figures are published yet because the source result files were not inc
 
 - All lawn boundaries are synthetic; there is no real-site survey or field validation.
 - The radial precipitation profile and throw range are stylized placeholders, not manufacturer specifications.
-- Water tariffs, annual irrigation depth, and retrofit costs are placeholders, not verified prices.
+- Retrofit costs remain placeholders, not verified prices. Annual water savings, annual cost savings, and payback are not computed because AR is dimensionless and the model has no calibrated flow/volume conversion.
 - Wind, pressure loss, evaporation, drift, slope, and soil effects are not modelled.
 - Water depth is represented in relative model units, not litres.
 - Grid-based polygon coverage is approximate and depends on the configured cell size.
@@ -135,7 +137,7 @@ python -m pip install -e ".[dev]"
 python -m pytest -q
 ```
 
-Tests cover fixed-position coordinate invariance, cache correctness across configurations, Pareto archive behavior, and output generation. GitHub Actions runs the suite on Python 3.10, 3.11, and 3.12 for pushes and pull requests.
+Tests cover fixed-position coordinate invariance, cache correctness across configurations, Pareto archive behavior, output generation, and the guard against deriving water-volume savings from AR. GitHub Actions runs the suite on Python 3.10, 3.11, and 3.12 for pushes and pull requests.
 
 ## Project structure
 
