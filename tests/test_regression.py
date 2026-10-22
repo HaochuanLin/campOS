@@ -54,6 +54,30 @@ def test_legacy_dry_metric_uses_configured_threshold():
     assert 0.4 < high_threshold_metrics["dry"] < 0.6
 
 
+def test_dimensionless_metrics_are_invariant_to_positive_field_scaling():
+    cfg = dict(sim.CFG, cell=1.0, margin=2.0)
+    site = sim.Site(sim.site_rect(), cfg)
+    rng = np.random.default_rng(1234)
+    field = rng.uniform(0.05, 2.0, size=site.X.shape)
+    _, metrics = sim.score(site, field, cfg)
+    _, scaled_metrics = sim.score(site, field * 7.25, cfg)
+
+    for key in ("AR", "overspray", "CU", "dry"):
+        assert np.isclose(metrics[key], scaled_metrics[key], rtol=1e-12, atol=1e-12), key
+
+
+def test_sprinkler_field_radial_profile_and_sector_mask():
+    X = np.array([[0.0, 0.0, 0.0, 0.0]])
+    Y = np.array([[0.0, 1.0, 2.0, -1.0]])
+    # A 180-degree sector points upward from the positive x-axis.
+    field = sim.head_field(X, Y, (0.0, 0.0, 2.0, 0.0, 180.0))
+
+    assert field[0, 0] == 1.5
+    assert np.isclose(field[0, 1], 1.125)
+    assert np.isclose(field[0, 2], 0.75)
+    assert field[0, 3] == 0.0
+
+
 def test_pareto_archive_keeps_nondominated_points_and_removes_dominated_points():
     archive = sim.ParetoArchive(eps=0.0)
     heads = np.zeros((1, 5))
