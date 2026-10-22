@@ -50,7 +50,7 @@ def main() -> int:
             str(ROOT / "campos_sim.py"),
             "--mode", "movable",
             "--quick",
-            "--sites", "A",
+            "--sites", "A", "B", "C", "D", "E",
             "--radial-slope", str(slope),
             "--outdir", str(scenario_dir),
         ]
@@ -71,9 +71,8 @@ def main() -> int:
         result_path = scenario_dir / "results_movable.csv"
         with result_path.open(newline="", encoding="utf-8-sig") as fh:
             candidates = list(csv.DictReader(fh))
-        result = next((row for row in candidates if row.get("site", "").startswith("A")), None)
-        if result is None:
-            raise SystemExit(f"Could not find site A results in {result_path}")
+        if not candidates:
+            raise SystemExit(f"No simulation rows found in {result_path}")
 
         metadata_path = scenario_dir / "run_metadata.json"
         metadata = json.loads(metadata_path.read_text(encoding="utf-8"))
@@ -81,16 +80,17 @@ def main() -> int:
         if recorded_slope is None or abs(float(recorded_slope) - slope) > 1e-12:
             raise SystemExit(f"Run metadata does not match requested slope {slope:g}")
 
-        row = {
-            "scenario": name,
-            "radial_slope": f"{slope:g}",
-            "site": result["site"],
-            "sprinkler_count": result["sprinkler_count"],
-            "status": "completed",
-            "interpretation": "illustrative assumption; not calibrated to field data",
-        }
-        row.update({metric: result.get(metric, "") for metric in METRICS})
-        rows.append(row)
+        for result in candidates:
+            row = {
+                "scenario": name,
+                "radial_slope": f"{slope:g}",
+                "site": result["site"],
+                "sprinkler_count": result["sprinkler_count"],
+                "status": "completed",
+                "interpretation": "illustrative assumption; not calibrated to field data",
+            }
+            row.update({metric: result.get(metric, "") for metric in METRICS})
+            rows.append(row)
 
     summary_path = outdir / "sensitivity_summary.csv"
     columns = [
@@ -105,18 +105,18 @@ def main() -> int:
     report = [
         "# campOS radial-distribution sensitivity run",
         "",
-        "All three quick simulations completed automatically in CI for synthetic site A.",
-        "These are model-to-model scenario comparisons, not field validation.",
+        "All three radial scenarios were run automatically in CI across synthetic sites A–E.",
+        "These are model-to-model scenario comparisons across five synthetic lawn geometries, not field validation.",
         "The slopes are illustrative; no scenario is claimed to match a real sprinkler.",
         "Metrics describe the current model and its objective function only.",
         "",
-        "| Slope | Baseline AR | Optimized AR | Baseline CU | Optimized CU | Baseline overspray % | Optimized overspray % |",
-        "|---:|---:|---:|---:|---:|---:|---:|",
+        "| Site | Slope | Baseline AR | Optimized AR | Baseline CU | Optimized CU | Baseline overspray % | Optimized overspray % |",
+        "|---|---:|---:|---:|---:|---:|---:|---:|",
     ]
     for row in rows:
         report.append(
-            f"| {row['radial_slope']} | {row['baseline_AR']} | {row['optimized_AR']} | "
-            f"{row['baseline_CU']} | {row['optimized_CU']} | "
+            f"| {row['site']} | {row['radial_slope']} | {row['baseline_AR']} | "
+            f"{row['optimized_AR']} | {row['baseline_CU']} | {row['optimized_CU']} | "
             f"{row['baseline_overspray_pct_of_own_water']} | "
             f"{row['optimized_overspray_pct_of_own_water']} |"
         )
