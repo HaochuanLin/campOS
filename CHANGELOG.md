@@ -4,7 +4,7 @@
 
 ### Added
 - Initial public repository structure for the campOS simulation prototype.
-- Bilingual README with quick-start commands, mode descriptions, metric interpretation, assumptions, and limitations.
+- English-only README with quick-start commands, mode descriptions, metric interpretation, assumptions, and limitations.
 - Regression tests for fixed-position coordinate invariance and movable quick-mode output generation.
 - GitHub Actions workflow to run the test suite on pushes and pull requests.
 
