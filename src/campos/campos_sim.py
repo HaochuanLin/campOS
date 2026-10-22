@@ -582,7 +582,7 @@ def plot_ranking(rows, fn, tag=""):
     fig, ax = plt.subplots(figsize=(7.5, 3.9), constrained_layout=True)
     if not any(np.isfinite(r["payback"]) for r in rows):
         ax.axis("off")
-        ax.text(0.5, 0.5, "Payback not estimable\\nA calibrated water-volume model is required",
+        ax.text(0.5, 0.5, "Payback not estimable\nA calibrated water-volume model is required",
                 transform=ax.transAxes, ha="center", va="center", fontsize=11)
         ax.set_title(f"[{tag}] economic ranking unavailable", fontsize=10)
         fig.savefig(fn, dpi=110)
