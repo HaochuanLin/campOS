@@ -99,16 +99,15 @@ def load_performance_curve_csv(path, pressure_kpa):
 
 
 def head_field(X, Y, h, radial_profile=None, flow_lpm=None):
-    """Relative precipitation rate of one rotary head (matched-precipitation
-    nozzle: rate does not change with radius/arc, total flow ~ swept area).
-    Head tuple h = (x, y, r, a0, w):
-        x, y  head position [m]
-        r     throw radius [m]
-        a0    start angle of the swept sector [deg, CCW from +x]
-        w     sector width [deg]; w >= 360 means a full circle
-    Radial profile: 1.5*(1-0.5 s), s=d/r, normalised so the sector mean is 1.
-    Wind, pressure loss, evaporation and drift are NOT modelled.
-    (TODO(vendor-profile): see top of file.)"""
+    """Return a relative field, or estimated precipitation in mm/h if flow is set.
+
+    Head tuple h = (x, y, r, a0, w): position [m], throw radius [m], sector
+    start angle [degrees CCW from +x], and sector width [degrees].
+    The default radial profile is an analytic placeholder; a supplied profile
+    is normalized to area-weighted mean 1. When flow_lpm is provided, its
+    shape is scaled using flow divided by swept sector area.
+    Wind, pressure loss, evaporation, drift, and network hydraulics are omitted.
+    """
     x, y, r, a0, w = h
     dx, dy = X - x, Y - y
     s = np.hypot(dx, dy) / r
