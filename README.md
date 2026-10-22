@@ -143,7 +143,8 @@ Tests cover fixed-position coordinate invariance, cache correctness across confi
 
 ```text
 campos_sim.py                 CLI launcher
-src/campos/campos_sim.py      Simulation implementation
+src/campos/campos_sim.py      Optimization, CLI, and output orchestration
+src/campos/model.py            Synthetic geometry, sprinkler field, and base metrics
 tests/                        Regression and smoke tests
 docs/MODEL.md                 Metrics, assumptions, and limitations
 docs/RELEASE_NOTES_v0.1.0.md  Initial prototype notes
