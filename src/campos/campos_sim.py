@@ -20,7 +20,7 @@ Quick examples::
 All built-in lawns are synthetic. Sprinkler precipitation, throw range, water
 tariffs, and retrofit costs include placeholders. The model does not include
 wind, pressure loss, evaporation, drift, slope, soil, or field validation.
-Reported savings and payback values are exploratory model outputs, not
+Reported economic values are not estimated without a calibrated water-volume model, not
 engineering recommendations or guarantees.
 
 The default seed and optimization settings are part of the baseline behavior.
@@ -81,8 +81,8 @@ CFG = dict(
     cu_drop_budget=0.03,    # PLACEHOLDER: "accept this much CU loss vs. the most uniform
                             # Pareto point to buy lower overspray" -> marked as 'selected'
     # --- economics: ALL PLACEHOLDERS, replace with real numbers ---
-    price_per_m3=5.0,       # water tariff [CNY/m3]
-    annual_depth_mm=450.0,  # seasonal irrigation depth the lawn needs [mm/yr]
+    price_per_m3=5.0,       # UNUSED until a calibrated water-volume model is implemented
+    annual_depth_mm=450.0,  # UNUSED until a calibrated water-volume model is implemented
     cost_adjust_head=300.0, # re-aim / change nozzle per head [CNY]
     cost_move_head=1500.0,  # relocate a head per head [CNY]
     move_threshold_m=1.0,   # moved farther than this counts as relocation
@@ -540,9 +540,9 @@ def write_results_csv(results, fn):
                     "heads_changed", "baseline_AR", "optimized_AR",
                     "baseline_overspray_pct_of_own_water", "optimized_overspray_pct_of_own_water",
                     "baseline_CU", "optimized_CU", "baseline_dry_area_pct", "optimized_dry_area_pct",
-                    "AR_based_saving_metric_pct", "annual_water_saving_m3_placeholder",
-                    "annual_cost_saving_CNY_placeholder", "retrofit_cost_CNY_placeholder",
-                    "payback_years_placeholder"])
+                    "AR_metric_improvement_pct", "annual_water_saving_m3_not_estimated",
+                    "annual_cost_saving_CNY_not_estimated", "retrofit_cost_CNY_placeholder",
+                    "payback_years_not_estimated"])
         for i, r in enumerate(rows, 1):
             w.writerow([r["mode"]["csv"], i, r["name"], f"{r['area']:.0f}", r["n_heads"],
                         r["moved"], r["changed"],
@@ -587,7 +587,7 @@ def plot_ranking(rows, fn, tag=""):
         if not np.isfinite(r["payback"]):
             ax.text(0.2, b.get_y() + b.get_height() / 2, "not estimable", va="center", fontsize=8)
     ax.set_xlabel("Payback [years]  (not estimated: no calibrated water-volume model)")
-    ax.set_title(f"[{tag}] renovation priority: shorter payback first", fontsize=10)
+    ax.set_title(f"[{tag}] economic ranking unavailable without calibrated water-volume data", fontsize=10)
     fig.savefig(fn, dpi=110)
     plt.close(fig)
 
