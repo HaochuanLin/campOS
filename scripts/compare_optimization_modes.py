@@ -65,6 +65,13 @@ def main():
         "pareto-movable": load_csv(raw / "pareto_movable.csv"),
         "pareto-fixed": load_csv(raw / "pareto_fixed.csv"),
     }
+    # The dry-area CSV column encodes the configured constraint in its name.
+    pareto_dry_column = next(
+        (key for key in pareto["pareto-movable"][0] if key.startswith("dry_area_pct_constraint_le_")),
+        None,
+    ) if pareto["pareto-movable"] else None
+    if pareto_dry_column is None:
+        raise SystemExit("Pareto CSV is missing its dry-area constraint column")
     columns = [
         "site", "mode", "objective_family", "seed", "cell_size_m", "radial_slope",
         "sprinkler_count", "baseline_AR", "result_AR",
@@ -107,7 +114,7 @@ def main():
                     row.update({
                         "selected_tradeoff": "YES", "result_AR": selected["AR_legacy"],
                         "result_overspray_pct_of_own_water": selected["overspray_pct_of_own_water"],
-                        "result_CU": selected["CU"], "result_dry_area_pct": selected["dry_area_pct"],
+                        "result_CU": selected["CU"], "result_dry_area_pct": selected[pareto_dry_column],
                         "pareto_f1_pct_of_baseline_total_water": selected["overspray_pct_of_baseline_total_water_f1"],
                         "pareto_f2_pct_mean_relative_target_shortfall": selected["interior_deficit_pct_f2"],
                         "pareto_total_water_relative": selected["total_water_relative_to_baseline"],
