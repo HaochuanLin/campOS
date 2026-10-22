@@ -28,6 +28,17 @@ jobs:
       - name: Run radial sensitivity scenarios
         if: matrix.python-version == '3.10'
         run: python scripts/radial_sensitivity.py --outdir out/radial-sensitivity
+      - name: Run matched optimization benchmark smoke test
+        if: matrix.python-version == '3.10'
+        run: python scripts/compare_optimization_modes.py --quick --sites A --outdir out/optimization-benchmark
+      - name: Upload optimization benchmark results
+        if: always() && matrix.python-version == '3.10'
+        uses: actions/upload-artifact@v4
+        with:
+          name: campos-optimization-benchmark
+          path: out/optimization-benchmark/
+          if-no-files-found: warn
+          retention-days: 14
       - name: Upload sensitivity results
         if: always() && matrix.python-version == '3.10'
         uses: actions/upload-artifact@v4
