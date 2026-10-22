@@ -28,6 +28,14 @@ Supply `--performance-csv` together with `--pressure-kpa` to interpolate a measu
 
 With a normalized radial profile and a supplied flow `Q` in L/min, the model scales the shape to sector-average precipitation `P = 60 Q / (pi r^2 f)` mm/h, where `f` is the arc fraction. This assumes constant flow for the selected nozzle as the arc changes and uniform angular sweep. Confirm that assumption for the actual product; some matched-precipitation systems use different nozzle/flow behavior. This is a stronger physical link than relative-only units, but still does not model pipe-network pressure loss, head-to-head hydraulic interaction, or field conditions. It is only as reliable as the supplied curve and profile.
 
+
+
+### Optional measured pressure-performance curve
+
+Provide `--performance-csv` together with `--pressure-kpa` to interpolate a measured curve. The CSV requires `pressure_kpa,flow_lpm,throw_m`, at least two rows, strictly increasing pressure values, and positive flow and throw values. The requested pressure must lie within the measured range; extrapolation is rejected. When active, the interpolated throw radius is locked during optimization so the optimizer cannot independently change throw without changing the selected operating point. The curve path, hash, pressure, flow, and throw are recorded in run metadata.
+
+When flow Q is supplied in L/min, the normalized radial profile is scaled to an estimated sector-average precipitation rate P = 60 Q / (pi r^2 f) mm/h, where f is the arc fraction. This assumes steady flow and uniform angular sweep, and that flow remains constant as arc width changes. Verify this assumption for the actual sprinkler. The model still does not calculate pipe-network pressure losses, head-to-head hydraulic interaction, or field conditions; using measured input data is not itself field validation.
+
 ## Legacy single-objective metric
 
 Let:
