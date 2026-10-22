@@ -339,3 +339,18 @@ def test_public_sprinkler_benchmark_script_runs():
     )
     assert result.returncode == 0, result.stdout + result.stderr
     assert "PASS: all chart comparisons" in result.stdout
+
+
+def test_integrated_single_head_field_conserves_supplied_flow():
+    # Integrate a full-circle and quarter-circle field on a fine Cartesian grid.
+    from campos.model import head_field
+
+    step = 0.05
+    centers = np.arange(-2.5, 2.5, step) + step / 2
+    X, Y = np.meshgrid(centers, centers)
+    flow_lpm = 4.0
+    expected_lph = flow_lpm * 60.0
+    for arc in (360.0, 90.0):
+        field = head_field(X, Y, (0.0, 0.0, 2.0, 0.0, arc), flow_lpm=flow_lpm)
+        deposited_lph = float(np.sum(field) * step * step)
+        assert abs(deposited_lph - expected_lph) / expected_lph < 0.02
