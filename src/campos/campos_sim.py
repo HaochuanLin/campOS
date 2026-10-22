@@ -693,16 +693,30 @@ def main(argv=None):
                     help="site letters to run, e.g. --sites A C (default: all five)")
     ap.add_argument("--outdir", default="out", help="output directory (default: out)")
     ap.add_argument("--quick", action="store_true", help="fewer SA iterations (smoke test)")
+    ap.add_argument("--seed", type=int, default=CFG["seed"],
+                    help=f"random seed for reproducible optimization (default: {CFG['seed']})")
+    ap.add_argument("--cell-size", type=float, default=CFG["cell"],
+                    help=f"grid cell size in metres (default: {CFG['cell']})")
     args = ap.parse_args(argv)
 
+    if not np.isfinite(args.cell_size) or args.cell_size <= 0:
+        ap.error("--cell-size must be a finite number greater than zero")
+
     cfg = dict(CFG)
+    cfg.update(seed=args.seed, cell=args.cell_size)
     if args.quick:
         cfg.update(sa_iters=2500, restarts=1, pareto_iters=1200)
     modes = ALL_MODES if "all" in args.mode else [m for m in ALL_MODES if m in args.mode]
+    requested_sites = None if args.sites is None else [s.upper() for s in args.sites]
+    valid_site_ids = {name.split()[0] for name in SITES}
+    if requested_sites is not None:
+        invalid_sites = sorted(set(requested_sites) - valid_site_ids)
+        if invalid_sites:
+            ap.error(f"unknown site ID(s): {', '.join(invalid_sites)}; choose from A, B, C, D, E")
     sites = {k: f for k, f in SITES.items()
-             if args.sites is None or k.split()[0] in [s.upper() for s in args.sites]}
+             if requested_sites is None or k.split()[0] in requested_sites}
     if not sites:
-        raise SystemExit("no sites selected")
+        ap.error("no sites selected")
     os.makedirs(args.outdir, exist_ok=True)
     out = lambda f: os.path.join(args.outdir, f)
 
