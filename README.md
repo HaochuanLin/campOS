@@ -34,6 +34,24 @@ python campos_sim.py --mode fixed --quick --sites A --profile-csv data/catch_can
 
 This is an invocation example, not a recommended pressure setting. The performance table must come from the actual sprinkler/nozzle or a documented test. When active, the model uses interpolated flow and throw and locks throw radius during optimization. The absolute field is an estimated precipitation rate in mm/h under uniform-sector assumptions, not field validation.
 
+### Public sprinkler-physics benchmark
+
+I added a reproducible check against published Rain Bird 5000 Series standard-angle nozzle data:
+
+```bash
+python scripts/benchmark_sprinkler_curve.py
+```
+
+The six-point CSV includes pressure, flow, throw radius, and manufacturer-published square/triangular precipitation rates. The benchmark compares those rates with a flow / grid-cell-area calculation using the chart's half-circle operating assumption. A 1 mm/h tolerance accounts for integer rounding. This is a public manufacturer-chart consistency check, **not independent field validation** and not a measurement of the local radial spray pattern. Source and transcription details are in [data/benchmarks/README.md](data/benchmarks/README.md).
+
+The same file is a runnable example of the pressure-performance option at 200–450 kPa:
+
+```bash
+python campos_sim.py --mode fixed --quick --sites A --performance-csv data/benchmarks/rainbird_5000_standard_1_5.csv --pressure-kpa 300 --outdir out/rainbird-example
+```
+
+Without a measured catch-can profile for this exact nozzle/pressure, the radial field remains a placeholder; do not interpret this example as a field-validated layout.
+
 ## Quick start
 
 Requires Python 3.10 or newer.
