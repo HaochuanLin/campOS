@@ -348,9 +348,12 @@ def run_site(name, poly, cfg, fixed_xy=False):
             best_sc, best_h = sc, h
     _, m1 = score(site, site.total(best_h), cfg)
     saving_frac = 1.0 - m1["AR"] / m0["AR"]
-    # economics (placeholders!)
-    annual_m3 = cfg["annual_depth_mm"] / 1000.0 * site.area * (m0["AR"] - m1["AR"])
-    annual_cny = annual_m3 * cfg["price_per_m3"]
+    # AR is dimensionless and is not a water-volume ratio. Without a calibrated
+    # flow/depth model, annual water savings and payback cannot be estimated.
+    # Keep the retrofit-cost placeholder, but mark unsupported economic outputs
+    # as unavailable rather than converting an AR difference into cubic metres.
+    annual_m3 = np.nan
+    annual_cny = np.nan
     if fixed_xy:
         # hard guarantee of the mode: coordinates untouched
         assert np.array_equal(best_h[:, :2], h0[:, :2]), "fixed mode moved a head!"
@@ -371,7 +374,7 @@ def run_site(name, poly, cfg, fixed_xy=False):
         name=name, mode=mode, site=site, heads0=h0, heads1=best_h, m0=m0, m1=m1,
         n_heads=len(h0), moved=moved, changed=changed, area=site.area,
         water_saving=saving_frac, annual_m3=annual_m3, annual_cny=annual_cny,
-        cost=cost, payback=cost / annual_cny if annual_cny > 0 else np.inf,
+        cost=cost, payback=np.nan,
     )
 
 # ----------------------------------------------- bi-objective (Pareto)
@@ -530,7 +533,7 @@ def _tag(mode):
 
 
 def write_results_csv(results, fn):
-    rows = sorted(results, key=lambda r: r["payback"])
+    rows = sorted(results, key=lambda r: (not np.isfinite(r["payback"]), r["payback"] if np.isfinite(r["payback"]) else 0.0))
     with open(fn, "w", newline="", encoding="utf-8-sig") as fh:
         w = csv.writer(fh)
         w.writerow(["mode", "rank", "site", "area_m2", "sprinkler_count", "heads_moved",
@@ -547,8 +550,8 @@ def write_results_csv(results, fn):
                         f"{r['m0']['overspray']*100:.1f}", f"{r['m1']['overspray']*100:.1f}",
                         f"{r['m0']['CU']:.3f}", f"{r['m1']['CU']:.3f}",
                         f"{r['m0']['dry']*100:.1f}", f"{r['m1']['dry']*100:.1f}",
-                        f"{r['water_saving']*100:.1f}", f"{r['annual_m3']:.0f}",
-                        f"{r['annual_cny']:.0f}", f"{r['cost']:.0f}", f"{r['payback']:.1f}"])
+                        f"{r['water_saving']*100:.1f}", "",
+                        "", f"{r['cost']:.0f}", ""])
     return rows
 
 
@@ -582,8 +585,8 @@ def plot_ranking(rows, fn, tag=""):
     bars = ax.barh(names[::-1], vals[::-1], color="#3b7ddd")
     for b, r in zip(bars, rows[::-1]):
         if not np.isfinite(r["payback"]):
-            ax.text(0.2, b.get_y() + b.get_height() / 2, "no saving", va="center", fontsize=8)
-    ax.set_xlabel("Payback [years]  (PLACEHOLDER costs / prices)")
+            ax.text(0.2, b.get_y() + b.get_height() / 2, "not estimable", va="center", fontsize=8)
+    ax.set_xlabel("Payback [years]  (not estimated: no calibrated water-volume model)")
     ax.set_title(f"[{tag}] renovation priority: shorter payback first", fontsize=10)
     fig.savefig(fn, dpi=110)
     plt.close(fig)
@@ -609,7 +612,7 @@ def write_comparison_csv(by_mode, fn):
                 w.writerow([r["mode"]["csv"], nm, f"{r['m1']['AR']:.3f}",
                             f"{r['m1']['overspray']*100:.1f}", f"{r['m1']['CU']:.3f}",
                             f"{r['m1']['dry']*100:.1f}", f"{r['water_saving']*100:.1f}",
-                            r["moved"], r["changed"], f"{r['cost']:.0f}", f"{r['payback']:.1f}"])
+                            r["moved"], r["changed"], f"{r['cost']:.0f}", ""])
 
 
 def write_pareto_csv(results, fn, cfg):
