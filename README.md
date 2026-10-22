@@ -261,7 +261,8 @@ results/                      Curated results only; no generated files committed
 - [x] Add a reproducible sensitivity sweep for random seeds, grid resolution, and radial-shape assumptions (synthetic numerical robustness only).
 - [ ] Add uncertainty analysis for wind, pressure, and measured input parameters.
 - [ ] Validate against measured sites using a documented protocol and appropriate permission.
-- [ ] Add benchmark cases and broader regression tests before changing optimization logic.
+- [x] Add matched synthetic benchmark cases and regression tests for the optimization and report workflows.
+- [x] Generate a self-contained HTML report and Markdown summary from simulation outputs.
 
 ## Citation
 
