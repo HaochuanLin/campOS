@@ -671,6 +671,8 @@ ALL_MODES = ["movable", "fixed", "pareto-fixed", "pareto-movable"]
 
 def main(argv=None):
     ap = argparse.ArgumentParser(description="campOS irrigation simulation prototype (v2)")
+    ap.add_argument("--config", default=None,
+                    help="JSON run configuration; explicit command-line options override file values")
     ap.add_argument("--mode", nargs="+", default=["movable"],
                     choices=ALL_MODES + ["all"],
                     help="which run modes to execute (default: movable = original v1 behaviour)")
@@ -702,6 +704,41 @@ def main(argv=None):
                     help="maximum absolute CU loss from the most uniform feasible Pareto point (0..1)")
     ap.add_argument("--pareto-weights", default=",".join(str(x) for x in CFG["pareto_weights"]),
                     help="comma-separated overspray weights in [0,1] for Pareto search, e.g. 0,0.25,0.5,0.75,1")
+    # Load JSON defaults before the full parse so explicitly supplied CLI values win.
+    config_hint_parser = argparse.ArgumentParser(add_help=False)
+    config_hint_parser.add_argument("--config", default=None)
+    config_hint, _ = config_hint_parser.parse_known_args(argv)
+    config_data = {}
+    config_sha256 = None
+    config_path = None
+    if config_hint.config:
+        try:
+            config_path = FilePath(config_hint.config)
+            config_data = json.loads(config_path.read_text(encoding="utf-8"))
+        except (OSError, json.JSONDecodeError) as exc:
+            ap.error(f"cannot read --config JSON: {exc}")
+        if not isinstance(config_data, dict):
+            ap.error("--config must contain a JSON object")
+        config_keys = {
+            "mode", "sites", "polygon_csv", "heads_csv", "outdir", "quick",
+            "seed", "cell_size", "profile_csv", "radial_slope",
+            "performance_csv", "pressure_kpa", "dry_fraction_limit",
+            "target_factor", "cu_drop_budget", "pareto_weights",
+        }
+        unknown = sorted(set(config_data) - config_keys)
+        if unknown:
+            ap.error(f"unknown --config key(s): {', '.join(unknown)}")
+        if "mode" in config_data and isinstance(config_data["mode"], str):
+            config_data["mode"] = [config_data["mode"]]
+        if "sites" in config_data and isinstance(config_data["sites"], str):
+            config_data["sites"] = [config_data["sites"]]
+        if "pareto_weights" in config_data and isinstance(config_data["pareto_weights"], list):
+            config_data["pareto_weights"] = ",".join(str(x) for x in config_data["pareto_weights"])
+        ap.set_defaults(**config_data)
+        try:
+            config_sha256 = hashlib.sha256(config_path.read_bytes()).hexdigest()
+        except OSError as exc:
+            ap.error(f"cannot hash --config file: {exc}")
     args = ap.parse_args(argv)
 
     if not np.isfinite(args.cell_size) or args.cell_size <= 0:
