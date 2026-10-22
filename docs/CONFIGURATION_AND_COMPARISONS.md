@@ -50,3 +50,34 @@ the simulation grid. A repeated first/last coordinate is accepted as a normal
 closed-ring representation and removed. These are deterministic geometry-input
 checks only: they do not verify survey accuracy, coordinate reference systems,
 site boundaries, sprinkler hydraulics, or real-world model performance.
+
+
+## Evaluate predictions against observations
+
+The error evaluator accepts paired depths in millimetres with explicit data
+splits. It reports calibration and holdout metrics separately; holdout must have
+at least two rows by default. The prediction column must be created before
+looking at holdout observations. The tool does not generate predictions or
+calibrate parameters.
+
+Required CSV header and example schema (replace these illustrative placeholders
+with real paired measurements; do not treat them as project data):
+
+```csv
+measured_mm,predicted_mm,split
+<measured depth>,<prediction generated in advance>,calibration
+<measured depth>,<prediction generated in advance>,holdout
+```
+
+Run:
+
+```bash
+python scripts/evaluate_observation_errors.py --input paired_depths.csv --out metrics.json
+```
+
+Metrics include sample count, mean measured/predicted depth, signed bias
+(predicted minus measured), MAE, RMSE, maximum absolute error, and an
+R-squared-style score against the measured-mean baseline when defined. There
+is no built-in pass threshold: define tolerances and measurement protocol before
+examining holdout results. A user-provided split label alone cannot prove
+independence, and this evaluator does not constitute field validation.
