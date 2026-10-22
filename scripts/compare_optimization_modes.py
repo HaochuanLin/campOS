@@ -52,7 +52,7 @@ def main():
         raise SystemExit(f"Simulation failed; inspect {out / 'console.log'}")
 
     metadata = json.loads((raw / "run_metadata.json").read_text(encoding="utf-8"))
-    if metadata["selected_modes"] != list(MODES):
+    if set(metadata["selected_modes"]) != set(MODES):
         raise SystemExit("Metadata does not match the requested four modes")
     cfg = metadata["config"]
     if int(cfg["seed"]) != args.seed or abs(float(cfg["cell"]) - args.cell_size) > 1e-12:
