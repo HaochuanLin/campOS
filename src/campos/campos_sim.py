@@ -20,8 +20,8 @@ Quick examples::
 All built-in lawns are synthetic. Sprinkler precipitation, throw range, water
 tariffs, and retrofit costs include placeholders. The model does not include
 wind, pressure loss, evaporation, drift, slope, soil, or field validation.
-Reported economic values are not estimated without a calibrated water-volume model, not
-engineering recommendations or guarantees.
+Economic savings and payback are not estimated without a calibrated water-volume model.
+Outputs are not engineering recommendations or guarantees.
 
 The default seed and optimization settings are part of the baseline behavior.
 Generated outputs include CSV summaries, plots, and run metadata.
@@ -597,8 +597,8 @@ def write_comparison_csv(by_mode, fn):
     with open(fn, "w", newline="", encoding="utf-8-sig") as fh:
         w = csv.writer(fh)
         w.writerow(["mode", "site", "AR", "overspray_pct_of_own_water", "CU", "dry_area_pct",
-                    "AR_based_saving_metric_pct", "heads_moved", "heads_changed",
-                    "retrofit_cost_CNY_placeholder", "payback_years_placeholder"])
+                    "AR_metric_improvement_pct", "heads_moved", "heads_changed",
+                    "retrofit_cost_CNY_placeholder", "payback_years_not_estimated"])
         names = [r["name"] for r in next(iter(by_mode.values()))]
         for nm in names:
             first = True
