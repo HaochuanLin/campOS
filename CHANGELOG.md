@@ -3,13 +3,16 @@
 ## [0.1.0] - Unreleased
 
 ### Added
-- Initial public repository structure for the campOS simulation prototype.
-- English-only README with quick-start commands, mode descriptions, metric interpretation, assumptions, and limitations.
-- Regression tests for fixed-position coordinate invariance and movable quick-mode output generation.
-- GitHub Actions workflow to run the test suite on pushes and pull requests.
+- English-only project README with quick-start commands, mode descriptions, metric definitions, assumptions, and limitations.
+- Model documentation covering the grid approximation, objective functions, and known omissions.
+- Installable package metadata and the `campos-sim` command-line entry point.
+- Per-run JSON metadata recording selected modes/sites, configuration, and software versions.
+- English CSV column names for single-objective, comparison, and Pareto outputs.
+- Regression tests for fixed-position invariance, cache correctness, dry-threshold behavior, Pareto archive behavior, metadata, and CLI output generation.
+- CI matrix for Python 3.10, 3.11, and 3.12.
 
 ### Clarifications
-- The simulation's numerical logic, default configuration, and random seed were carried over from the supplied prototype without intentional changes.
-- Result CSVs and PNG figures were not present in the supplied source attachment. No figures have been fabricated.
-- Site geometry and physical/economic inputs are synthetic or placeholders; no field validation is claimed.
-- The MIT license names HaochuanLin as copyright holder; verify that this accurately reflects ownership and that all redistributed code is compatible before publishing a formal release.
+- The default optimization parameters and random seed remain unchanged. The code changes in this iteration address cache correctness, metadata, and output labels rather than changing the optimization objective.
+- Result CSVs and figures from the original project brief were not present in the source attachment. No result images have been fabricated.
+- Site geometry and physical/economic inputs remain synthetic or placeholders; no field validation is claimed.
+- Verify code ownership and third-party license compatibility before making a formal release.
