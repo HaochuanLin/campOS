@@ -122,3 +122,15 @@ def test_readme_relative_links_resolve():
         relative_path = target.split("#", 1)[0]
         if relative_path:
             assert (ROOT / relative_path).exists(), f"Broken README link: {target}"
+
+
+def test_installed_console_script_help():
+    completed = subprocess.run(
+        ["campos-sim", "--help"],
+        text=True,
+        capture_output=True,
+        timeout=30,
+    )
+    assert completed.returncode == 0, completed.stdout + "\\n" + completed.stderr
+    assert "--mode" in completed.stdout
+    assert "--outdir" in completed.stdout
