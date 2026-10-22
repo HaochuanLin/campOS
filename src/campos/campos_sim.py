@@ -827,8 +827,26 @@ def main(argv=None):
     os.makedirs(args.outdir, exist_ok=True)
     out = lambda f: os.path.join(args.outdir, f)
 
-    # Persist the exact run configuration and software versions beside outputs.
-    # This adds provenance metadata without changing the simulation algorithm.
+    raw_cli = list(sys.argv[1:] if argv is None else argv)
+    source_flags = {
+        "mode": "--mode", "sites": "--sites", "polygon_csv": "--polygon-csv",
+        "heads_csv": "--heads-csv", "outdir": "--outdir", "quick": "--quick",
+        "seed": "--seed", "cell_size": "--cell-size", "profile_csv": "--profile-csv",
+        "radial_slope": "--radial-slope", "performance_csv": "--performance-csv",
+        "pressure_kpa": "--pressure-kpa", "dry_fraction_limit": "--dry-fraction-limit",
+        "target_factor": "--target-factor", "cu_drop_budget": "--cu-drop-budget",
+        "pareto_weights": "--pareto-weights",
+    }
+    parameter_sources = {}
+    for key, flag in source_flags.items():
+        if flag in raw_cli:
+            parameter_sources[key] = "command_line"
+        elif key in config_data:
+            parameter_sources[key] = "config_file"
+        else:
+            parameter_sources[key] = "built_in_default"
+
+    # Persist exact settings and distinguish configuration inputs from measured data.
     metadata = {
         "schema_version": 1,
         "project": "campOS",
@@ -839,6 +857,19 @@ def main(argv=None):
         "matplotlib_version": matplotlib.__version__,
         "source_sha256": hashlib.sha256(FilePath(__file__).read_bytes()).hexdigest(),
         "arguments": vars(args),
+        "configuration_input": {
+            "path": str(config_path) if config_path else None,
+            "sha256": config_sha256,
+            "parameter_sources": parameter_sources,
+            "precedence": "command-line arguments override JSON configuration; otherwise built-in defaults apply",
+        },
+        "data_classification": {
+            "site_geometry": "user_supplied" if args.polygon_csv else "synthetic_builtin",
+            "sprinkler_layout": "user_supplied_initial_layout" if args.heads_csv else "generated_baseline_layout",
+            "radial_field": "measured_profile_file" if args.profile_csv else "illustrative_sensitivity_model",
+            "hydraulic_curve": "user_supplied_performance_file" if args.performance_csv else "not_configured",
+            "economic_inputs": "placeholders_not_validated",
+        },
         "selected_modes": modes,
         "selected_sites": list(sites.keys()),
         "config": {k: v for k, v in cfg.items() if k not in {"radial_profile", "initial_heads"}},
