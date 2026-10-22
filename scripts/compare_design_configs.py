@@ -135,6 +135,14 @@ def main():
         (run_dir / "console.log").write_text(log.stdout, encoding="utf-8")
         if log.returncode:
             raise SystemExit(f"Scenario {name!r} failed; inspect {run_dir / 'console.log'}")
+        report = subprocess.run(
+            [sys.executable, str(ROOT / "scripts" / "build_design_report.py"),
+             "--input-dir", str(run_dir)],
+            cwd=ROOT, text=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, check=False,
+        )
+        (run_dir / "report-builder.log").write_text(report.stdout, encoding="utf-8")
+        if report.returncode:
+            raise SystemExit(f"Report generation failed for {name!r}; inspect {run_dir / 'report-builder.log'}")
         metadata = json.loads((run_dir / "run_metadata.json").read_text(encoding="utf-8"))
         for key in SHARED_KEYS:
             actual = metadata["arguments"].get(key)
@@ -177,11 +185,25 @@ def main():
         f"- Scenarios: {len(scenarios)}",
         f"- Shared input fields locked across scenarios: {', '.join(SHARED_KEYS)}",
         "- Scenario-specific overrides are limited to mode and optimization-policy parameters.",
-        "- User-supplied measurements, illustrative assumptions, and missing validation data are identified in each run's metadata.",
+        "- User-supplied measurements, illustrative assumptions, and missing validation data are identified in each run's metadata and individual HTML/Markdown report.",
         "- A missing selected feasible Pareto trade-off yields no row for that site; inspect each raw run directory.",
         "- Results are model comparisons only. They are not evidence of measured water savings, cost savings, or field performance.", "",
-        "See `design_comparison.csv` for the combined rows and `comparison_manifest.json` for the exact shared settings and scenario definitions.", "",
+        "| Scenario | Mode | Result rows | Geometry | Radial field | Hydraulic data |",
+        "|---|---|---:|---|---|---|",
     ]
+    for item in manifest["scenarios"]:
+        classification = item.get("input_classification", {})
+        report.append(
+            f"| {item['name']} | {item['mode']} | {item['result_rows']} | "
+            f"{classification.get('site_geometry', 'not recorded')} | "
+            f"{classification.get('radial_field', 'not recorded')} | "
+            f"{classification.get('hydraulic_curve', 'not recorded')} |"
+        )
+    report.extend([
+        "",
+        "See `design_comparison.csv` for combined result rows, `comparison_manifest.json` for exact shared settings, and each `scenario_NN/design_report.html` for the detailed run report.",
+        "",
+    ])
     (out / "design_comparison.md").write_text("\n".join(report), encoding="utf-8")
     print(f"Wrote {csv_path} and {out / 'design_comparison.md'}")
 
