@@ -130,10 +130,73 @@ def near_inside(site, x, y, tol=0.6):
     return False
 
 
+
+def load_polygon_csv(path):
+    """Load a site polygon CSV with x_m,y_m columns."""
+    with open(path, newline="", encoding="utf-8-sig") as fh:
+        reader = csv.DictReader(fh)
+        required = {"x_m", "y_m"}
+        if reader.fieldnames is None or not required.issubset(reader.fieldnames):
+            raise ValueError("polygon CSV must contain x_m,y_m columns (metres)")
+        rows = list(reader)
+    try:
+        points = np.asarray([[float(row["x_m"]), float(row["y_m"])] for row in rows], dtype=float)
+    except (TypeError, ValueError) as exc:
+        raise ValueError("polygon coordinates must be numeric") from exc
+    if points.ndim != 2 or points.shape[0] < 3 or points.shape[1] != 2:
+        raise ValueError("polygon must contain at least three x_m,y_m vertices")
+    if not np.all(np.isfinite(points)):
+        raise ValueError("polygon coordinates must be finite")
+    if np.linalg.norm(points[0] - points[-1]) <= 1e-9:
+        points = points[:-1]
+    if len(points) < 3 or len(np.unique(points, axis=0)) < 3:
+        raise ValueError("polygon must contain at least three distinct vertices")
+    if np.any(np.linalg.norm(np.diff(np.vstack([points, points[0]]), axis=0), axis=1) <= 1e-9):
+        raise ValueError("polygon contains consecutive duplicate vertices")
+    x, y = points.T
+    signed_area = 0.5 * np.sum(x * np.roll(y, -1) - np.roll(x, -1) * y)
+    if abs(signed_area) <= 1e-8:
+        raise ValueError("polygon area must be greater than zero")
+    return points
+
+
+def load_heads_csv(path, polygon, cfg):
+    """Load initial sprinkler rows: x_m,y_m,radius_m,start_angle_deg,arc_width_deg."""
+    required = {"x_m", "y_m", "radius_m", "start_angle_deg", "arc_width_deg"}
+    with open(path, newline="", encoding="utf-8-sig") as fh:
+        reader = csv.DictReader(fh)
+        if reader.fieldnames is None or not required.issubset(reader.fieldnames):
+            raise ValueError("heads CSV must contain x_m,y_m,radius_m,start_angle_deg,arc_width_deg columns")
+        rows = list(reader)
+    if not rows:
+        raise ValueError("heads CSV must contain at least one sprinkler")
+    try:
+        heads = np.asarray([[float(row[k]) for k in (
+            "x_m", "y_m", "radius_m", "start_angle_deg", "arc_width_deg"
+        )] for row in rows], dtype=float)
+    except (TypeError, ValueError) as exc:
+        raise ValueError("sprinkler layout values must be numeric") from exc
+    if not np.all(np.isfinite(heads)):
+        raise ValueError("sprinkler layout values must be finite")
+    if np.any(heads[:, 2] <= 0):
+        raise ValueError("sprinkler radius_m values must be positive")
+    if np.any(heads[:, 4] <= 0) or np.any(heads[:, 4] > 360):
+        raise ValueError("arc_width_deg values must be in (0, 360]")
+    if np.any(heads[:, 2] < cfg["r_min"]) or np.any(heads[:, 2] > cfg["r_max"]):
+        raise ValueError(f"radius_m values must be within optimizer range {cfg['r_min']}..{cfg['r_max']} m")
+    path_obj = Path(polygon)
+    if any(not path_obj.contains_point((h[0], h[1]), radius=1e-8) for h in heads):
+        raise ValueError("all initial sprinkler coordinates must lie inside the supplied polygon")
+    heads[:, 3] %= 360.0
+    return heads
+
+
 def baseline_layout(site, cfg):
     """Square grid at spacing = radius, edge heads set to preset arcs.
     Best of 3 radii x 9 grid offsets (scored with the same metric as the
     optimizer), so the baseline is a competent installer, not a straw man."""
+    if cfg.get("initial_heads") is not None:
+        return np.asarray(cfg["initial_heads"], dtype=float).copy()
     (minx, miny), (maxx, maxy) = site.bbox
     best, best_sc = None, np.inf
     radii = (cfg["base_radius"],) if cfg.get("hydraulics_locked_radius") else (4.0, 5.0, cfg["base_radius"])
@@ -612,7 +675,11 @@ def main(argv=None):
                     choices=ALL_MODES + ["all"],
                     help="which run modes to execute (default: movable = original v1 behaviour)")
     ap.add_argument("--sites", nargs="+", default=None,
-                    help="site letters to run, e.g. --sites A C (default: all five)")
+                    help="built-in site letters to run, e.g. --sites A C (default: all five)")
+    ap.add_argument("--polygon-csv", default=None,
+                    help="optional custom site polygon CSV with x_m,y_m columns (metres)")
+    ap.add_argument("--heads-csv", default=None,
+                    help="optional initial sprinkler CSV: x_m,y_m,radius_m,start_angle_deg,arc_width_deg; requires --polygon-csv")
     ap.add_argument("--outdir", default="out", help="output directory (default: out)")
     ap.add_argument("--quick", action="store_true", help="fewer SA iterations (smoke test)")
     ap.add_argument("--seed", type=int, default=CFG["seed"],
@@ -689,14 +756,35 @@ def main(argv=None):
     if args.quick:
         cfg.update(sa_iters=2500, restarts=1, pareto_iters=1200)
     modes = ALL_MODES if "all" in args.mode else [m for m in ALL_MODES if m in args.mode]
-    requested_sites = None if args.sites is None else [s.upper() for s in args.sites]
-    valid_site_ids = {name.split()[0] for name in SITES}
-    if requested_sites is not None:
-        invalid_sites = sorted(set(requested_sites) - valid_site_ids)
-        if invalid_sites:
-            ap.error(f"unknown site ID(s): {', '.join(invalid_sites)}; choose from A, B, C, D, E")
-    sites = {k: f for k, f in SITES.items()
-             if requested_sites is None or k.split()[0] in requested_sites}
+    polygon_sha256 = None
+    heads_sha256 = None
+    custom_polygon = None
+    if args.heads_csv and not args.polygon_csv:
+        ap.error("--heads-csv requires --polygon-csv")
+    if args.polygon_csv:
+        if args.sites is not None:
+            ap.error("--polygon-csv cannot be combined with --sites; custom geometry is run as a single site")
+        try:
+            custom_polygon = load_polygon_csv(args.polygon_csv)
+        except (OSError, ValueError) as exc:
+            ap.error(f"invalid --polygon-csv: {exc}")
+        polygon_sha256 = hashlib.sha256(FilePath(args.polygon_csv).read_bytes()).hexdigest()
+        sites = {"Custom site": lambda: custom_polygon}
+        if args.heads_csv:
+            try:
+                cfg["initial_heads"] = load_heads_csv(args.heads_csv, custom_polygon, cfg)
+            except (OSError, ValueError) as exc:
+                ap.error(f"invalid --heads-csv: {exc}")
+            heads_sha256 = hashlib.sha256(FilePath(args.heads_csv).read_bytes()).hexdigest()
+    else:
+        requested_sites = None if args.sites is None else [s.upper() for s in args.sites]
+        valid_site_ids = {name.split()[0] for name in SITES}
+        if requested_sites is not None:
+            invalid_sites = sorted(set(requested_sites) - valid_site_ids)
+            if invalid_sites:
+                ap.error(f"unknown site ID(s): {', '.join(invalid_sites)}; choose from A, B, C, D, E")
+        sites = {k: f for k, f in SITES.items()
+                 if requested_sites is None or k.split()[0] in requested_sites}
     if not sites:
         ap.error("no sites selected")
     os.makedirs(args.outdir, exist_ok=True)
@@ -716,7 +804,17 @@ def main(argv=None):
         "arguments": vars(args),
         "selected_modes": modes,
         "selected_sites": list(sites.keys()),
-        "config": {k: v for k, v in cfg.items() if k != "radial_profile"},
+        "config": {k: v for k, v in cfg.items() if k not in {"radial_profile", "initial_heads"}},
+        "site_input": {
+            "polygon_csv": args.polygon_csv,
+            "polygon_sha256": polygon_sha256,
+            "polygon_vertex_count": int(len(custom_polygon)) if args.polygon_csv else None,
+            "coordinate_units": "metres",
+            "heads_csv": args.heads_csv,
+            "heads_sha256": heads_sha256,
+            "initial_head_count": int(len(cfg["initial_heads"])) if cfg.get("initial_heads") is not None else None,
+            "status": "user_supplied_geometry_and_heads" if args.polygon_csv and args.heads_csv else ("user_supplied_geometry" if args.polygon_csv else "built_in_synthetic_geometry"),
+        },
         "optimization_policy": {
             "legacy_modes": ["movable", "fixed"],
             "pareto_objectives": {
