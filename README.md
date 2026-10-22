@@ -305,3 +305,19 @@ If you use campOS in research, cite the repository and the specific version or c
 ## License
 
 Released under the MIT License; see [LICENSE](LICENSE). Confirm code ownership and third-party license compatibility before making a formal release.
+
+
+### Observation error evaluation (paired data only)
+
+To report errors separately for calibration and independent holdout observations,
+prepare a CSV with `measured_mm,predicted_mm,split` columns, where `split` is
+`calibration` or `holdout`, then run:
+
+```bash
+python scripts/evaluate_observation_errors.py --input paired_depths.csv --out metrics.json
+```
+
+The evaluator reports bias, MAE, RMSE and related descriptive metrics; it does
+not generate predictions, tune parameters, verify that holdout data are truly
+independent, or declare the model validated. Define acceptance criteria before
+evaluating holdout data. See [the configuration and comparison guide](docs/CONFIGURATION_AND_COMPARISONS.md).
