@@ -24,6 +24,16 @@ With a normalized radial profile and a supplied flow `Q` in L/min, the model sca
 
 
 
+### Theoretical flow estimate from nozzle geometry
+
+The model module also exposes `orifice_flow_lpm(pressure_kpa, diameter_mm, discharge_coefficient=0.62)`, based on the Bernoulli/orifice equation:
+
+```text
+Q = Cd * A * sqrt(2 * delta_p / rho)
+```
+
+This independently calculates an idealized flow estimate when effective aperture diameter, pressure drop, and discharge coefficient are known. It obeys the expected scaling `Q ∝ diameter² × sqrt(pressure)`. A rotor sprinkler is not necessarily a simple orifice: internal passages, nozzle geometry, rotation mechanism, and manufacturer-specific design affect its discharge coefficient. Therefore this function is a theoretical cross-check only; for an actual rotor use the measured manufacturer pressure-flow curve when available.
+
 ### Published manufacturer-chart consistency benchmark
 
 Run `python scripts/benchmark_sprinkler_curve.py`. The checked-in CSV transcribes six pressure points for the Rain Bird 5000 Series standard-angle 1.5 nozzle from the [official performance chart](https://www.rainbird.com/sites/default/files/media/documents/2020-09/5000-series-rotor-nozzle-performance-chart.pdf). The chart gives flow, throw radius, and rounded precipitation rates for square and triangular spacing, based on half-circle operation and spacing equal to 50% of throw diameter (spacing = radius).
