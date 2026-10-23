@@ -167,26 +167,27 @@ def get_site_and_baseline(name, poly, cfg, baseline_heads=None):
     a stale grid or baseline from an earlier run.
     """
     polygon = np.asarray(poly, dtype=float)
+    heads_input = None
+    if baseline_heads is not None:
+        heads_input = np.asarray(baseline_heads, dtype=float)
+        if heads_input.ndim != 2 or heads_input.shape[1] != 5 or len(heads_input) == 0:
+            raise ValueError("baseline_heads must be a non-empty N x 5 array")
+        if not np.all(np.isfinite(heads_input)) or np.any(heads_input[:, 2] <= 0):
+            raise ValueError("baseline_heads must contain finite coordinates and positive throw radii")
+        if np.any(heads_input[:, 4] <= 0) or np.any(heads_input[:, 4] > 360):
+            raise ValueError("baseline head arc widths must be in (0, 360]")
+        heads_input = heads_input.copy()
+        heads_input[:, 3] %= 360.0
     key = (
         name,
         tuple(polygon.shape),
         tuple(polygon.ravel()),
-        None if baseline_heads is None else tuple(np.asarray(baseline_heads, dtype=float).ravel()),
+        None if heads_input is None else (tuple(heads_input.shape), tuple(heads_input.ravel())),
         tuple(sorted((k, repr(v)) for k, v in cfg.items())),
     )
     if key not in _SITE_CACHE:
         site = Site(polygon, cfg)
-        if baseline_heads is None:
-            heads0 = baseline_layout(site, cfg)
-        else:
-            heads0 = np.asarray(baseline_heads, dtype=float).copy()
-            if heads0.ndim != 2 or heads0.shape[1] != 5 or len(heads0) == 0:
-                raise ValueError("baseline_heads must be a non-empty N x 5 array")
-            if not np.all(np.isfinite(heads0)) or np.any(heads0[:, 2] <= 0):
-                raise ValueError("baseline_heads must contain finite coordinates and positive throw radii")
-            if np.any(heads0[:, 4] <= 0) or np.any(heads0[:, 4] > 360):
-                raise ValueError("baseline head arc widths must be in (0, 360]")
-            heads0[:, 3] %= 360.0
+        heads0 = baseline_layout(site, cfg) if heads_input is None else heads_input.copy()
         _SITE_CACHE[key] = (site, heads0)
     return _SITE_CACHE[key]
 
@@ -500,8 +501,9 @@ def plot_layouts(results, cfg, fn, tag=""):
             ax.set_aspect("equal")
             ax.set_title(f"{r['name']} · {side}\nAR={m['AR']:.2f}  overspray={m['overspray']*100:.0f}%  "
                          f"CU={m['CU']:.2f}  dry={m['dry']*100:.1f}%", fontsize=9)
-    fig.suptitle(f"[{tag}]  blue = water on lawn, red = overspray  (SYNTHETIC lawns, "
-                 f"PLACEHOLDER sprinkler profile)", fontsize=11)
+    geometry_label = "CUSTOM geometry" if any(r["name"] == "Custom site" for r in results) else "SYNTHETIC lawns"
+    fig.suptitle(f"[{tag}]  blue = water on lawn, red = overspray  ({geometry_label}, "
+                 f"sprinkler profile may be a placeholder)", fontsize=11)
     fig.savefig(fn, dpi=110)
     plt.close(fig)
 
@@ -578,6 +580,7 @@ def plot_pareto(results, fn, cfg):
     mode = results[0]["mode"]
     fig, axes = plt.subplots(3, n, figsize=(4.6 * n, 10.5), constrained_layout=True, squeeze=False)
     styles = {"Baseline (standard grid)": ("s", "black", 70),
+              "Baseline (imported layout)": ("s", "black", 70),
               "Naive full-circle (reference only)": ("X", "#d62728", 80)}
     for c, r in enumerate(results):
         fr = r["front"]
@@ -613,9 +616,9 @@ def plot_pareto(results, fn, cfg):
             ax.grid(alpha=0.3)
         if c == n - 1:
             axes[0][c].legend(fontsize=7, loc="upper right")
+    geometry_label = "CUSTOM geometry" if any(r["name"] == "Custom site" for r in results) else "SYNTHETIC lawns"
     fig.suptitle(f"[{mode['plot']}]  Pareto trade-off: overspray vs interior deficit / uniformity\n"
-                 f"SYNTHETIC lawns, PLACEHOLDER sprinkler profile, no wind/pressure model - "
-                 f"not field-validated", fontsize=11)
+                 f"{geometry_label}, no wind/pressure-network model - not field-validated", fontsize=11)
     fig.savefig(fn, dpi=110)
     plt.close(fig)
 
