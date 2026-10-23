@@ -181,6 +181,77 @@ def head_field(X, Y, h, radial_profile=None, flow_lpm=None, radial_slope=0.0):
     return np.where(inr, rate, 0.0)
 
 
+
+def load_polygon_csv(path):
+    """Load a site boundary from local metric coordinates in a CSV.
+
+    Required columns: x_m,y_m. Coordinates must already be in a local,
+    projected Cartesian coordinate system measured in metres; longitude and
+    latitude degrees are not accepted as a metric coordinate system.
+    Vertices are ordered around one simple polygon. A repeated final copy of
+    the first vertex is accepted and removed.
+    """
+    with open(path, newline="", encoding="utf-8-sig") as fh:
+        reader = csv.DictReader(fh)
+        required = {"x_m", "y_m"}
+        if reader.fieldnames is None or not required.issubset(reader.fieldnames):
+            raise ValueError("polygon CSV must contain x_m,y_m columns")
+        rows = list(reader)
+    if len(rows) < 3:
+        raise ValueError("polygon CSV must contain at least three vertices")
+    try:
+        polygon = np.array([[float(row["x_m"]), float(row["y_m"])] for row in rows], dtype=float)
+    except (TypeError, ValueError) as exc:
+        raise ValueError("polygon CSV coordinates must be numeric") from exc
+    if not np.all(np.isfinite(polygon)):
+        raise ValueError("polygon CSV coordinates must be finite")
+    if len(polygon) > 3 and np.allclose(polygon[0], polygon[-1]):
+        polygon = polygon[:-1]
+    if len(np.unique(polygon, axis=0)) < 3:
+        raise ValueError("polygon CSV must contain at least three unique vertices")
+    x, y = polygon[:, 0], polygon[:, 1]
+    area = abs(float(np.dot(x, np.roll(y, -1)) - np.dot(y, np.roll(x, -1)))) / 2.0
+    if not np.isfinite(area) or area <= 1e-9:
+        raise ValueError("polygon CSV must describe a non-zero-area polygon")
+    return polygon
+
+
+def load_heads_csv(path):
+    """Load a baseline sprinkler layout.
+
+    Required columns: x_m,y_m,throw_m,start_angle_deg,arc_width_deg. Angles
+    are degrees counter-clockwise from +x in the same local metric coordinate
+    system as the polygon. This loader validates numeric ranges, not whether
+    the supplied heads are physically installable or hydraulically compatible.
+    """
+    with open(path, newline="", encoding="utf-8-sig") as fh:
+        reader = csv.DictReader(fh)
+        required = {"x_m", "y_m", "throw_m", "start_angle_deg", "arc_width_deg"}
+        if reader.fieldnames is None or not required.issubset(reader.fieldnames):
+            raise ValueError(
+                "heads CSV must contain x_m,y_m,throw_m,start_angle_deg,arc_width_deg columns"
+            )
+        rows = list(reader)
+    if not rows:
+        raise ValueError("heads CSV must contain at least one sprinkler")
+    try:
+        heads = np.array(
+            [[float(row["x_m"]), float(row["y_m"]), float(row["throw_m"]),
+              float(row["start_angle_deg"]), float(row["arc_width_deg"])] for row in rows],
+            dtype=float,
+        )
+    except (TypeError, ValueError) as exc:
+        raise ValueError("heads CSV values must be numeric") from exc
+    if not np.all(np.isfinite(heads)):
+        raise ValueError("heads CSV values must be finite")
+    if np.any(heads[:, 2] <= 0):
+        raise ValueError("throw_m must be positive")
+    if np.any(heads[:, 4] <= 0) or np.any(heads[:, 4] > 360):
+        raise ValueError("arc_width_deg must be in (0, 360]")
+    heads[:, 3] %= 360.0
+    return heads
+
+
 class Site:
     def __init__(self, poly, cfg):
         self.poly = poly

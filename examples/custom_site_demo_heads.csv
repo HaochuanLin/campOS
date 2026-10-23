@@ -1,0 +1,5 @@
+head_id,x_m,y_m,throw_m,start_angle_deg,arc_width_deg
+H1,3,3,8,0,360
+H2,17,3,8,90,180
+H3,3,9,8,270,180
+H4,17,9,8,180,360

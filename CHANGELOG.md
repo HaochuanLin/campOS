@@ -3,6 +3,9 @@
 ## [0.1.0] - Unreleased
 
 ### Added
+- CSV loaders for a custom site polygon in local metric coordinates and an optional imported baseline sprinkler layout.
+- Real-site data contract, catch-can validation protocol, model development roadmap, and blank input templates.
+- Regression tests for custom geometry validation and preservation of imported head coordinates in fixed-position mode.
 - English-only project README with quick-start commands, mode descriptions, metric definitions, assumptions, and limitations.
 - Model documentation covering the grid approximation, objective functions, and known omissions.
 - Installable package metadata and the `campos-sim` command-line entry point.

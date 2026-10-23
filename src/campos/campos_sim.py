@@ -98,7 +98,9 @@ CFG = dict(
 #   Monte-Carlo over those, and report whether each Pareto point stays on the
 #   front (robustness).  Currently NO wind, NO pressure loss, NO evaporation.
 
-from .model import SITES, Site, head_field, load_performance_curve_csv, load_radial_profile_csv, score, site_rect, site_lshape, site_kidney, site_wedge, site_strip
+from .model import (SITES, Site, head_field, load_heads_csv, load_performance_curve_csv,
+                    load_polygon_csv, load_radial_profile_csv, score, site_rect,
+                    site_lshape, site_kidney, site_wedge, site_strip)
 
 # ------------------------------------------------------- baseline layouts
 def preset_arc(site, x, y, r):
@@ -157,7 +159,7 @@ def baseline_layout(site, cfg):
 _SITE_CACHE = {}
 
 
-def get_site_and_baseline(name, poly, cfg):
+def get_site_and_baseline(name, poly, cfg, baseline_heads=None):
     """Build and cache a baseline for this exact site geometry and config.
 
     The cache key includes the polygon and every config value so callers that
@@ -165,15 +167,28 @@ def get_site_and_baseline(name, poly, cfg):
     a stale grid or baseline from an earlier run.
     """
     polygon = np.asarray(poly, dtype=float)
+    heads_input = None
+    if baseline_heads is not None:
+        heads_input = np.asarray(baseline_heads, dtype=float)
+        if heads_input.ndim != 2 or heads_input.shape[1] != 5 or len(heads_input) == 0:
+            raise ValueError("baseline_heads must be a non-empty N x 5 array")
+        if not np.all(np.isfinite(heads_input)) or np.any(heads_input[:, 2] <= 0):
+            raise ValueError("baseline_heads must contain finite coordinates and positive throw radii")
+        if np.any(heads_input[:, 4] <= 0) or np.any(heads_input[:, 4] > 360):
+            raise ValueError("baseline head arc widths must be in (0, 360]")
+        heads_input = heads_input.copy()
+        heads_input[:, 3] %= 360.0
     key = (
         name,
         tuple(polygon.shape),
         tuple(polygon.ravel()),
+        None if heads_input is None else (tuple(heads_input.shape), tuple(heads_input.ravel())),
         tuple(sorted((k, repr(v)) for k, v in cfg.items())),
     )
     if key not in _SITE_CACHE:
         site = Site(polygon, cfg)
-        _SITE_CACHE[key] = (site, baseline_layout(site, cfg))
+        heads0 = baseline_layout(site, cfg) if heads_input is None else heads_input.copy()
+        _SITE_CACHE[key] = (site, heads0)
     return _SITE_CACHE[key]
 
 
@@ -246,10 +261,10 @@ def optimize(site, heads0, cfg, seed, fixed_xy=False):
     return best_h
 
 
-def run_site(name, poly, cfg, fixed_xy=False):
+def run_site(name, poly, cfg, fixed_xy=False, baseline_heads=None):
     """Single-objective (AR) run on one site.  fixed_xy selects the mode."""
     mode = MODE_FIXED if fixed_xy else MODE_MOVABLE
-    site, h0 = get_site_and_baseline(name, poly, cfg)
+    site, h0 = get_site_and_baseline(name, poly, cfg, baseline_heads=baseline_heads)
     _, m0 = score(site, site.total(h0), cfg)
     best_h, best_sc = None, np.inf
     for k in range(cfg["restarts"]):
@@ -283,6 +298,7 @@ def run_site(name, poly, cfg, fixed_xy=False):
         cost = len(h0) * cfg["cost_adjust_head"] + moved * cfg["cost_move_head"]
     return dict(
         name=name, mode=mode, site=site, heads0=h0, heads1=best_h, m0=m0, m1=m1,
+        baseline_label="Baseline (imported layout)" if baseline_heads is not None else "Baseline (standard grid)",
         n_heads=len(h0), moved=moved, changed=changed, area=site.area,
         water_saving=saving_frac, annual_m3=annual_m3, annual_cny=annual_cny,
         cost=cost, payback=np.nan,
@@ -399,11 +415,12 @@ def select_tradeoff(front, budget):
     return min(ok, key=lambda i: front[i]["f1"])
 
 
-def run_pareto(name, poly, cfg, fixed_xy, refs=None):
+def run_pareto(name, poly, cfg, fixed_xy, refs=None, baseline_heads=None):
     """Bi-objective run on one site; returns the thinned Pareto front plus
     reference layouts (baseline, naive full-circle, optional single-AR optima)."""
     mode = MODE_FIXED if fixed_xy else MODE_MOVABLE
-    site, h0 = get_site_and_baseline(name, poly, cfg)
+    site, h0 = get_site_and_baseline(name, poly, cfg, baseline_heads=baseline_heads)
+    baseline_label = "Baseline (imported layout)" if baseline_heads is not None else "Baseline (standard grid)"
     ref = reference_levels(site, h0, cfg)
     warm = None
     if refs:                                   # reuse the single-objective AR optimum
@@ -423,7 +440,7 @@ def run_pareto(name, poly, cfg, fixed_xy, refs=None):
     front = [bi_report(site, cand[i], ref, cfg) for i in order]
     front.sort(key=lambda p: p["f1"])
     sel = select_tradeoff(front, cfg["cu_drop_budget"]) if front else None
-    refs_out = {"Baseline (standard grid)": bi_report(site, h0, ref, cfg),
+    refs_out = {baseline_label: bi_report(site, h0, ref, cfg),
                 "Naive full-circle (reference only)": bi_report(site, naive_full_circle(h0), ref, cfg)}
     for label, heads in (refs or {}).items():
         refs_out[label] = bi_report(site, heads, ref, cfg)
@@ -436,6 +453,7 @@ def run_pareto(name, poly, cfg, fixed_xy, refs=None):
                 print(f"   WARNING {name}: reference '{label}' dominates {len(bad)} front point(s) "
                       f"- search under-converged", flush=True)
     return dict(name=name, mode=mode, site=site, ref=ref, front=front, selected=sel,
+                baseline_label=baseline_label,
                 refs=refs_out, heads0=h0)
 
 # ------------------------------------------------------------------ output
@@ -471,7 +489,7 @@ def plot_layouts(results, cfg, fn, tag=""):
                              constrained_layout=True, squeeze=False)
     for row, r in zip(axes, results):
         s = r["site"]
-        for ax, heads, m, side in ((row[0], r["heads0"], r["m0"], "Baseline (standard grid)"),
+        for ax, heads, m, side in ((row[0], r["heads0"], r["m0"], r.get("baseline_label", "Baseline (standard grid)")),
                                    (row[1], r["heads1"], r["m1"], "Optimized")):
             t = s.total(heads)
             ax.imshow(np.where(s.mask, t, np.nan), origin="lower", extent=s.extent,
@@ -483,8 +501,9 @@ def plot_layouts(results, cfg, fn, tag=""):
             ax.set_aspect("equal")
             ax.set_title(f"{r['name']} · {side}\nAR={m['AR']:.2f}  overspray={m['overspray']*100:.0f}%  "
                          f"CU={m['CU']:.2f}  dry={m['dry']*100:.1f}%", fontsize=9)
-    fig.suptitle(f"[{tag}]  blue = water on lawn, red = overspray  (SYNTHETIC lawns, "
-                 f"PLACEHOLDER sprinkler profile)", fontsize=11)
+    geometry_label = "CUSTOM geometry" if any(r["name"] == "Custom site" for r in results) else "SYNTHETIC lawns"
+    fig.suptitle(f"[{tag}]  blue = water on lawn, red = overspray  ({geometry_label}, "
+                 f"sprinkler profile may be a placeholder)", fontsize=11)
     fig.savefig(fn, dpi=110)
     plt.close(fig)
 
@@ -524,7 +543,7 @@ def write_comparison_csv(by_mode, fn):
             for key, res in by_mode.items():
                 r = next(x for x in res if x["name"] == nm)
                 if first:
-                    w.writerow(["BASELINE (standard grid)", nm, f"{r['m0']['AR']:.3f}",
+                    w.writerow(["BASELINE (generated or imported layout)", nm, f"{r['m0']['AR']:.3f}",
                                 f"{r['m0']['overspray']*100:.1f}", f"{r['m0']['CU']:.3f}",
                                 f"{r['m0']['dry']*100:.1f}", "0.0", 0, 0, 0, ""])
                     first = False
@@ -561,6 +580,7 @@ def plot_pareto(results, fn, cfg):
     mode = results[0]["mode"]
     fig, axes = plt.subplots(3, n, figsize=(4.6 * n, 10.5), constrained_layout=True, squeeze=False)
     styles = {"Baseline (standard grid)": ("s", "black", 70),
+              "Baseline (imported layout)": ("s", "black", 70),
               "Naive full-circle (reference only)": ("X", "#d62728", 80)}
     for c, r in enumerate(results):
         fr = r["front"]
@@ -596,9 +616,9 @@ def plot_pareto(results, fn, cfg):
             ax.grid(alpha=0.3)
         if c == n - 1:
             axes[0][c].legend(fontsize=7, loc="upper right")
+    geometry_label = "CUSTOM geometry" if any(r["name"] == "Custom site" for r in results) else "SYNTHETIC lawns"
     fig.suptitle(f"[{mode['plot']}]  Pareto trade-off: overspray vs interior deficit / uniformity\n"
-                 f"SYNTHETIC lawns, PLACEHOLDER sprinkler profile, no wind/pressure model - "
-                 f"not field-validated", fontsize=11)
+                 f"{geometry_label}, no wind/pressure-network model - not field-validated", fontsize=11)
     fig.savefig(fn, dpi=110)
     plt.close(fig)
 
@@ -611,6 +631,10 @@ def main(argv=None):
     ap.add_argument("--mode", nargs="+", default=["movable"],
                     choices=ALL_MODES + ["all"],
                     help="which run modes to execute (default: movable = original v1 behaviour)")
+    ap.add_argument("--polygon-csv", default=None,
+                    help="optional custom site polygon CSV in local metric coordinates; requires x_m,y_m columns")
+    ap.add_argument("--heads-csv", default=None,
+                    help="optional existing sprinkler layout CSV; requires --polygon-csv and x_m,y_m,throw_m,start_angle_deg,arc_width_deg columns")
     ap.add_argument("--sites", nargs="+", default=None,
                     help="site letters to run, e.g. --sites A C (default: all five)")
     ap.add_argument("--outdir", default="out", help="output directory (default: out)")
@@ -633,6 +657,10 @@ def main(argv=None):
         ap.error("--cell-size must be a finite number greater than zero")
     if not np.isfinite(args.radial_slope) or args.radial_slope <= -1.0:
         ap.error("--radial-slope must be finite and greater than -1")
+    if args.heads_csv and not args.polygon_csv:
+        ap.error("--heads-csv requires --polygon-csv")
+    if args.polygon_csv and args.sites is not None:
+        ap.error("--polygon-csv cannot be combined with --sites; custom geometry is run as one site")
 
     cfg = dict(CFG)
     cfg.update(seed=args.seed, cell=args.cell_size, radial_slope=args.radial_slope)
@@ -663,14 +691,34 @@ def main(argv=None):
     if args.quick:
         cfg.update(sa_iters=2500, restarts=1, pareto_iters=1200)
     modes = ALL_MODES if "all" in args.mode else [m for m in ALL_MODES if m in args.mode]
+    custom_polygon = None
+    custom_heads = None
+    polygon_sha256 = None
+    heads_sha256 = None
+    if args.polygon_csv:
+        try:
+            custom_polygon = load_polygon_csv(args.polygon_csv)
+        except (OSError, ValueError) as exc:
+            ap.error(f"invalid --polygon-csv: {exc}")
+        polygon_sha256 = hashlib.sha256(FilePath(args.polygon_csv).read_bytes()).hexdigest()
+        if args.heads_csv:
+            try:
+                custom_heads = load_heads_csv(args.heads_csv)
+            except (OSError, ValueError) as exc:
+                ap.error(f"invalid --heads-csv: {exc}")
+            heads_sha256 = hashlib.sha256(FilePath(args.heads_csv).read_bytes()).hexdigest()
+
     requested_sites = None if args.sites is None else [s.upper() for s in args.sites]
     valid_site_ids = {name.split()[0] for name in SITES}
     if requested_sites is not None:
         invalid_sites = sorted(set(requested_sites) - valid_site_ids)
         if invalid_sites:
             ap.error(f"unknown site ID(s): {', '.join(invalid_sites)}; choose from A, B, C, D, E")
-    sites = {k: f for k, f in SITES.items()
-             if requested_sites is None or k.split()[0] in requested_sites}
+    if custom_polygon is not None:
+        sites = {"Custom site": lambda: custom_polygon}
+    else:
+        sites = {k: f for k, f in SITES.items()
+                 if requested_sites is None or k.split()[0] in requested_sites}
     if not sites:
         ap.error("no sites selected")
     os.makedirs(args.outdir, exist_ok=True)
@@ -695,6 +743,17 @@ def main(argv=None):
             "model": "measured_profile" if profile_sha256 else "normalized_linear_sensitivity_family",
             "radial_slope": cfg.get("radial_slope", 0.0),
             "interpretation": "user-selected sensitivity scenario; not calibrated",
+        },
+        "site_geometry": {
+            "source_csv": args.polygon_csv,
+            "sha256": polygon_sha256,
+            "coordinate_system": "local projected Cartesian metres" if polygon_sha256 else "synthetic polygon",
+            "status": "custom_polygon_loaded" if polygon_sha256 else "synthetic_geometry",
+        },
+        "baseline_layout": {
+            "source_csv": args.heads_csv,
+            "sha256": heads_sha256,
+            "status": "imported_layout" if heads_sha256 else "generated_grid_layout",
         },
         "radial_profile": {
             "source_csv": args.profile_csv,
@@ -723,7 +782,7 @@ def main(argv=None):
         fixed = key == "fixed"
         res = []
         for name, f in sites.items():
-            r = run_site(name, f(), cfg, fixed_xy=fixed)
+            r = run_site(name, f(), cfg, fixed_xy=fixed, baseline_heads=custom_heads)
             res.append(r)
             print(f"[{key:7s}] {name}: heads={r['n_heads']} moved={r['moved']} changed={r['changed']} "
                   f"AR {r['m0']['AR']:.2f}->{r['m1']['AR']:.2f} "
@@ -749,7 +808,7 @@ def main(argv=None):
             if base_key in single:                # mark the single-objective AR optimum
                 r1 = next(x for x in single[base_key] if x["name"] == name)
                 refs = {f"AR-optimum ({MODES[base_key]['key']}, legacy)": r1["heads1"]}
-            pr = run_pareto(name, f(), cfg, fixed_xy=fixed, refs=refs)
+            pr = run_pareto(name, f(), cfg, fixed_xy=fixed, refs=refs, baseline_heads=custom_heads)
             res.append(pr)
             fr = pr["front"]
             sel = fr[pr["selected"]] if pr["selected"] is not None else None
