@@ -468,3 +468,31 @@ def test_fixed_mode_preserves_imported_real_site_head_coordinates():
     np.testing.assert_array_equal(result["heads0"][:, :2], heads[:, :2])
     np.testing.assert_array_equal(result["heads1"][:, :2], heads[:, :2])
     assert result["baseline_label"] == "Baseline (imported layout)"
+
+
+
+def test_custom_site_cli_imports_polygon_and_baseline_heads(tmp_path):
+    outdir = tmp_path / "custom-site-output"
+    completed = subprocess.run(
+        [
+            sys.executable,
+            str(ROOT / "campos_sim.py"),
+            "--mode", "fixed",
+            "--quick",
+            "--cell-size", "1.0",
+            "--polygon-csv", str(ROOT / "examples" / "custom_site_demo_polygon.csv"),
+            "--heads-csv", str(ROOT / "examples" / "custom_site_demo_heads.csv"),
+            "--outdir", str(outdir),
+        ],
+        cwd=ROOT,
+        text=True,
+        capture_output=True,
+        timeout=180,
+    )
+    assert completed.returncode == 0, completed.stdout + "\n" + completed.stderr
+    assert (outdir / "results_fixed.csv").is_file()
+    metadata = json.loads((outdir / "run_metadata.json").read_text(encoding="utf-8"))
+    assert metadata["site_geometry"]["status"] == "custom_polygon_loaded"
+    assert metadata["baseline_layout"]["status"] == "imported_layout"
+    assert re.fullmatch(r"[0-9a-f]{64}", metadata["site_geometry"]["sha256"])
+    assert re.fullmatch(r"[0-9a-f]{64}", metadata["baseline_layout"]["sha256"])
