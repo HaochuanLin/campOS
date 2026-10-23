@@ -110,7 +110,10 @@ The prototype can now read a custom polygon and an optional existing sprinkler l
 # Custom site boundary; campOS generates an initial grid layout
 python campos_sim.py --mode movable --quick --polygon-csv path/to/site_polygon.csv --outdir out/custom-site
 
-# Custom site boundary plus the actual existing sprinkler positions
+# Reproducible demonstration with explicitly synthetic geometry/layout
+python campos_sim.py --mode fixed --quick --cell-size 1.0 --polygon-csv examples/custom_site_demo_polygon.csv --heads-csv examples/custom_site_demo_heads.csv --outdir out/custom-site-demo
+
+# Replace these paths with your own measured files for a real case
 python campos_sim.py --mode fixed --quick --polygon-csv path/to/site_polygon.csv --heads-csv path/to/baseline_heads.csv --outdir out/custom-retrofit
 ```
 
@@ -210,7 +213,7 @@ docs/MODEL.md                 Metrics, assumptions, and limitations
 docs/REAL_SITE_DATA.md        Real-site CSV formats and data provenance
 docs/VALIDATION_PROTOCOL.md  Field measurement and validation plan
 docs/RELEASE_NOTES_v0.1.0.md  Initial prototype notes
-examples/                     Reproducible example commands
+examples/                     Reproducible commands and synthetic custom-site input demo
 results/                      Curated results only; no generated files committed by default
 ```
 
