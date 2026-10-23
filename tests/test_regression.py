@@ -415,3 +415,56 @@ def test_cli_rejects_invalid_radial_slope(tmp_path):
     assert completed.returncode != 0
     assert "--radial-slope must be finite and greater than -1" in completed.stderr
     assert not (tmp_path / "invalid-radial-slope" / "run_metadata.json").exists()
+
+
+
+def test_custom_polygon_and_head_csv_loaders(tmp_path):
+    from campos.model import load_heads_csv, load_polygon_csv
+
+    polygon_csv = tmp_path / "polygon.csv"
+    polygon_csv.write_text(
+        "vertex_id,x_m,y_m\n1,0,0\n2,10,0\n3,10,8\n4,0,8\n5,0,0\n",
+        encoding="utf-8",
+    )
+    polygon = load_polygon_csv(polygon_csv)
+    assert polygon.shape == (4, 2)
+    assert np.isclose(abs(np.dot(polygon[:, 0], np.roll(polygon[:, 1], -1)) -
+                          np.dot(polygon[:, 1], np.roll(polygon[:, 0], -1))) / 2, 80.0)
+
+    heads_csv = tmp_path / "heads.csv"
+    heads_csv.write_text(
+        "head_id,x_m,y_m,throw_m,start_angle_deg,arc_width_deg\n"
+        "H1,1,1,8,-90,360\nH2,9,7,8,180,180\n",
+        encoding="utf-8",
+    )
+    heads = load_heads_csv(heads_csv)
+    assert heads.shape == (2, 5)
+    assert heads[0, 3] == 270.0
+    assert heads[0, 4] == 360.0
+
+
+def test_custom_polygon_loader_rejects_zero_area_and_nonfinite_coordinates(tmp_path):
+    from campos.model import load_polygon_csv
+
+    flat = tmp_path / "flat.csv"
+    flat.write_text("x_m,y_m\n0,0\n1,1\n2,2\n", encoding="utf-8")
+    with np.testing.assert_raises_regex(ValueError, "non-zero-area"):
+        load_polygon_csv(flat)
+
+    bad = tmp_path / "bad.csv"
+    bad.write_text("x_m,y_m\n0,0\n1,nan\n0,1\n", encoding="utf-8")
+    with np.testing.assert_raises_regex(ValueError, "finite"):
+        load_polygon_csv(bad)
+
+
+def test_fixed_mode_preserves_imported_real_site_head_coordinates():
+    cfg = dict(sim.CFG, cell=2.0, margin=2.0, sa_iters=5, restarts=1)
+    polygon = np.array([[0, 0], [10, 0], [10, 8], [0, 8]], dtype=float)
+    heads = np.array([
+        [1.0, 1.0, 8.0, 0.0, 360.0],
+        [9.0, 7.0, 8.0, 180.0, 180.0],
+    ])
+    result = sim.run_site("custom-regression", polygon, cfg, fixed_xy=True, baseline_heads=heads)
+    np.testing.assert_array_equal(result["heads0"][:, :2], heads[:, :2])
+    np.testing.assert_array_equal(result["heads1"][:, :2], heads[:, :2])
+    assert result["baseline_label"] == "Baseline (imported layout)"
