@@ -102,6 +102,22 @@ The seed and cell size are recorded in `run_metadata.json`. Smaller cells increa
 
 `--quick` reduces optimization iterations for smoke testing. It is not a substitute for a full run. Generated output is ignored by Git by default; publish results only after reviewing the CSVs, metadata, and figures.
 
+## Import a real site and its existing layout
+
+The prototype can now read a custom polygon and an optional existing sprinkler layout from CSV. This is an input pathway for future field work; it does not by itself validate the model.
+
+```bash
+# Custom site boundary; campOS generates an initial grid layout
+python campos_sim.py --mode movable --quick --polygon-csv path/to/site_polygon.csv --outdir out/custom-site
+
+# Custom site boundary plus the actual existing sprinkler positions
+python campos_sim.py --mode fixed --quick --polygon-csv path/to/site_polygon.csv --heads-csv path/to/baseline_heads.csv --outdir out/custom-retrofit
+```
+
+Coordinates must be in the same **local projected Cartesian coordinate system in metres**. Do not enter longitude/latitude degrees as metres. The polygon CSV requires `x_m,y_m`; the optional head CSV requires `x_m,y_m,throw_m,start_angle_deg,arc_width_deg`. Full field definitions, measurement provenance, and privacy guidance are in [docs/REAL_SITE_DATA.md](docs/REAL_SITE_DATA.md). Blank templates are in [data/templates/](data/templates/).
+
+Imported head layouts are treated as the baseline for comparisons. In fixed mode their x/y coordinates are held constant; in movable mode the optimizer may change positions within the current model's constraints. The current model does not verify buried pipes, valve zones, physical access, code requirements, or hydraulic compatibility, so do not use optimized coordinates as construction instructions.
+
 ## Optimization modes
 
 | Mode | Parameters allowed to change | Purpose |
@@ -191,6 +207,8 @@ src/campos/campos_sim.py      Optimization, CLI, and output orchestration
 src/campos/model.py            Synthetic geometry, sprinkler field, and base metrics
 tests/                        Regression and smoke tests
 docs/MODEL.md                 Metrics, assumptions, and limitations
+docs/REAL_SITE_DATA.md        Real-site CSV formats and data provenance
+docs/VALIDATION_PROTOCOL.md  Field measurement and validation plan
 docs/RELEASE_NOTES_v0.1.0.md  Initial prototype notes
 examples/                     Reproducible example commands
 results/                      Curated results only; no generated files committed by default
@@ -199,10 +217,10 @@ results/                      Curated results only; no generated files committed
 ## Roadmap
 
 - [ ] Publish reviewed CSV outputs, run metadata, and figures for selected synthetic cases.
-- [ ] Add input validation and support for imported lawn polygons.
-- [ ] Replace placeholder sprinkler profiles with manufacturer catch-can/precipitation data.
+- [x] Add CSV input for custom site polygons and existing sprinkler layouts (coordinate units and assumptions documented).
+- [ ] Build a documented pipeline from raw catch-can observations to calibrated radial profiles, with uncertainty and data-quality checks.
 - [ ] Add sensitivity and uncertainty analysis for wind, pressure, and model parameters.
-- [ ] Validate against measured sites using a documented protocol and appropriate permission.
+- [ ] Validate against measured sites using the [field-validation protocol](docs/VALIDATION_PROTOCOL.md) and appropriate permission.
 - [ ] Add benchmark cases and broader regression tests before changing optimization logic.
 
 ## Citation
