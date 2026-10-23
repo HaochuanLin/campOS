@@ -216,6 +216,8 @@ results/                      Curated results only; no generated files committed
 
 ## Roadmap
 
+See the detailed [model development roadmap](docs/MODEL_DEVELOPMENT_ROADMAP.md), [real-site data contract](docs/REAL_SITE_DATA.md), and [field-validation protocol](docs/VALIDATION_PROTOCOL.md) for the planned path from a synthetic prototype to a defensible campus case study.
+
 - [ ] Publish reviewed CSV outputs, run metadata, and figures for selected synthetic cases.
 - [x] Add CSV input for custom site polygons and existing sprinkler layouts (coordinate units and assumptions documented).
 - [ ] Build a documented pipeline from raw catch-can observations to calibrated radial profiles, with uncertainty and data-quality checks.
