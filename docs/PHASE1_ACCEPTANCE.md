@@ -6,7 +6,9 @@ This checklist separates repository-level automation from checks that require th
 
 Open [UI smoke workflow runs](https://github.com/HaochuanLin/campOS/actions/workflows/ui-smoke.yml) and verify the latest run for the current `main` commit is green. The workflow is expected to check:
 
-- dependency installation and the Python regression suite;
+- dependency installation, `pip check`, and all six installed CLI entry points;
+- the Python regression suite, including catch-can observation QC and artifact-manifest integrity tests;
+- a packaged synthetic Quickstart run that generates an HTML page and manifest, then verifies recorded file sizes and SHA-256 digests;
 - Python compilation of the Streamlit entry points;
 - rendering of the app with Streamlit AppTest;
 - a synthetic simulation and presence of the complete-run ZIP download control;
