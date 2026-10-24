@@ -319,3 +319,56 @@ def test_cli_returns_nonzero_when_pre_registered_holdout_gate_fails(tmp_path, mo
     assert report["status"] == "acceptance_thresholds_failed"
     assert report["acceptance_assessment"]["status"] == "fail"
     assert (outdir / "paired_predictions.csv").is_file()
+
+
+
+def test_cli_can_fail_when_zone_labels_conflict_with_polygon(tmp_path, monkeypatch):
+    polygon_path = write_csv(
+        tmp_path / "polygon.csv",
+        ["x_m", "y_m"],
+        [
+            {"x_m": "0", "y_m": "0"},
+            {"x_m": "10", "y_m": "0"},
+            {"x_m": "10", "y_m": "10"},
+            {"x_m": "0", "y_m": "10"},
+        ],
+    )
+    heads_path = write_csv(
+        tmp_path / "heads.csv",
+        HEAD_COLUMNS + ["flow_lpm"],
+        [{
+            "x_m": "5", "y_m": "5", "radius_m": "8",
+            "start_angle_deg": "0", "arc_width_deg": "360", "flow_lpm": "10",
+        }],
+    )
+    observations_path = write_csv(
+        tmp_path / "observations.csv",
+        OBS_COLUMNS,
+        [
+            observation("can-cal", "run-cal", "calibration", measured_depth_mm="1"),
+            observation("can-h1", "run-h1", "holdout", measured_depth_mm="1", zone="outside"),
+            observation("can-h2", "run-h2", "holdout", measured_depth_mm="1"),
+        ],
+    )
+    thresholds_path = tmp_path / "thresholds.json"
+    thresholds_path.write_text(json.dumps({"max_holdout_mae_mm": 1000.0}), encoding="utf-8")
+    outdir = tmp_path / "evaluation"
+    monkeypatch.setattr(sys, "argv", [
+        "campos-field-evaluate",
+        "--polygon-csv", str(polygon_path),
+        "--heads-csv", str(heads_path),
+        "--observations", str(observations_path),
+        "--acceptance-thresholds-json", str(thresholds_path),
+        "--fail-on-zone-geometry-mismatch",
+        "--outdir", str(outdir),
+    ])
+
+    exit_code = field_validation_main()
+
+    assert exit_code == 2
+    report = json.loads((outdir / "field_evaluation_metrics.json").read_text(encoding="utf-8"))
+    assert report["status"] == "zone_geometry_gate_failed"
+    assert report["acceptance_assessment"]["status"] == "pass"
+    assert report["zone_geometry_gate"] == {
+        "enabled": True, "mismatch_count": 1, "passed": False,
+    }
