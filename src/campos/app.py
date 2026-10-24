@@ -14,9 +14,47 @@ import tempfile
 import streamlit as st
 
 
-st.set_page_config(page_title="campOS | Irrigation layout explorer", layout="wide")
-st.title("campOS · Irrigation layout explorer")
-st.caption("A local decision-support prototype. The starter scenarios are synthetic, not field-validated.")
+st.set_page_config(page_title="campOS — Irrigation intelligence", page_icon="💧", layout="wide", initial_sidebar_state="expanded")
+
+# Product styling: keep all controls native Streamlit so the app remains accessible and responsive.
+st.markdown("""
+<style>
+:root { --campos-ink:#102b2b; --campos-muted:#607575; --campos-green:#167d68; --campos-lime:#c8f169; }
+.stApp { background: #f4f7f4; color: var(--campos-ink); }
+[data-testid="stHeader"] { background: rgba(244,247,244,.92); }
+.block-container { max-width: 1440px; padding-top: 1.6rem; padding-bottom: 3rem; }
+section[data-testid="stSidebar"] { background: #102b2b; }
+section[data-testid="stSidebar"] * { color: #f4faf6; }
+section[data-testid="stSidebar"] [data-baseweb="select"] div,
+section[data-testid="stSidebar"] input { color: #102b2b; }
+section[data-testid="stSidebar"] [data-testid="stFileUploaderDropzone"] * { color: #102b2b; }
+.hero { background: linear-gradient(118deg,#102b2b 0%,#155747 68%,#167d68 100%); padding: 2.2rem 2.4rem; border-radius: 24px; color:#f4faf6; margin: .2rem 0 1.2rem; box-shadow: 0 14px 36px rgba(16,43,43,.12); }
+.hero-kicker { text-transform:uppercase; letter-spacing:.16em; font-size:.72rem; font-weight:800; color:#c8f169; margin-bottom:.7rem; }
+.hero h1 { color:#fff; font-size:clamp(2rem,4vw,3.35rem); line-height:1.03; letter-spacing:-.045em; margin:0 0 .9rem; font-weight:800; }
+.hero p { color:#d7e9e0; max-width:760px; font-size:1.02rem; line-height:1.65; margin:0; }
+.pill-row { display:flex; flex-wrap:wrap; gap:.55rem; margin-top:1.35rem; }
+.pill { border:1px solid rgba(255,255,255,.25); background:rgba(255,255,255,.08); padding:.38rem .7rem; border-radius:999px; font-size:.78rem; color:#fff; }
+.section-label { color:#167d68; font-weight:800; letter-spacing:.12em; text-transform:uppercase; font-size:.72rem; margin:1.5rem 0 .25rem; }
+.info-card { border:1px solid #dce7df; border-radius:16px; padding:1rem 1.1rem; background:#fff; min-height:112px; }
+.info-card h3 { font-size:1rem; margin:0 0 .35rem; color:#102b2b; }
+.info-card p { margin:0; font-size:.88rem; line-height:1.5; color:#607575; }
+div.stButton > button[kind="primary"] { background:#c8f169; color:#102b2b; border:0; border-radius:12px; font-weight:800; min-height:3rem; }
+div.stButton > button[kind="primary"]:hover { background:#b5e74b; color:#102b2b; border:0; }
+div[data-testid="stMetric"] { background:#fff; border:1px solid #dce7df; padding:1rem 1.1rem; border-radius:14px; }
+div[data-testid="stDataFrame"] { border:1px solid #dce7df; border-radius:12px; overflow:hidden; }
+hr { border-color:#dce7df; }
+@media (max-width: 700px) { .hero { padding:1.4rem; border-radius:18px; } .block-container { padding-left:1rem; padding-right:1rem; } }
+</style>
+<div class="hero">
+  <div class="hero-kicker">Water-aware landscape systems</div>
+  <h1>Make every sprinkler<br>work smarter.</h1>
+  <p>Explore sprinkler layouts, compare coverage trade-offs, and evaluate your own surveyed site. Start with a guided demo, then bring real measurements when you have them.</p>
+  <div class="pill-row"><span class="pill">Layout optimization</span><span class="pill">Road & sidewalk protection</span><span class="pill">Field-data evaluation</span><span class="pill">Transparent assumptions</span></div>
+</div>
+""", unsafe_allow_html=True)
+
+st.markdown('<div class="section-label">01 / Configure your run</div>', unsafe_allow_html=True)
+st.caption("A decision-support prototype. Built-in scenarios are synthetic; field accuracy and water savings are not yet established.")
 
 with st.sidebar:
     st.header("Run setup")
@@ -128,10 +166,13 @@ with st.sidebar:
     ready = bool(polygon_upload and heads_upload) if custom_site else bool(sites)
     run = st.button("Run simulation", type="primary", disabled=not ready, use_container_width=True)
 
-st.warning(
-    "This demo needs no real data, but it does not fabricate field measurements. "
-    "Its metrics cannot prove actual road wetting, field accuracy, or water savings."
-)
+st.markdown("""
+<div class="info-card">
+  <h3>Start without field data</h3>
+  <p>The demo generates a reproducible synthetic comparison so you can explore the workflow. When you have surveyed geometry or catch-can readings, switch to custom-site mode. Simulation results are not measured water savings or installation instructions.</p>
+</div>
+""", unsafe_allow_html=True)
+st.markdown('<div class="section-label">02 / Results & evidence</div>', unsafe_allow_html=True)
 
 if run:
     # Avoid showing a previous run as if it were the result of this attempt.
@@ -474,4 +515,9 @@ if result:
         st.code(" ".join(result["command"]))
         st.text(result["stdout"])
 else:
-    st.info("Choose a synthetic site and click **Run simulation**. No field observations or AI training data are required.")
+    st.markdown("""
+    <div class="info-card">
+      <h3>Your workspace is ready</h3>
+      <p>Choose a site in the left panel and run the simulation. You’ll get model metrics, generated plots, and downloadable artifacts. No field observations or AI training data are required for the synthetic demo.</p>
+    </div>
+    """, unsafe_allow_html=True)
