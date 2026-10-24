@@ -18,10 +18,12 @@ jobs:
           cache-dependency-path: pyproject.toml
       - name: Install package
         run: python -m pip install -e .
+      - name: Verify installed verifier entry point
+        run: campos-verify-artifacts --help
       - name: Generate synthetic quickstart artifacts
         run: campos-start --outdir out/artifact-integrity-smoke
       - name: Verify generated artifact hashes
-        run: python scripts/verify_run_artifacts.py --manifest out/artifact-integrity-smoke/quickstart_manifest.json
+        run: campos-verify-artifacts --manifest out/artifact-integrity-smoke/quickstart_manifest.json
       - name: Verify manifest has environment and checksum metadata
         run: |
           python - <<'PY'
