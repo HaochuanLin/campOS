@@ -146,7 +146,9 @@ def main():
                         "selected_tradeoff": "YES", "result_AR": selected["AR_legacy"],
                         "result_overspray_pct_of_own_water": selected["overspray_pct_of_own_water"],
                         "result_CU": selected["CU"], "result_dry_area_pct": selected[pareto_dry_column],
-                        "pareto_f1_pct_of_baseline_total_water": selected["overspray_pct_of_baseline_total_water_f1"],
+                        "pareto_f1_pct_of_baseline_total_water": selected[
+                            next(key for key in selected if key.endswith("_f1"))
+                        ],
                         "pareto_f2_pct_mean_relative_target_shortfall": selected["interior_deficit_pct_f2"],
                         "pareto_total_water_relative": selected["total_water_relative_to_baseline"],
                     })
