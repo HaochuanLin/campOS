@@ -236,7 +236,7 @@ def validate_acceptance_thresholds(
             raise ValueError(f"{key} must be a finite non-negative number, not a boolean")
         try:
             value = float(raw_value)
-        except (TypeError, ValueError) as exc:
+        except (TypeError, ValueError, OverflowError) as exc:
             raise ValueError(f"{key} must be a finite non-negative number") from exc
         if not math.isfinite(value) or value < 0:
             raise ValueError(f"{key} must be a finite non-negative number")
@@ -265,7 +265,7 @@ def assess_holdout(metrics: dict[str, object], thresholds: dict[str, float]) -> 
             raise ValueError(f"holdout metric {metric_key} is unavailable")
         try:
             observed = float(raw)
-        except (TypeError, ValueError) as exc:
+        except (TypeError, ValueError, OverflowError) as exc:
             raise ValueError(f"holdout metric {metric_key} is not numeric") from exc
         if not math.isfinite(observed):
             raise ValueError(f"holdout metric {metric_key} must be finite")
