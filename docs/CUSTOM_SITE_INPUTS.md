@@ -77,3 +77,22 @@ python scripts/check_protected_surface_resolution.py \
 ```
 
 The optional `--max-relative-error` limit applies to the finest requested grid; the command exits non-zero if its rasterized protected area exceeds that relative error. If `--heads-csv` is supplied, the script also applies the **same fixed sprinkler layout** at every grid size and reports integrated modelled water on the protected surface as a share of total modelled water. This isolates grid effects from optimizer/layout changes. You can optionally set `--max-water-share-spread 1.0` to require the max-minus-min share across all tested grids to stay within 1 percentage point; this option requires `--heads-csv` and the tolerance must be chosen for the decision context. Neither threshold simulates drift or proves real road wetting; compare resolutions and validate with field measurements.
+
+
+### Check optimizer solution sensitivity across grid resolutions
+
+To test whether independently optimized solutions change with grid size, run:
+
+```bash
+python scripts/check_optimizer_resolution.py \
+  --polygon-csv data/site_polygon.csv \
+  --heads-csv data/sprinkler_layout.csv \
+  --protected-surface-csv data/sidewalk_polygon.csv \
+  --cell-sizes 2,1,0.5 \
+  --mode fixed \
+  --max-f1-spread 0.01 \
+  --max-f2-spread 0.02 \
+  --out out/optimizer-resolution.csv
+```
+
+Unlike the fixed-layout diagnostic above, this tool reruns the Pareto search at each resolution using the same initial layout, seed, and search settings. It reports whether a guardrail-feasible point exists at each grid, selected f1/f2/CU/dry-area metrics, and selected head-parameter differences from the finest-grid solution. `--mode fixed` keeps coordinates unchanged; `--mode movable` permits relocation. Optional thresholds are user-chosen numerical tolerances, not universal engineering standards. A grid with no feasible selected point is a failure for thresholded checks, not evidence that the grid is safe. This remains a simulation sensitivity check, not field validation or proof of water savings.
