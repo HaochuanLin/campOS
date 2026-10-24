@@ -22,7 +22,7 @@ Check **Use surveyed site CSVs** and upload two CSV files:
 - Lawn polygon: `x_m,y_m` columns, at least three distinct vertices, coordinates in metres. An optional repeated closing vertex is accepted.
 - Sprinkler layout: `x_m,y_m,radius_m,start_angle_deg,arc_width_deg` columns. Head coordinates must lie inside the polygon; radius must be within the optimizer's configured bounds; arc width must be in (0, 360].
 
-The UI offers downloads of the repository's blank polygon and sprinkler-layout templates. Replace template values with surveyed measurements; do not use the template rows as real site data.
+The UI offers downloads of example polygon, sprinkler-layout, and protected-surface CSVs. Their coordinates are illustrative; replace them with surveyed measurements and do not use example rows as real site data.
 
 Choose a single mode in surveyed-site mode. The app runs the custom geometry and layout using the selected seed and grid resolution. In Pareto modes, you may also upload a separate road/sidewalk polygon. It must not overlap the lawn interior; sharing a boundary is allowed. The protected-surface objective is only active in Pareto modes.
 
