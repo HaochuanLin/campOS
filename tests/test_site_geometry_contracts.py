@@ -52,3 +52,10 @@ def test_adjacent_lawn_and_sidewalk_can_share_a_boundary():
 def test_protected_surface_rejects_positive_area_overlap(protected):
     lawn = [(0, 0), (4, 0), (4, 3), (0, 3)]
     assert polygons_overlap(lawn, protected) is True
+
+
+def test_checked_in_example_polygons_are_valid_and_share_only_a_boundary():
+    templates = ROOT / "data" / "templates"
+    lawn = load_polygon_csv(templates / "site_polygon_template.csv")
+    protected = load_polygon_csv(templates / "protected_surface_template.csv")
+    assert polygons_overlap(lawn, protected) is False
