@@ -171,6 +171,6 @@ python scripts/ai_residual_correction.py \
   --outdir out/ai-residual-correction
 ~~~
 
-The tool requires at least eight calibration observations, three holdout observations, and five distinct calibration coordinates. It trains on measured_mm minus predicted_mm from calibration rows only; holdout observations are never used for model fitting or kernel selection. It reports uncorrected and corrected holdout errors and a model-based uncertainty estimate.
+The tool requires at least eight calibration observations, three holdout observations at unique coordinates, and five distinct calibration coordinates. Calibration and holdout coordinates must be disjoint to block direct spatial leakage. It trains on measured_mm minus predicted_mm from calibration rows only; holdout observations are never used for model fitting or kernel selection. It reports uncorrected and corrected holdout errors, empirical coverage and average width of nominal 95% model-based intervals. Coverage estimates from small holdout sets are unstable and do not guarantee future interval coverage.
 
 Treat this as a competing model, not an automatic upgrade. Pre-register the evaluation criteria, inspect residuals and uncertainty, and evaluate on a separate run/day/site before deciding whether the correction is useful. Do not repeatedly tune the model against one holdout set. This spatial correction cannot infer unmeasured wind, pressure, nozzle wear, or hydraulics, and it does not establish water savings.
