@@ -160,13 +160,26 @@ with st.sidebar:
             ("Download radial-profile template", "catch_can_profile_template.csv"),
             ("Download pressure-performance template", "sprinkler_performance_template.csv"),
         )
-        template_bundle = io.BytesIO()
-        with zipfile.ZipFile(template_bundle, mode="w", compression=zipfile.ZIP_DEFLATED) as bundle_zip:
-            for _, filename in template_files:
-                template_path = template_dir / filename
-                if template_path.is_file():
+        available_templates = [
+            (label, filename, template_dir / filename)
+            for label, filename in template_files
+            if (template_dir / filename).is_file()
+        ]
+        missing_templates = [
+            filename for _, filename in template_files
+            if not (template_dir / filename).is_file()
+        ]
+        if missing_templates:
+            st.warning(
+                "Some starter templates are missing from this deployment: "
+                + ", ".join(missing_templates)
+                + ". Individual downloads and the template bundle may be incomplete."
+            )
+        if available_templates:
+            template_bundle = io.BytesIO()
+            with zipfile.ZipFile(template_bundle, mode="w", compression=zipfile.ZIP_DEFLATED) as bundle_zip:
+                for _, filename, template_path in available_templates:
                     bundle_zip.write(template_path, arcname=filename)
-        if template_bundle.tell() > 0:
             st.download_button(
                 "Download all starter templates (.zip)",
                 data=template_bundle.getvalue(),
@@ -176,13 +189,11 @@ with st.sidebar:
                 use_container_width=True,
                 help="A single ZIP with the example CSV files for site geometry, sprinklers, protected surfaces, and observations.",
             )
-        for label, filename in template_files:
-            template_path = template_dir / filename
-            if template_path.is_file():
-                st.download_button(
-                    label, data=template_path.read_bytes(), file_name=filename,
-                    mime="text/csv", key=f"template-{filename}", use_container_width=True,
-                )
+        for label, filename, template_path in available_templates:
+            st.download_button(
+                label, data=template_path.read_bytes(), file_name=filename,
+                mime="text/csv", key=f"template-{filename}", use_container_width=True,
+            )
     else:
         sites = st.multiselect("Synthetic sites", ["A", "B", "C", "D", "E"], default=["A"])
     seed = st.number_input("Random seed", min_value=0, max_value=2147483647, value=7, step=1)
