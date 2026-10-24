@@ -110,11 +110,20 @@ def main(argv: list[str] | None = None) -> int:
                         help="initial spatial correlation length in metres; tuned on calibration data only")
     parser.add_argument("--noise-level-mm", type=float, default=0.25,
                         help="initial observation-noise variance in mm^2")
+    parser.add_argument(
+        "--max-holdout-rmse-increase-mm", type=float, default=None,
+        help="optional predeclared acceptance gate; fail if AI holdout RMSE exceeds baseline by more than this amount",
+    )
     args = parser.parse_args(argv)
     if not math.isfinite(args.length_scale_m) or args.length_scale_m <= 0:
         parser.error("--length-scale-m must be finite and positive")
     if not math.isfinite(args.noise_level_mm) or args.noise_level_mm <= 0:
         parser.error("--noise-level-mm must be finite and positive")
+    if args.max_holdout_rmse_increase_mm is not None and (
+        not math.isfinite(args.max_holdout_rmse_increase_mm)
+        or args.max_holdout_rmse_increase_mm < 0
+    ):
+        parser.error("--max-holdout-rmse-increase-mm must be finite and non-negative")
 
     try:
         rows = load_predictions(args.predictions_csv)
@@ -181,6 +190,11 @@ def main(argv: list[str] | None = None) -> int:
         - float(row["ai_corrected_95pct_lower_mm"])
         for row in holdout
     ]))
+    rmse_change = holdout_corrected["rmse_mm"] - holdout_baseline["rmse_mm"]
+    gate_passed = (
+        None if args.max_holdout_rmse_increase_mm is None
+        else rmse_change <= args.max_holdout_rmse_increase_mm
+    )
     summary = {
         "schema_version": 1,
         "method": "GaussianProcessRegressor with spatial RBF kernel and white-noise term",
@@ -194,9 +208,9 @@ def main(argv: list[str] | None = None) -> int:
         "holdout_ai_corrected_metrics": holdout_corrected,
         "holdout_ai_95pct_interval_empirical_coverage": holdout_interval_coverage,
         "holdout_ai_mean_95pct_interval_width_mm": holdout_mean_interval_width,
-        "holdout_rmse_change_mm_corrected_minus_baseline": (
-            holdout_corrected["rmse_mm"] - holdout_baseline["rmse_mm"]
-        ),
+        "holdout_rmse_change_mm_corrected_minus_baseline": rmse_change,
+        "predeclared_rmse_gate_threshold_mm": args.max_holdout_rmse_increase_mm,
+        "predeclared_rmse_gate_passed": gate_passed,
         "input_predictions_csv_sha256": sha256(args.predictions_csv),
         "limitations": [
             "This is a spatial residual-correction experiment, not a learned sprinkler-physics model.",
@@ -218,9 +232,10 @@ def main(argv: list[str] | None = None) -> int:
         "holdout_ai_95pct_interval_empirical_coverage": holdout_interval_coverage,
         "holdout_ai_mean_95pct_interval_width_mm": holdout_mean_interval_width,
         "holdout_rmse_change_mm_corrected_minus_baseline": summary["holdout_rmse_change_mm_corrected_minus_baseline"],
+        "predeclared_rmse_gate_passed": gate_passed,
         "note": "AI correction is experimental; compare on independent data and do not tune against this holdout set.",
     }, indent=2))
-    return 0
+    return 2 if gate_passed is False else 0
 
 
 if __name__ == "__main__":
