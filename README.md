@@ -28,7 +28,7 @@ It is not an autonomous irrigation controller, a certified engineering design to
 - **Can support with appropriate user data:** geometry-specific comparisons and model calibration workflows, provided the supplied data are documented and their limits are respected.
 - **Cannot yet support:** validated installation recommendations, guaranteed water savings, payback estimates, or claims of field accuracy. The built-in lawn shapes are synthetic; wind, drift, evaporation, pressure losses, soil response, and other site effects are not fully modelled.
 
-See [the project charter](docs/PROJECT_CHARTER.md) for the intended scope, evidence standards, and development priorities.
+See [the project charter](docs/PROJECT_CHARTER.md) for the intended scope, evidence standards, and development priorities. For a practical measurement plan, required field records, and the distinction between calibration and independent evaluation, see the [real-site validation protocol](docs/REAL_SITE_VALIDATION_PROTOCOL.md).
 
 ## Quick start
 
@@ -37,8 +37,9 @@ Requires Python 3.10 or newer.
 ```bash
 git clone https://github.com/HaochuanLin/campOS.git
 cd campOS
-python -m pip install -r requirements.txt
+python -m pip install -e ".[dev]"
 python campos_sim.py --help
+python -m pytest -q
 ```
 
 Run a short smoke test on one synthetic rectangular site:
@@ -61,7 +62,7 @@ python campos_sim.py --mode fixed --quick \
 python scripts/build_design_report.py --input-dir out/custom-site
 ```
 
-The checked-in templates contain **illustrative example coordinates only**, not a surveyed site or installation recommendation. Replace them with surveyed geometry and actual sprinkler coordinates. The run metadata records hashes and counts for the input files. If you provide only `--polygon-csv`, campOS generates its own baseline layout. Custom geometry runs as one site and cannot be combined with `--sites`.
+The checked-in templates contain **illustrative example coordinates only**, not a surveyed site or installation recommendation. For future catch-can measurements, start with the empty [field observation CSV template](data/templates/field_catch_can_template.csv) and follow the [validation protocol](docs/REAL_SITE_VALIDATION_PROTOCOL.md). Replace them with surveyed geometry and actual sprinkler coordinates. The run metadata records hashes and counts for the input files. If you provide only `--polygon-csv`, campOS generates its own baseline layout. Custom geometry runs as one site and cannot be combined with `--sites`.
 
 
 Generate a shareable, self-contained HTML report and a Markdown copy from any completed run:
