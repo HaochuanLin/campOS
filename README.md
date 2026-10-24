@@ -374,3 +374,22 @@ The evaluator reports bias, MAE, RMSE and related descriptive metrics; it does
 not generate predictions, tune parameters, verify that holdout data are truly
 independent, or declare the model validated. Define acceptance criteria before
 evaluating holdout data. See [the configuration and comparison guide](docs/CONFIGURATION_AND_COMPARISONS.md).
+
+
+### Optimizer sensitivity across grid resolutions
+
+For a surveyed custom lawn, sprinkler layout, and protected road/sidewalk polygon, rerun the Pareto optimizer at multiple grid sizes and compare the selected layouts:
+
+```bash
+python scripts/check_optimizer_resolution.py \
+  --polygon-csv data/site_polygon.csv \
+  --heads-csv data/sprinkler_layout.csv \
+  --protected-surface-csv data/sidewalk_polygon.csv \
+  --cell-sizes 2,1,0.5 \
+  --mode fixed \
+  --max-f1-spread 0.01 \
+  --max-f2-spread 0.02 \
+  --out out/optimizer-resolution.csv
+```
+
+This checks optimizer-output sensitivity separately from fixed-layout rasterization error. Thresholds are user-selected numerical tolerances, not universal engineering standards. It does not prove real-world performance or water savings; see [custom-site validation and resolution guidance](docs/CUSTOM_SITE_INPUTS.md).
