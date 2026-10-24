@@ -32,6 +32,9 @@ def build_report(metrics_path: Path) -> tuple[str, str]:
     zone_metrics = report.get("metrics_by_zone", {})
     limitations = report.get("limitations", [])
     mismatches = report.get("zone_geometry_mismatch_can_ids", [])
+    zone_gate = report.get("zone_geometry_gate") or {}
+    zone_gate_passed = zone_gate.get("passed")
+    zone_gate_passed_text = "not evaluated" if zone_gate_passed is None else str(zone_gate_passed)
 
     md = [
         "# campOS field-evaluation report",
@@ -83,6 +86,8 @@ def build_report(metrics_path: Path) -> tuple[str, str]:
         "## Geometry / zone-label checks",
         "",
         f"- Zone/polygon mismatches: {report.get('zone_geometry_mismatch_count', 0)}",
+        f"- Strict zone-geometry gate enabled: {zone_gate.get('enabled', False)}",
+        f"- Strict zone-geometry gate passed: {zone_gate_passed_text}",
         f"- Affected catch-can IDs: {', '.join(md_escape(item) for item in mismatches) if mismatches else 'none'}",
         "",
         "## Limitations",
@@ -197,7 +202,7 @@ table{{border-collapse:collapse;width:100%;margin:1rem 0;font-variant-numeric:ta
 <h2>Input provenance</h2>
 <ul><li>Sprinkler heads: {esc(report.get('n_sprinkler_heads', 'n/a'))}</li><li>Valid observations: {esc(report.get('n_valid_observations', 'n/a'))}</li><li>Per-head flow rates (L/min): <code>{esc(json.dumps(report.get('flow_lpm_per_head', [])))}</code></li><li>Input hashes:</li>{hashes_html}{software_html}</ul>
 <h2>Geometry / zone-label checks</h2>
-<p>Zone/polygon mismatches: {esc(report.get('zone_geometry_mismatch_count', 0))}; affected catch-can IDs: {esc(', '.join(mismatches) if mismatches else 'none')}.</p>
+<p>Zone/polygon mismatches: {esc(report.get('zone_geometry_mismatch_count', 0))}; strict geometry gate enabled: {esc(zone_gate.get('enabled', False))}; strict geometry gate passed: {esc(zone_gate_passed_text)}; affected catch-can IDs: {esc(', '.join(mismatches) if mismatches else 'none')}.</p>
 {acceptance_html}
 <h2>Limitations</h2><ul>{limitations_html}</ul>
 <p>Do not infer a pass/fail conclusion unless a site-specific acceptance threshold was documented before inspecting holdout results. A split label alone cannot prove independence.</p>
