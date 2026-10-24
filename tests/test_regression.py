@@ -986,6 +986,19 @@ def test_custom_site_cli_records_input_provenance_and_runs_fixed_mode(tmp_path):
     assert int(row["sprinkler_count"]) == 2
 
 
+def test_json_config_rejects_duplicate_keys_without_traceback(tmp_path):
+    config_path = tmp_path / "duplicate-config.json"
+    config_path.write_text('{"seed": 7, "seed": 19}', encoding="utf-8")
+    completed = subprocess.run(
+        [sys.executable, str(ROOT / "campos_sim.py"), "--config", str(config_path)],
+        cwd=ROOT, text=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
+        check=False,
+    )
+    assert completed.returncode != 0
+    assert "duplicate JSON key in --config" in completed.stdout
+    assert "Traceback" not in completed.stdout
+
+
 def test_json_config_supports_cli_override_and_records_provenance(tmp_path):
     config_path = tmp_path / "run.json"
     config_path.write_text(json.dumps({
