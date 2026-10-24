@@ -184,6 +184,7 @@ def test_acceptance_thresholds_require_explicit_finite_nonnegative_limits():
         {"max_holdout_mae_mm": -1},
         {"max_holdout_rmse_mm": float("nan")},
         {"max_holdout_mae_mm": True},
+        {"max_holdout_mae_mm": 10 ** 1000},
         {"universal_pass_score": 0.1},
     ):
         with pytest.raises(ValueError):
