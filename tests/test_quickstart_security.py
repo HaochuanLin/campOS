@@ -1,4 +1,6 @@
 import hashlib
+import subprocess
+import sys
 import importlib.util
 from pathlib import Path
 
@@ -110,3 +112,24 @@ def test_artifact_checksums_include_only_regular_generated_files(tmp_path):
     assert list(checksums) == ["results.csv"]
     assert checksums["results.csv"]["size_bytes"] == len(b"site,score\nA,1\n")
     assert checksums["results.csv"]["sha256"] == hashlib.sha256(b"site,score\nA,1\n").hexdigest()
+
+
+
+def test_failed_quickstart_cannot_leave_old_success_markers(tmp_path, monkeypatch):
+    outdir = tmp_path / "failed-run"
+    outdir.mkdir()
+    (outdir / "index.html").write_text("old successful report", encoding="utf-8")
+    (outdir / "quickstart_manifest.json").write_text('{"status":"old"}', encoding="utf-8")
+    monkeypatch.setattr(sys, "argv", ["campos-start", "--outdir", str(outdir)])
+    monkeypatch.setattr(quickstart.shutil, "which", lambda _: "/fake/campos-sim")
+
+    def fail_simulation(*args, **kwargs):
+        raise subprocess.CalledProcessError(1, args[0])
+
+    monkeypatch.setattr(quickstart.subprocess, "run", fail_simulation)
+
+    exit_code = quickstart.main()
+
+    assert exit_code == 2
+    assert not (outdir / "index.html").exists()
+    assert not (outdir / "quickstart_manifest.json").exists()
