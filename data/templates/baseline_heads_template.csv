@@ -1,1 +1,3 @@
-head_id,x_m,y_m,throw_m,start_angle_deg,arc_width_deg
+head_id,x_m,y_m,radius_m,start_angle_deg,arc_width_deg
+head-1,2,2,4,0,180
+head-2,8,8,4,180,180

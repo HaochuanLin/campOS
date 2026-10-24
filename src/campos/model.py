@@ -27,6 +27,10 @@ def site_wedge():
 def site_strip():
     return np.array([[0, 0], [60, 0], [60, 7], [35, 9.5], [0, 6]], float)
 
+# Guard against accidental OOM when users request an excessively fine grid.
+# Each grid cell participates in several full-size arrays during optimization.
+MAX_GRID_CELLS = 2_000_000
+
 SITES = {
     "A Rectangle": site_rect,
     "B L-shape": site_lshape,
@@ -63,8 +67,17 @@ def load_radial_profile_csv(path):
         raise ValueError("radius_fraction must start at 0 and end at 1")
     if np.any(np.diff(radius) <= 0) or np.any(rate <= 0):
         raise ValueError("radii must increase strictly and relative rates must be positive")
-    # Axisymmetric area-weighted mean: integral(q*r dr) / integral(r dr).
-    mean_rate = 2.0 * np.sum(0.5 * (rate[1:] * radius[1:] + rate[:-1] * radius[:-1]) * np.diff(radius))
+    # Exact axisymmetric area-weighted integral for piecewise-linear q(r).
+    # Trapezoidal integration of q*r is only approximate because q*r is
+    # quadratic on each interval; normalize against the exact integral instead.
+    r0, r1 = radius[:-1], radius[1:]
+    q0, q1 = rate[:-1], rate[1:]
+    slope = (q1 - q0) / (r1 - r0)
+    interval_integrals = (
+        (q0 - slope * r0) * (r1**2 - r0**2) / 2.0
+        + slope * (r1**3 - r0**3) / 3.0
+    )
+    mean_rate = 2.0 * np.sum(interval_integrals)
     if not np.isfinite(mean_rate) or mean_rate <= 0:
         raise ValueError("profile has an invalid area-weighted mean")
     profile[:, 1] /= mean_rate
@@ -181,77 +194,6 @@ def head_field(X, Y, h, radial_profile=None, flow_lpm=None, radial_slope=0.0):
     return np.where(inr, rate, 0.0)
 
 
-
-def load_polygon_csv(path):
-    """Load a site boundary from local metric coordinates in a CSV.
-
-    Required columns: x_m,y_m. Coordinates must already be in a local,
-    projected Cartesian coordinate system measured in metres; longitude and
-    latitude degrees are not accepted as a metric coordinate system.
-    Vertices are ordered around one simple polygon. A repeated final copy of
-    the first vertex is accepted and removed.
-    """
-    with open(path, newline="", encoding="utf-8-sig") as fh:
-        reader = csv.DictReader(fh)
-        required = {"x_m", "y_m"}
-        if reader.fieldnames is None or not required.issubset(reader.fieldnames):
-            raise ValueError("polygon CSV must contain x_m,y_m columns")
-        rows = list(reader)
-    if len(rows) < 3:
-        raise ValueError("polygon CSV must contain at least three vertices")
-    try:
-        polygon = np.array([[float(row["x_m"]), float(row["y_m"])] for row in rows], dtype=float)
-    except (TypeError, ValueError) as exc:
-        raise ValueError("polygon CSV coordinates must be numeric") from exc
-    if not np.all(np.isfinite(polygon)):
-        raise ValueError("polygon CSV coordinates must be finite")
-    if len(polygon) > 3 and np.allclose(polygon[0], polygon[-1]):
-        polygon = polygon[:-1]
-    if len(np.unique(polygon, axis=0)) < 3:
-        raise ValueError("polygon CSV must contain at least three unique vertices")
-    x, y = polygon[:, 0], polygon[:, 1]
-    area = abs(float(np.dot(x, np.roll(y, -1)) - np.dot(y, np.roll(x, -1)))) / 2.0
-    if not np.isfinite(area) or area <= 1e-9:
-        raise ValueError("polygon CSV must describe a non-zero-area polygon")
-    return polygon
-
-
-def load_heads_csv(path):
-    """Load a baseline sprinkler layout.
-
-    Required columns: x_m,y_m,throw_m,start_angle_deg,arc_width_deg. Angles
-    are degrees counter-clockwise from +x in the same local metric coordinate
-    system as the polygon. This loader validates numeric ranges, not whether
-    the supplied heads are physically installable or hydraulically compatible.
-    """
-    with open(path, newline="", encoding="utf-8-sig") as fh:
-        reader = csv.DictReader(fh)
-        required = {"x_m", "y_m", "throw_m", "start_angle_deg", "arc_width_deg"}
-        if reader.fieldnames is None or not required.issubset(reader.fieldnames):
-            raise ValueError(
-                "heads CSV must contain x_m,y_m,throw_m,start_angle_deg,arc_width_deg columns"
-            )
-        rows = list(reader)
-    if not rows:
-        raise ValueError("heads CSV must contain at least one sprinkler")
-    try:
-        heads = np.array(
-            [[float(row["x_m"]), float(row["y_m"]), float(row["throw_m"]),
-              float(row["start_angle_deg"]), float(row["arc_width_deg"])] for row in rows],
-            dtype=float,
-        )
-    except (TypeError, ValueError) as exc:
-        raise ValueError("heads CSV values must be numeric") from exc
-    if not np.all(np.isfinite(heads)):
-        raise ValueError("heads CSV values must be finite")
-    if np.any(heads[:, 2] <= 0):
-        raise ValueError("throw_m must be positive")
-    if np.any(heads[:, 4] <= 0) or np.any(heads[:, 4] > 360):
-        raise ValueError("arc_width_deg must be in (0, 360]")
-    heads[:, 3] %= 360.0
-    return heads
-
-
 class Site:
     def __init__(self, poly, cfg):
         self.poly = poly
@@ -259,16 +201,59 @@ class Site:
         self.radial_slope = cfg.get("radial_slope", 0.0)
         self.flow_lpm = cfg.get("flow_lpm")
         self.path = Path(poly)
-        c = cfg["cell"]
-        m = cfg["margin"]
-        x0, y0 = poly.min(axis=0) - m
-        x1, y1 = poly.max(axis=0) + m
+        self.protected_poly = cfg.get("protected_polygon")
+        self.protected_path = Path(self.protected_poly) if self.protected_poly is not None else None
+        c = float(cfg["cell"])
+        m = float(cfg["margin"])
+        if not np.isfinite(c) or c <= 0:
+            raise ValueError("grid cell size must be finite and greater than zero")
+        if not np.isfinite(m) or m < 0:
+            raise ValueError("grid margin must be finite and non-negative")
+        bounds = [np.asarray(poly, dtype=float)]
+        if self.protected_poly is not None:
+            bounds.append(np.asarray(self.protected_poly, dtype=float))
+        all_points = np.vstack(bounds)
+        x0, y0 = all_points.min(axis=0) - m
+        x1, y1 = all_points.max(axis=0) + m
+        # Tiny positive cells or extreme coordinates can overflow during
+        # the estimate itself; treat that as invalid input without emitting
+        # a noisy RuntimeWarning before the actionable ValueError below.
+        with np.errstate(over="ignore", divide="ignore", invalid="ignore"):
+            width_m, height_m = x1 - x0, y1 - y0
+            cells_x, cells_y = width_m / c, height_m / c
+        if (
+            not np.all(np.isfinite([x0, y0, x1, y1, cells_x, cells_y]))
+            or width_m <= 0 or height_m <= 0
+        ):
+            raise ValueError(
+                "grid dimensions are outside the numeric range; increase cell size "
+                "or reduce the simulated geometry extent"
+            )
+        nx = max(1, int(np.ceil(cells_x)))
+        ny = max(1, int(np.ceil(cells_y)))
+        estimated_cells = nx * ny
+        if estimated_cells > MAX_GRID_CELLS:
+            raise ValueError(
+                f"requested grid is about {nx:,} x {ny:,} = {estimated_cells:,} cells, "
+                f"exceeding the safety limit of {MAX_GRID_CELLS:,}; increase cell size "
+                "or reduce the simulated geometry extent"
+            )
         xs = np.arange(x0, x1, c) + c / 2
         ys = np.arange(y0, y1, c) + c / 2
         self.X, self.Y = np.meshgrid(xs, ys)
         pts = np.c_[self.X.ravel(), self.Y.ravel()]
         self.mask = self.path.contains_points(pts).reshape(self.X.shape)
+        self.protected_mask = (
+            self.protected_path.contains_points(pts).reshape(self.X.shape) & ~self.mask
+            if self.protected_path is not None else np.zeros_like(self.mask, dtype=bool)
+        )
+        if self.protected_path is not None and not np.any(self.protected_mask):
+            raise ValueError(
+                "protected-surface polygon contains no grid-cell centres at the configured "
+                f"cell size ({c:g} m); reduce --cell-size or correct the surveyed polygon"
+            )
         self.idx = np.flatnonzero(self.mask.ravel())
+        self.idx_protected = np.flatnonzero(self.protected_mask.ravel())
         self.extent = (x0, x1, y0, y1)
         self.area = self.mask.sum() * c * c
         self.bbox = (poly.min(axis=0), poly.max(axis=0))

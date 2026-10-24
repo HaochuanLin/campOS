@@ -14,25 +14,179 @@ jobs:
         python-version: ["3.10", "3.11", "3.12"]
     steps:
       - name: Check out repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
       - name: Set up Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v7
         with:
           python-version: ${{ matrix.python-version }}
           cache: pip
           cache-dependency-path: pyproject.toml
       - name: Install package and development dependencies
-        run: python -m pip install -e ".[dev]"
+        run: python -m pip install -e ".[dev,ai]"
+      - name: Check optional web UI syntax
+        run: python -m py_compile src/campos/app.py
       - name: Run tests
         run: python -m pytest -q
-      - name: Run radial sensitivity scenarios
+      - name: Verify installed command-line entry points
+        run: |
+          campos-sim --help
+          campos-field-evaluate --help
+          campos-observation-qc --help
+          campos-field-report --help
+          campos-start --help
+          campos-verify-artifacts --help
+      - name: Run one-command quickstart smoke test
         if: matrix.python-version == '3.10'
-        run: python scripts/radial_sensitivity.py --outdir out/radial-sensitivity
-      - name: Upload sensitivity results
+        run: |
+          campos-start --outdir out/campos-quickstart-smoke
+          test -s out/campos-quickstart-smoke/index.html
+          test -s out/campos-quickstart-smoke/quickstart_manifest.json
+          test -s out/campos-quickstart-smoke/run_metadata.json
+          test -s out/campos-quickstart-smoke/results_movable.csv
+          campos-verify-artifacts --manifest out/campos-quickstart-smoke/quickstart_manifest.json
+          python -c "from pathlib import Path; p=Path('out/campos-quickstart-smoke/index.html').read_text(); assert 'synthetic' in p.lower() and 'field-validated' in p and 'results_movable.csv' in p"
+      - name: Check precipitation benchmark
+        if: matrix.python-version == '3.10'
+        run: python scripts/benchmark_sprinkler_curve.py
+      - name: Run field-evaluation CLI smoke test
+        if: matrix.python-version == '3.10'
+        run: |
+          cat > out-acceptance-thresholds.json <<'JSON'
+          {
+            "max_holdout_mae_mm": 1000,
+            "max_holdout_rmse_mm": 1000,
+            "max_absolute_bias_mm": 1000
+          }
+          JSON
+          campos-field-evaluate \
+            --polygon-csv examples/field_evaluation_demo/site_polygon.csv \
+            --heads-csv examples/field_evaluation_demo/sprinkler_layout.csv \
+            --observations examples/field_evaluation_demo/catch_can_observations.csv \
+            --acceptance-thresholds-json out-acceptance-thresholds.json \
+            --outdir out/field-evaluation-smoke
+          test -s out/field-evaluation-smoke/paired_predictions.csv
+          test -s out/field-evaluation-smoke/field_evaluation_metrics.json
+          python -c "import json,re; p=json.load(open('out/field-evaluation-smoke/field_evaluation_metrics.json')); assert p['acceptance_assessment'] is not None; assert len(p['acceptance_assessment']['checks']) == 3; assert re.fullmatch(r'[0-9a-f]{64}', p['acceptance_thresholds_json_sha256'])"
+          campos-field-report --input-json out/field-evaluation-smoke/field_evaluation_metrics.json
+          test -s out/field-evaluation-smoke/field_evaluation_report.html
+          test -s out/field-evaluation-smoke/field_evaluation_report.md
+      - name: Run design report smoke test
+        if: matrix.python-version == '3.10'
+        run: |
+          python campos_sim.py --mode movable --quick --sites A --outdir out/report-smoke
+          python scripts/build_design_report.py --input-dir out/report-smoke
+          test -s out/report-smoke/design_report.html
+          test -s out/report-smoke/design_report.md
+      - name: Run matched JSON design comparison smoke test
+        if: matrix.python-version == '3.10'
+        run: |
+          mkdir -p out
+          cat > out/design-comparison-spec.json <<'JSON'
+          {
+            "shared": {
+              "sites": ["A"],
+              "seed": 7,
+              "cell_size": 1.0,
+              "radial_slope": 0.0,
+              "quick": true
+            },
+            "scenarios": [
+              {"name": "fixed", "overrides": {"mode": "fixed"}},
+              {"name": "movable", "overrides": {"mode": "movable"}}
+            ]
+          }
+          JSON
+          python scripts/compare_design_configs.py --spec out/design-comparison-spec.json --outdir out/design-comparison
+          test -s out/design-comparison/design_comparison.csv
+          test -s out/design-comparison/comparison_manifest.json
+      - name: Run parameter sensitivity smoke test
+        if: matrix.python-version == '3.10'
+        run: python scripts/parameter_sensitivity.py --quick --sites A --seeds 7 19 --cell-sizes 1.0 --slopes -0.5 0 1 --outdir out/parameter-sensitivity
+      - name: Run matched optimization benchmark smoke test
+        if: matrix.python-version == '3.10'
+        run: |
+          python scripts/compare_optimization_modes.py --quick --sites E --outdir out/optimization-benchmark
+          python -c "import csv; p='out/optimization-benchmark/benchmark_summary.csv'; rows=list(csv.DictReader(open(p, newline='', encoding='utf-8-sig'))); chosen=[r for r in rows if r['mode'].startswith('pareto-')]; assert len(chosen)==2; assert all(r['selected_tradeoff'] != 'YES' for r in chosen); assert all(r['selection_failure_reasons'] for r in chosen); assert all(sum(int(r[k]) for k in ('guardrail_cu_rejected_candidates','guardrail_overspray_rejected_candidates','guardrail_interior_deficit_rejected_candidates','guardrail_dry_area_rejected_candidates')) > 0 for r in chosen)"
+      - name: Run protected-surface objective smoke test
+        if: matrix.python-version == '3.10'
+        run: |
+          mkdir -p out/protected-surface-inputs
+          cat > out/protected-surface-inputs/lawn.csv <<'CSV'
+          x_m,y_m
+          0,0
+          10,0
+          10,10
+          0,10
+          CSV
+          cat > out/protected-surface-inputs/heads.csv <<'CSV'
+          x_m,y_m,radius_m,start_angle_deg,arc_width_deg
+          8,5,3.5,180,180
+          CSV
+          cat > out/protected-surface-inputs/sidewalk.csv <<'CSV'
+          x_m,y_m
+          10,0
+          10,10
+          13,10
+          13,0
+          CSV
+          python campos_sim.py --mode pareto-fixed --quick --cell-size 1.0 \
+            --polygon-csv out/protected-surface-inputs/lawn.csv \
+            --heads-csv out/protected-surface-inputs/heads.csv \
+            --protected-surface-csv out/protected-surface-inputs/sidewalk.csv \
+            --outdir out/protected-surface-smoke
+          python -c "import csv,json; p='out/protected-surface-smoke/pareto_fixed.csv'; f=open(p,newline='',encoding='utf-8-sig'); r=csv.DictReader(f); assert 'protected_surface_water_pct_of_baseline_total_water_f1' in r.fieldnames; assert 'outside_lawn_water_pct_of_baseline_total_water' in r.fieldnames; assert 'protected_surface_water_pct_of_baseline_total_water' in r.fieldnames; m=json.load(open('out/protected-surface-smoke/run_metadata.json')); assert m['optimization_policy']['protected_surface_metric']['active'] is True; assert m['site_input']['protected_surface_sha256']"
+      - name: Upload protected-surface smoke artifact
         if: always() && matrix.python-version == '3.10'
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
-          name: campos-radial-sensitivity
-          path: out/radial-sensitivity/
+          name: campos-protected-surface-smoke
+          path: out/protected-surface-smoke/
+          if-no-files-found: warn
+          retention-days: 14
+      - name: Upload optimization benchmark results
+        if: always() && matrix.python-version == '3.10'
+        uses: actions/upload-artifact@v7
+        with:
+          name: campos-optimization-benchmark
+          path: out/optimization-benchmark/
+          if-no-files-found: warn
+          retention-days: 14
+      - name: Run explicit Pareto trade-off smoke test
+        if: matrix.python-version == '3.10'
+        run: |
+          python scripts/compare_optimization_modes.py --quick --sites E \
+            --cu-drop-budget 0.03 --max-overspray-increase 0.08 \
+            --outdir out/optimization-benchmark-tolerant
+          python -c "import csv; p='out/optimization-benchmark-tolerant/benchmark_summary.csv'; rows=list(csv.DictReader(open(p, newline='', encoding='utf-8-sig'))); chosen=[r for r in rows if r['mode'].startswith('pareto-')]; assert len(chosen)==2; assert all(r['selected_tradeoff']=='YES' for r in chosen); assert all(float(r['max_overspray_increase'])==0.08 for r in chosen); assert all(r['selection_failure_reasons']=='' for r in chosen)"
+      - name: Upload explicit Pareto trade-off results
+        if: always() && matrix.python-version == '3.10'
+        uses: actions/upload-artifact@v7
+        with:
+          name: campos-optimization-benchmark-tolerant
+          path: out/optimization-benchmark-tolerant/
+          if-no-files-found: warn
+          retention-days: 14
+      - name: Upload design report smoke artifact
+        if: always() && matrix.python-version == '3.10'
+        uses: actions/upload-artifact@v7
+        with:
+          name: campos-design-report-smoke
+          path: out/report-smoke/
+          if-no-files-found: warn
+          retention-days: 14
+      - name: Upload matched design comparison
+        if: always() && matrix.python-version == '3.10'
+        uses: actions/upload-artifact@v7
+        with:
+          name: campos-design-comparison
+          path: out/design-comparison/
+          if-no-files-found: warn
+          retention-days: 14
+      - name: Upload parameter sensitivity results
+        if: always() && matrix.python-version == '3.10'
+        uses: actions/upload-artifact@v7
+        with:
+          name: campos-parameter-sensitivity
+          path: out/parameter-sensitivity/
           if-no-files-found: warn
           retention-days: 14

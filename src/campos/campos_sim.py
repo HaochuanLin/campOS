@@ -32,6 +32,7 @@ import hashlib
 import json
 import os
 import platform
+import sys
 import time
 from pathlib import Path as FilePath
 
@@ -78,8 +79,8 @@ CFG = dict(
     dry_pen_w=30.0,         # SA penalty slope for dry_frac above the limit (search only)
     archive_eps=0.002,      # archive resolution: points within eps of an existing one are dropped
     pareto_max_points=40,   # thin the final front to this many points for CSV/plot
-    cu_drop_budget=0.03,    # PLACEHOLDER: "accept this much CU loss vs. the most uniform
-                            # Pareto point to buy lower overspray" -> marked as 'selected'
+    cu_drop_budget=0.03,    # maximum absolute CU loss from baseline allowed by the selection policy
+    max_overspray_increase=0.0,  # maximum allowed increase in f1 vs baseline; 0 means no regression
     # --- economics: ALL PLACEHOLDERS, replace with real numbers ---
     radial_slope=0.0,       # sensitivity parameter; 0 = uniform null model
     price_per_m3=5.0,       # UNUSED until a calibrated water-volume model is implemented
@@ -98,9 +99,7 @@ CFG = dict(
 #   Monte-Carlo over those, and report whether each Pareto point stays on the
 #   front (robustness).  Currently NO wind, NO pressure loss, NO evaporation.
 
-from .model import (SITES, Site, head_field, load_heads_csv, load_performance_curve_csv,
-                    load_polygon_csv, load_radial_profile_csv, score, site_rect,
-                    site_lshape, site_kidney, site_wedge, site_strip)
+from .model import SITES, Site, head_field, load_performance_curve_csv, load_radial_profile_csv, score, site_rect, site_lshape, site_kidney, site_wedge, site_strip
 
 # ------------------------------------------------------- baseline layouts
 def preset_arc(site, x, y, r):
@@ -132,10 +131,167 @@ def near_inside(site, x, y, tol=0.6):
     return False
 
 
+
+def _orientation(a, b, c, eps=1e-9):
+    """Return the orientation sign of three 2D points, with a small tolerance."""
+    cross = (b[0] - a[0]) * (c[1] - a[1]) - (b[1] - a[1]) * (c[0] - a[0])
+    return 0 if abs(cross) <= eps else (1 if cross > 0 else -1)
+
+
+def _on_segment(a, b, p, eps=1e-9):
+    return (min(a[0], b[0]) - eps <= p[0] <= max(a[0], b[0]) + eps
+            and min(a[1], b[1]) - eps <= p[1] <= max(a[1], b[1]) + eps)
+
+
+def _segments_intersect(a, b, c, d, eps=1e-9):
+    """Include proper crossings and collinear/touching intersections."""
+    o1, o2 = _orientation(a, b, c, eps), _orientation(a, b, d, eps)
+    o3, o4 = _orientation(c, d, a, eps), _orientation(c, d, b, eps)
+    if o1 * o2 < 0 and o3 * o4 < 0:
+        return True
+    return ((o1 == 0 and _on_segment(a, b, c, eps))
+            or (o2 == 0 and _on_segment(a, b, d, eps))
+            or (o3 == 0 and _on_segment(c, d, a, eps))
+            or (o4 == 0 and _on_segment(c, d, b, eps)))
+
+
+def validate_simple_polygon(points):
+    """Reject duplicate vertices and non-adjacent edge intersections."""
+    points = np.asarray(points, dtype=float)
+    if len(np.unique(points, axis=0)) != len(points):
+        raise ValueError("polygon contains duplicate vertices (apart from optional closing vertex)")
+    n = len(points)
+    for i in range(n):
+        a, b = points[i], points[(i + 1) % n]
+        for j in range(i + 1, n):
+            # Adjacent edges share an endpoint by definition; skip that pair.
+            if j == i or j == (i + 1) % n or i == (j + 1) % n:
+                continue
+            c, d = points[j], points[(j + 1) % n]
+            if _segments_intersect(a, b, c, d):
+                raise ValueError(
+                    f"polygon is self-intersecting or touches itself at edges {i + 1} and {j + 1}"
+                )
+
+
+def load_polygon_csv(path):
+    """Load a site polygon CSV with x_m,y_m columns."""
+    with open(path, newline="", encoding="utf-8-sig") as fh:
+        reader = csv.DictReader(fh)
+        required = {"x_m", "y_m"}
+        if reader.fieldnames is None or not required.issubset(reader.fieldnames):
+            raise ValueError("polygon CSV must contain x_m,y_m columns (metres)")
+        rows = list(reader)
+    try:
+        points = np.asarray([[float(row["x_m"]), float(row["y_m"])] for row in rows], dtype=float)
+    except (TypeError, ValueError) as exc:
+        raise ValueError("polygon coordinates must be numeric") from exc
+    if points.ndim != 2 or points.shape[0] < 3 or points.shape[1] != 2:
+        raise ValueError("polygon must contain at least three x_m,y_m vertices")
+    if not np.all(np.isfinite(points)):
+        raise ValueError("polygon coordinates must be finite")
+    if np.linalg.norm(points[0] - points[-1]) <= 1e-9:
+        points = points[:-1]
+    if len(points) < 3 or len(np.unique(points, axis=0)) < 3:
+        raise ValueError("polygon must contain at least three distinct vertices")
+    if np.any(np.linalg.norm(np.diff(np.vstack([points, points[0]]), axis=0), axis=1) <= 1e-9):
+        raise ValueError("polygon contains consecutive duplicate vertices")
+    x, y = points.T
+    signed_area = 0.5 * np.sum(x * np.roll(y, -1) - np.roll(x, -1) * y)
+    if abs(signed_area) <= 1e-8:
+        raise ValueError("polygon area must be greater than zero")
+    validate_simple_polygon(points)
+    return points
+
+
+def polygons_overlap(poly_a, poly_b):
+    """Return True for positive-area overlap; shared boundaries are allowed."""
+    a = np.asarray(poly_a, dtype=float)
+    b = np.asarray(poly_b, dtype=float)
+    path_a, path_b = Path(a), Path(b)
+
+    def strictly_inside(point, polygon, path):
+        # Matplotlib treats boundary points as implementation-defined; remove
+        # them explicitly so adjacent polygons sharing an edge remain valid.
+        on_boundary = any(
+            _orientation(polygon[i], polygon[(i + 1) % len(polygon)], point) == 0
+            and _on_segment(polygon[i], polygon[(i + 1) % len(polygon)], point)
+            for i in range(len(polygon))
+        )
+        return False if on_boundary else bool(path.contains_point(point))
+
+    if any(strictly_inside(point, a, path_a) for point in b):
+        return True
+    if any(strictly_inside(point, b, path_b) for point in a):
+        return True
+    def signed_area(polygon):
+        x, y = polygon.T
+        return 0.5 * float(np.sum(x * np.roll(y, -1) - np.roll(x, -1) * y))
+
+    winding_a = 1.0 if signed_area(a) > 0 else -1.0
+    winding_b = 1.0 if signed_area(b) > 0 else -1.0
+    eps = 1e-9
+    for i in range(len(a)):
+        a0, a1 = a[i], a[(i + 1) % len(a)]
+        ea = a1 - a0
+        for j in range(len(b)):
+            b0, b1 = b[j], b[(j + 1) % len(b)]
+            eb = b1 - b0
+            o1, o2 = _orientation(a0, a1, b0), _orientation(a0, a1, b1)
+            o3, o4 = _orientation(b0, b1, a0), _orientation(b0, b1, a1)
+            if o1 * o2 < 0 and o3 * o4 < 0:
+                return True
+            # Collinear edges with positive-length overlap need special care:
+            # identical/partly coincident polygons can have no proper crossings
+            # and all vertices on boundaries. If their interiors lie on the
+            # same side of the shared edge, the polygons overlap in area.
+            if o1 == o2 == o3 == o4 == 0:
+                axis = int(np.argmax(np.abs(ea)))
+                overlap = min(max(a0[axis], a1[axis]), max(b0[axis], b1[axis])) - max(
+                    min(a0[axis], a1[axis]), min(b0[axis], b1[axis])
+                )
+                if overlap > eps and np.dot(ea * winding_a, eb * winding_b) > 0:
+                    return True
+    return False
+
+
+def load_heads_csv(path, polygon, cfg):
+    """Load initial sprinkler rows: x_m,y_m,radius_m,start_angle_deg,arc_width_deg."""
+    required = {"x_m", "y_m", "radius_m", "start_angle_deg", "arc_width_deg"}
+    with open(path, newline="", encoding="utf-8-sig") as fh:
+        reader = csv.DictReader(fh)
+        if reader.fieldnames is None or not required.issubset(reader.fieldnames):
+            raise ValueError("heads CSV must contain x_m,y_m,radius_m,start_angle_deg,arc_width_deg columns")
+        rows = list(reader)
+    if not rows:
+        raise ValueError("heads CSV must contain at least one sprinkler")
+    try:
+        heads = np.asarray([[float(row[k]) for k in (
+            "x_m", "y_m", "radius_m", "start_angle_deg", "arc_width_deg"
+        )] for row in rows], dtype=float)
+    except (TypeError, ValueError) as exc:
+        raise ValueError("sprinkler layout values must be numeric") from exc
+    if not np.all(np.isfinite(heads)):
+        raise ValueError("sprinkler layout values must be finite")
+    if np.any(heads[:, 2] <= 0):
+        raise ValueError("sprinkler radius_m values must be positive")
+    if np.any(heads[:, 4] <= 0) or np.any(heads[:, 4] > 360):
+        raise ValueError("arc_width_deg values must be in (0, 360]")
+    if np.any(heads[:, 2] < cfg["r_min"]) or np.any(heads[:, 2] > cfg["r_max"]):
+        raise ValueError(f"radius_m values must be within optimizer range {cfg['r_min']}..{cfg['r_max']} m")
+    path_obj = Path(polygon)
+    if any(not path_obj.contains_point((h[0], h[1]), radius=1e-8) for h in heads):
+        raise ValueError("all initial sprinkler coordinates must lie inside the supplied polygon")
+    heads[:, 3] %= 360.0
+    return heads
+
+
 def baseline_layout(site, cfg):
     """Square grid at spacing = radius, edge heads set to preset arcs.
     Best of 3 radii x 9 grid offsets (scored with the same metric as the
     optimizer), so the baseline is a competent installer, not a straw man."""
+    if cfg.get("initial_heads") is not None:
+        return np.asarray(cfg["initial_heads"], dtype=float).copy()
     (minx, miny), (maxx, maxy) = site.bbox
     best, best_sc = None, np.inf
     radii = (cfg["base_radius"],) if cfg.get("hydraulics_locked_radius") else (4.0, 5.0, cfg["base_radius"])
@@ -159,7 +315,7 @@ def baseline_layout(site, cfg):
 _SITE_CACHE = {}
 
 
-def get_site_and_baseline(name, poly, cfg, baseline_heads=None):
+def get_site_and_baseline(name, poly, cfg):
     """Build and cache a baseline for this exact site geometry and config.
 
     The cache key includes the polygon and every config value so callers that
@@ -167,28 +323,15 @@ def get_site_and_baseline(name, poly, cfg, baseline_heads=None):
     a stale grid or baseline from an earlier run.
     """
     polygon = np.asarray(poly, dtype=float)
-    heads_input = None
-    if baseline_heads is not None:
-        heads_input = np.asarray(baseline_heads, dtype=float)
-        if heads_input.ndim != 2 or heads_input.shape[1] != 5 or len(heads_input) == 0:
-            raise ValueError("baseline_heads must be a non-empty N x 5 array")
-        if not np.all(np.isfinite(heads_input)) or np.any(heads_input[:, 2] <= 0):
-            raise ValueError("baseline_heads must contain finite coordinates and positive throw radii")
-        if np.any(heads_input[:, 4] <= 0) or np.any(heads_input[:, 4] > 360):
-            raise ValueError("baseline head arc widths must be in (0, 360]")
-        heads_input = heads_input.copy()
-        heads_input[:, 3] %= 360.0
     key = (
         name,
         tuple(polygon.shape),
         tuple(polygon.ravel()),
-        None if heads_input is None else (tuple(heads_input.shape), tuple(heads_input.ravel())),
         tuple(sorted((k, repr(v)) for k, v in cfg.items())),
     )
     if key not in _SITE_CACHE:
         site = Site(polygon, cfg)
-        heads0 = baseline_layout(site, cfg) if heads_input is None else heads_input.copy()
-        _SITE_CACHE[key] = (site, heads0)
+        _SITE_CACHE[key] = (site, baseline_layout(site, cfg))
     return _SITE_CACHE[key]
 
 
@@ -261,10 +404,10 @@ def optimize(site, heads0, cfg, seed, fixed_xy=False):
     return best_h
 
 
-def run_site(name, poly, cfg, fixed_xy=False, baseline_heads=None):
+def run_site(name, poly, cfg, fixed_xy=False):
     """Single-objective (AR) run on one site.  fixed_xy selects the mode."""
     mode = MODE_FIXED if fixed_xy else MODE_MOVABLE
-    site, h0 = get_site_and_baseline(name, poly, cfg, baseline_heads=baseline_heads)
+    site, h0 = get_site_and_baseline(name, poly, cfg)
     _, m0 = score(site, site.total(h0), cfg)
     best_h, best_sc = None, np.inf
     for k in range(cfg["restarts"]):
@@ -298,7 +441,6 @@ def run_site(name, poly, cfg, fixed_xy=False, baseline_heads=None):
         cost = len(h0) * cfg["cost_adjust_head"] + moved * cfg["cost_move_head"]
     return dict(
         name=name, mode=mode, site=site, heads0=h0, heads1=best_h, m0=m0, m1=m1,
-        baseline_label="Baseline (imported layout)" if baseline_heads is not None else "Baseline (standard grid)",
         n_heads=len(h0), moved=moved, changed=changed, area=site.area,
         water_saving=saving_frac, annual_m3=annual_m3, annual_cny=annual_cny,
         cost=cost, payback=np.nan,
@@ -314,13 +456,15 @@ def reference_levels(site, heads0, cfg):
 
 
 def bi_eval(site, total, ref, cfg):
-    """(f1 overspray_ratio, f2 deficit, dry_frac) for a depth field.
-    f1: water outside the polygon / W0 (physical loss, relative to baseline).
-    f2: mean relative shortfall below the target depth T over the lawn.
-    dry_frac: share of lawn cells with depth < dry_thresh_frac * T."""
+    """(f1 selected outside-water objective, f2 deficit, dry_frac).
+    f1 is protected-surface water / W0 when a surveyed protected polygon is
+    configured, otherwise all water outside the lawn / W0. f2 is mean relative
+    shortfall below target depth T over the lawn; dry_frac is the lawn share
+    below dry_thresh_frac * T."""
     lawn = total.ravel()[site.idx]
     outside = total.sum() - lawn.sum()
-    f1 = max(0.0, outside / ref["W0"])   # clip float noise (-0.0)
+    objective_water = float(total[site.protected_mask].sum()) if site.protected_path is not None else float(outside)
+    f1 = max(0.0, objective_water / ref["W0"])   # selected objective / baseline total water
     f2 = float(np.mean(np.clip(1.0 - lawn / ref["T"], 0.0, None)))
     dry = float(np.mean(lawn < cfg["dry_thresh_frac"] * ref["T"]))
     return float(f1), f2, dry
@@ -331,9 +475,17 @@ def bi_report(site, heads, ref, cfg):
     total = site.total(heads)
     f1, f2, dry = bi_eval(site, total, ref, cfg)
     _, m = score(site, total, cfg)
+    protected_water_rel = (
+        float(total[site.protected_mask].sum() / ref["W0"])
+        if site.protected_path is not None else 0.0
+    )
+    outside_lawn_water_rel = float(
+        max(0.0, total.sum() - total.ravel()[site.idx].sum()) / ref["W0"]
+    )
     return dict(f1=f1, f2=f2, dry=dry, CU=float(m["CU"]), AR=float(m["AR"]),
                 over_own=float(m["overspray"]), water_rel=float(total.sum() / ref["W0"]),
-                heads=heads)
+                outside_lawn_water=outside_lawn_water_rel,
+                protected_surface_water=protected_water_rel, heads=heads)
 
 
 class ParetoArchive:
@@ -405,22 +557,48 @@ def pareto_search(site, heads0, cfg, fixed_xy, seed, ref, warm=None):
     return arch.h
 
 
-def select_tradeoff(front, budget):
-    """Index of the 'accept a slight uniformity loss for less overspray'
-    point: the lowest-overspray Pareto point whose CU is within `budget` of
-    the most uniform point on the front.  (All front points already satisfy
-    the dry-fraction constraint.)"""
-    cu_best = max(p["CU"] for p in front)
-    ok = [i for i, p in enumerate(front) if p["CU"] >= cu_best - budget]
-    return min(ok, key=lambda i: front[i]["f1"])
+def tradeoff_guardrail_checks(point, baseline, budget, max_overspray_increase=0.0,
+                             dry_limit=None):
+    """Return named baseline-relative feasibility checks for one Pareto point."""
+    if baseline is None:
+        return {"cu": True, "overspray": True, "interior_deficit": True, "dry_area": True}
+    checks = {
+        "cu": point["CU"] >= baseline["CU"] - budget - 1e-12,
+        "overspray": point["f1"] <= baseline["f1"] + max(0.0, max_overspray_increase) + 1e-12,
+        "interior_deficit": point["f2"] <= baseline["f2"] + 1e-12,
+        "dry_area": True if dry_limit is None else point["dry"] <= dry_limit + 1e-12,
+    }
+    return checks
 
 
-def run_pareto(name, poly, cfg, fixed_xy, refs=None, baseline_heads=None):
+def select_tradeoff(front, budget, baseline=None, max_overspray_increase=0.0, dry_limit=None):
+    """Select a low-overspray point without silently regressing the baseline.
+
+    With a baseline, candidates must respect the CU-loss budget, overspray
+    tolerance, no-worse interior deficit, and (when supplied) dry-area limit.
+    Return None when no candidate satisfies every guardrail. Without a
+    baseline, retain the legacy front-relative behavior for compatibility.
+    """
+    if not front:
+        return None
+    if baseline is None:
+        cu_best = max(p["CU"] for p in front)
+        ok = [i for i, p in enumerate(front) if p["CU"] >= cu_best - budget]
+    else:
+        ok = [
+            i for i, p in enumerate(front)
+            if all(tradeoff_guardrail_checks(
+                p, baseline, budget, max_overspray_increase, dry_limit
+            ).values())
+        ]
+    return min(ok, key=lambda i: front[i]["f1"]) if ok else None
+
+
+def run_pareto(name, poly, cfg, fixed_xy, refs=None):
     """Bi-objective run on one site; returns the thinned Pareto front plus
     reference layouts (baseline, naive full-circle, optional single-AR optima)."""
     mode = MODE_FIXED if fixed_xy else MODE_MOVABLE
-    site, h0 = get_site_and_baseline(name, poly, cfg, baseline_heads=baseline_heads)
-    baseline_label = "Baseline (imported layout)" if baseline_heads is not None else "Baseline (standard grid)"
+    site, h0 = get_site_and_baseline(name, poly, cfg)
     ref = reference_levels(site, h0, cfg)
     warm = None
     if refs:                                   # reuse the single-objective AR optimum
@@ -439,8 +617,13 @@ def run_pareto(name, poly, cfg, fixed_xy, refs=None, baseline_heads=None):
         order = [order[j] for j in pick]
     front = [bi_report(site, cand[i], ref, cfg) for i in order]
     front.sort(key=lambda p: p["f1"])
-    sel = select_tradeoff(front, cfg["cu_drop_budget"]) if front else None
-    refs_out = {baseline_label: bi_report(site, h0, ref, cfg),
+    baseline_report = bi_report(site, h0, ref, cfg)
+    sel = select_tradeoff(
+        front, cfg["cu_drop_budget"], baseline=baseline_report,
+        max_overspray_increase=cfg["max_overspray_increase"],
+        dry_limit=cfg["dry_frac_limit"],
+    )
+    refs_out = {"Baseline (standard grid)": baseline_report,
                 "Naive full-circle (reference only)": bi_report(site, naive_full_circle(h0), ref, cfg)}
     for label, heads in (refs or {}).items():
         refs_out[label] = bi_report(site, heads, ref, cfg)
@@ -453,7 +636,6 @@ def run_pareto(name, poly, cfg, fixed_xy, refs=None, baseline_heads=None):
                 print(f"   WARNING {name}: reference '{label}' dominates {len(bad)} front point(s) "
                       f"- search under-converged", flush=True)
     return dict(name=name, mode=mode, site=site, ref=ref, front=front, selected=sel,
-                baseline_label=baseline_label,
                 refs=refs_out, heads0=h0)
 
 # ------------------------------------------------------------------ output
@@ -489,7 +671,7 @@ def plot_layouts(results, cfg, fn, tag=""):
                              constrained_layout=True, squeeze=False)
     for row, r in zip(axes, results):
         s = r["site"]
-        for ax, heads, m, side in ((row[0], r["heads0"], r["m0"], r.get("baseline_label", "Baseline (standard grid)")),
+        for ax, heads, m, side in ((row[0], r["heads0"], r["m0"], "Baseline (standard grid)"),
                                    (row[1], r["heads1"], r["m1"], "Optimized")):
             t = s.total(heads)
             ax.imshow(np.where(s.mask, t, np.nan), origin="lower", extent=s.extent,
@@ -501,9 +683,8 @@ def plot_layouts(results, cfg, fn, tag=""):
             ax.set_aspect("equal")
             ax.set_title(f"{r['name']} · {side}\nAR={m['AR']:.2f}  overspray={m['overspray']*100:.0f}%  "
                          f"CU={m['CU']:.2f}  dry={m['dry']*100:.1f}%", fontsize=9)
-    geometry_label = "CUSTOM geometry" if any(r["name"] == "Custom site" for r in results) else "SYNTHETIC lawns"
-    fig.suptitle(f"[{tag}]  blue = water on lawn, red = overspray  ({geometry_label}, "
-                 f"sprinkler profile may be a placeholder)", fontsize=11)
+    fig.suptitle(f"[{tag}]  blue = water on lawn, red = overspray  (SYNTHETIC lawns, "
+                 f"PLACEHOLDER sprinkler profile)", fontsize=11)
     fig.savefig(fn, dpi=110)
     plt.close(fig)
 
@@ -543,7 +724,7 @@ def write_comparison_csv(by_mode, fn):
             for key, res in by_mode.items():
                 r = next(x for x in res if x["name"] == nm)
                 if first:
-                    w.writerow(["BASELINE (generated or imported layout)", nm, f"{r['m0']['AR']:.3f}",
+                    w.writerow(["BASELINE (standard grid)", nm, f"{r['m0']['AR']:.3f}",
                                 f"{r['m0']['overspray']*100:.1f}", f"{r['m0']['CU']:.3f}",
                                 f"{r['m0']['dry']*100:.1f}", "0.0", 0, 0, 0, ""])
                     first = False
@@ -556,16 +737,34 @@ def write_comparison_csv(by_mode, fn):
 def write_pareto_csv(results, fn, cfg):
     with open(fn, "w", newline="", encoding="utf-8-sig") as fh:
         w = csv.writer(fh)
+        f1_column = ("protected_surface_water_pct_of_baseline_total_water_f1"
+                     if any(result["site"].protected_path is not None for result in results)
+                     else "outside_lawn_water_pct_of_baseline_total_water_f1")
         w.writerow(["mode", "site", "point_type", "point_index", "selected_tradeoff",
-                    "overspray_pct_of_baseline_total_water_f1", "interior_deficit_pct_f2",
+                    f1_column, "outside_lawn_water_pct_of_baseline_total_water",
+                    "protected_surface_water_pct_of_baseline_total_water", "interior_deficit_pct_f2",
                     f"dry_area_pct_constraint_le_{cfg['dry_frac_limit'] * 100:.0f}",
-                    "CU", "AR_legacy", "overspray_pct_of_own_water", "total_water_relative_to_baseline"])
+                    "CU", "AR_legacy", "overspray_pct_of_own_water", "total_water_relative_to_baseline",
+                    "guardrail_cu_pass", "guardrail_overspray_pass",
+                    "guardrail_interior_deficit_pass", "guardrail_dry_area_pass",
+                    "guardrail_all_pass", "guardrail_rejection_reasons"])
         for r in results:
+            baseline = r["refs"].get("Baseline (standard grid)")
             def row(kind, i, p, selected=""):
+                is_candidate = kind == "PARETO"
+                checks = tradeoff_guardrail_checks(
+                    p, baseline, cfg["cu_drop_budget"], cfg["max_overspray_increase"],
+                    cfg["dry_frac_limit"],
+                ) if is_candidate else {}
+                failed = [name for name, passed in checks.items() if not passed]
                 w.writerow([r["mode"]["csv"], r["name"], kind, i, selected,
-                            f"{p['f1']*100:.2f}", f"{p['f2']*100:.2f}", f"{p['dry']*100:.2f}",
+                            f"{p['f1']*100:.2f}", f"{p.get('outside_lawn_water', 0.0)*100:.2f}",
+                            f"{p.get('protected_surface_water', 0.0)*100:.2f}", f"{p['f2']*100:.2f}", f"{p['dry']*100:.2f}",
                             f"{p['CU']:.3f}", f"{p['AR']:.3f}", f"{p['over_own']*100:.2f}",
-                            f"{p['water_rel']:.3f}"])
+                            f"{p['water_rel']:.3f}",
+                            checks.get("cu", ""), checks.get("overspray", ""),
+                            checks.get("interior_deficit", ""), checks.get("dry_area", ""),
+                            all(checks.values()) if checks else "", ";".join(failed)])
             for label, p in r["refs"].items():
                 row("reference: " + label, "", p)
             for i, p in enumerate(r["front"]):
@@ -573,18 +772,19 @@ def write_pareto_csv(results, fn, cfg):
 
 
 def plot_pareto(results, fn, cfg):
-    """Rows: (1) deficit f2 [objective 2], (2) CU [uniformity], (3) dry fraction
-    [constraint].  X axis in every panel: overspray ratio f1 (% of the
-    baseline's total applied water)."""
+    """Rows: (1) deficit f2, (2) CU [uniformity], (3) dry fraction.
+    X axis is the active f1 objective as a share of baseline total water."""
     n = len(results)
     mode = results[0]["mode"]
     fig, axes = plt.subplots(3, n, figsize=(4.6 * n, 10.5), constrained_layout=True, squeeze=False)
     styles = {"Baseline (standard grid)": ("s", "black", 70),
-              "Baseline (imported layout)": ("s", "black", 70),
               "Naive full-circle (reference only)": ("X", "#d62728", 80)}
     for c, r in enumerate(results):
         fr = r["front"]
         x = np.array([p["f1"] for p in fr]) * 100
+        x_label = ("Protected-surface water / baseline total water [%]"
+                   if r["site"].protected_path is not None
+                   else "Outside-lawn water / baseline total water [%]")
         series = [("f2", "Interior deficit f2 [% of target]", 100),
                   ("CU", "Uniformity CU  (higher = better)", 1),
                   ("dry", "Dry-zone fraction [% of lawn]", 100)]
@@ -603,7 +803,8 @@ def plot_pareto(results, fn, cfg):
                 p = fr[r["selected"]]
                 ax.scatter([p["f1"] * 100], [p[key] * mult], s=220, facecolors="none",
                            edgecolors="#ff7f0e", linewidths=2.2, zorder=5,
-                           label=f"selected: CU within {cfg['cu_drop_budget']:.2f} of best")
+                           label=(f"selected: overspray increase <= {cfg['max_overspray_increase']:.2f}; "
+                                  f"baseline CU budget <= {cfg['cu_drop_budget']:.2f}; deficit <= baseline"))
             if key == "dry":
                 ax.axhline(cfg["dry_frac_limit"] * 100, color="gray", ls="--", lw=1,
                            label="dry-fraction limit")
@@ -616,11 +817,21 @@ def plot_pareto(results, fn, cfg):
             ax.grid(alpha=0.3)
         if c == n - 1:
             axes[0][c].legend(fontsize=7, loc="upper right")
-    geometry_label = "CUSTOM geometry" if any(r["name"] == "Custom site" for r in results) else "SYNTHETIC lawns"
     fig.suptitle(f"[{mode['plot']}]  Pareto trade-off: overspray vs interior deficit / uniformity\n"
-                 f"{geometry_label}, no wind/pressure-network model - not field-validated", fontsize=11)
+                 f"SYNTHETIC lawns, PLACEHOLDER sprinkler profile, no wind/pressure model - "
+                 f"not field-validated", fontsize=11)
     fig.savefig(fn, dpi=110)
     plt.close(fig)
+
+def unique_json_object(pairs):
+    """Reject duplicate keys in configuration JSON instead of silently overriding them."""
+    result = {}
+    for key, value in pairs:
+        if key in result:
+            raise ValueError(f"duplicate JSON key in --config: {key!r}")
+        result[key] = value
+    return result
+
 
 # -------------------------------------------------------------------- main
 ALL_MODES = ["movable", "fixed", "pareto-fixed", "pareto-movable"]
@@ -628,15 +839,19 @@ ALL_MODES = ["movable", "fixed", "pareto-fixed", "pareto-movable"]
 
 def main(argv=None):
     ap = argparse.ArgumentParser(description="campOS irrigation simulation prototype (v2)")
+    ap.add_argument("--config", default=None,
+                    help="JSON run configuration; explicit command-line options override file values")
     ap.add_argument("--mode", nargs="+", default=["movable"],
                     choices=ALL_MODES + ["all"],
                     help="which run modes to execute (default: movable = original v1 behaviour)")
-    ap.add_argument("--polygon-csv", default=None,
-                    help="optional custom site polygon CSV in local metric coordinates; requires x_m,y_m columns")
-    ap.add_argument("--heads-csv", default=None,
-                    help="optional existing sprinkler layout CSV; requires --polygon-csv and x_m,y_m,throw_m,start_angle_deg,arc_width_deg columns")
     ap.add_argument("--sites", nargs="+", default=None,
-                    help="site letters to run, e.g. --sites A C (default: all five)")
+                    help="built-in site letters to run, e.g. --sites A C (default: all five)")
+    ap.add_argument("--polygon-csv", default=None,
+                    help="optional custom site polygon CSV with x_m,y_m columns (metres)")
+    ap.add_argument("--heads-csv", default=None,
+                    help="optional initial sprinkler CSV: x_m,y_m,radius_m,start_angle_deg,arc_width_deg; requires --polygon-csv")
+    ap.add_argument("--protected-surface-csv", default=None,
+                    help="optional surveyed road/sidewalk polygon CSV with x_m,y_m columns; activates protected-surface water as Pareto f1")
     ap.add_argument("--outdir", default="out", help="output directory (default: out)")
     ap.add_argument("--quick", action="store_true", help="fewer SA iterations (smoke test)")
     ap.add_argument("--seed", type=int, default=CFG["seed"],
@@ -651,19 +866,84 @@ def main(argv=None):
                     help="measured pressure-performance CSV: pressure_kpa,flow_lpm,throw_m")
     ap.add_argument("--pressure-kpa", type=float, default=None,
                     help="operating pressure in kPa; requires --performance-csv")
+    ap.add_argument("--dry-fraction-limit", type=float, default=CFG["dry_frac_limit"],
+                    help="maximum share of lawn cells allowed below the dry threshold (0..1)")
+    ap.add_argument("--target-factor", type=float, default=CFG["target_factor"],
+                    help="Pareto target depth as a multiple of baseline mean lawn depth (> 0)")
+    ap.add_argument("--cu-drop-budget", type=float, default=CFG["cu_drop_budget"],
+                    help="maximum absolute CU loss from baseline CU for a selected Pareto point (0..1)")
+    ap.add_argument("--max-overspray-increase", type=float, default=CFG["max_overspray_increase"],
+                    help="maximum allowed increase in the active Pareto f1 objective over baseline, as a fraction of baseline total water (0..1; default 0)")
+    ap.add_argument("--pareto-weights", default=",".join(str(x) for x in CFG["pareto_weights"]),
+                    help="comma-separated overspray weights in [0,1] for Pareto search, e.g. 0,0.25,0.5,0.75,1")
+    # Load JSON defaults before the full parse so explicitly supplied CLI values win.
+    config_hint_parser = argparse.ArgumentParser(add_help=False)
+    config_hint_parser.add_argument("--config", default=None)
+    config_hint, _ = config_hint_parser.parse_known_args(argv)
+    config_data = {}
+    config_sha256 = None
+    config_path = None
+    if config_hint.config:
+        try:
+            config_path = FilePath(config_hint.config)
+            config_data = json.loads(
+                config_path.read_text(encoding="utf-8"),
+                object_pairs_hook=unique_json_object,
+            )
+        except (OSError, ValueError, json.JSONDecodeError) as exc:
+            ap.error(f"cannot read --config JSON: {exc}")
+        if not isinstance(config_data, dict):
+            ap.error("--config must contain a JSON object")
+        config_keys = {
+            "mode", "sites", "polygon_csv", "heads_csv", "protected_surface_csv", "outdir", "quick",
+            "seed", "cell_size", "profile_csv", "radial_slope",
+            "performance_csv", "pressure_kpa", "dry_fraction_limit",
+            "target_factor", "cu_drop_budget", "max_overspray_increase", "pareto_weights",
+        }
+        unknown = sorted(set(config_data) - config_keys)
+        if unknown:
+            ap.error(f"unknown --config key(s): {', '.join(unknown)}")
+        if "mode" in config_data and isinstance(config_data["mode"], str):
+            config_data["mode"] = [config_data["mode"]]
+        if "sites" in config_data and isinstance(config_data["sites"], str):
+            config_data["sites"] = [config_data["sites"]]
+        if "pareto_weights" in config_data and isinstance(config_data["pareto_weights"], list):
+            config_data["pareto_weights"] = ",".join(str(x) for x in config_data["pareto_weights"])
+        ap.set_defaults(**config_data)
+        try:
+            config_sha256 = hashlib.sha256(config_path.read_bytes()).hexdigest()
+        except OSError as exc:
+            ap.error(f"cannot hash --config file: {exc}")
     args = ap.parse_args(argv)
 
     if not np.isfinite(args.cell_size) or args.cell_size <= 0:
         ap.error("--cell-size must be a finite number greater than zero")
     if not np.isfinite(args.radial_slope) or args.radial_slope <= -1.0:
         ap.error("--radial-slope must be finite and greater than -1")
-    if args.heads_csv and not args.polygon_csv:
-        ap.error("--heads-csv requires --polygon-csv")
-    if args.polygon_csv and args.sites is not None:
-        ap.error("--polygon-csv cannot be combined with --sites; custom geometry is run as one site")
+    if not np.isfinite(args.dry_fraction_limit) or not 0.0 <= args.dry_fraction_limit <= 1.0:
+        ap.error("--dry-fraction-limit must be finite and between 0 and 1")
+    if not np.isfinite(args.target_factor) or args.target_factor <= 0.0:
+        ap.error("--target-factor must be finite and greater than zero")
+    if not np.isfinite(args.cu_drop_budget) or not 0.0 <= args.cu_drop_budget <= 1.0:
+        ap.error("--cu-drop-budget must be finite and between 0 and 1")
+    if not np.isfinite(args.max_overspray_increase) or not 0.0 <= args.max_overspray_increase <= 1.0:
+        ap.error("--max-overspray-increase must be finite and between 0 and 1")
+    try:
+        pareto_weights = tuple(float(x.strip()) for x in args.pareto_weights.split(","))
+    except ValueError:
+        ap.error("--pareto-weights must be comma-separated numbers between 0 and 1")
+    if (not pareto_weights or any(not np.isfinite(x) or not 0.0 <= x <= 1.0 for x in pareto_weights)):
+        ap.error("--pareto-weights must contain at least one finite number between 0 and 1")
+    if len(set(pareto_weights)) != len(pareto_weights):
+        ap.error("--pareto-weights must not contain duplicate values")
 
     cfg = dict(CFG)
-    cfg.update(seed=args.seed, cell=args.cell_size, radial_slope=args.radial_slope)
+    cfg.update(
+        seed=args.seed, cell=args.cell_size, radial_slope=args.radial_slope,
+        dry_frac_limit=args.dry_fraction_limit, target_factor=args.target_factor,
+        cu_drop_budget=args.cu_drop_budget, max_overspray_increase=args.max_overspray_increase,
+        pareto_weights=pareto_weights,
+    )
     profile_sha256 = None
     performance_sha256 = None
     if bool(args.performance_csv) != (args.pressure_kpa is not None):
@@ -691,32 +971,47 @@ def main(argv=None):
     if args.quick:
         cfg.update(sa_iters=2500, restarts=1, pareto_iters=1200)
     modes = ALL_MODES if "all" in args.mode else [m for m in ALL_MODES if m in args.mode]
-    custom_polygon = None
-    custom_heads = None
     polygon_sha256 = None
     heads_sha256 = None
+    protected_surface_sha256 = None
+    custom_polygon = None
+    protected_surface_polygon = None
+    if args.protected_surface_csv:
+        try:
+            protected_surface_polygon = load_polygon_csv(args.protected_surface_csv)
+        except (OSError, ValueError) as exc:
+            ap.error(f"invalid --protected-surface-csv: {exc}")
+        protected_surface_sha256 = hashlib.sha256(FilePath(args.protected_surface_csv).read_bytes()).hexdigest()
+    if args.heads_csv and not args.polygon_csv:
+        ap.error("--heads-csv requires --polygon-csv")
     if args.polygon_csv:
+        if args.sites is not None:
+            ap.error("--polygon-csv cannot be combined with --sites; custom geometry is run as a single site")
         try:
             custom_polygon = load_polygon_csv(args.polygon_csv)
         except (OSError, ValueError) as exc:
             ap.error(f"invalid --polygon-csv: {exc}")
         polygon_sha256 = hashlib.sha256(FilePath(args.polygon_csv).read_bytes()).hexdigest()
+        if protected_surface_polygon is not None:
+            if polygons_overlap(custom_polygon, protected_surface_polygon):
+                ap.error("--protected-surface-csv polygon must not overlap or touch the lawn polygon")
+            cfg["protected_polygon"] = protected_surface_polygon
+        sites = {"Custom site": lambda: custom_polygon}
         if args.heads_csv:
             try:
-                custom_heads = load_heads_csv(args.heads_csv)
+                cfg["initial_heads"] = load_heads_csv(args.heads_csv, custom_polygon, cfg)
             except (OSError, ValueError) as exc:
                 ap.error(f"invalid --heads-csv: {exc}")
             heads_sha256 = hashlib.sha256(FilePath(args.heads_csv).read_bytes()).hexdigest()
-
-    requested_sites = None if args.sites is None else [s.upper() for s in args.sites]
-    valid_site_ids = {name.split()[0] for name in SITES}
-    if requested_sites is not None:
-        invalid_sites = sorted(set(requested_sites) - valid_site_ids)
-        if invalid_sites:
-            ap.error(f"unknown site ID(s): {', '.join(invalid_sites)}; choose from A, B, C, D, E")
-    if custom_polygon is not None:
-        sites = {"Custom site": lambda: custom_polygon}
     else:
+        if protected_surface_polygon is not None:
+            ap.error("--protected-surface-csv requires --polygon-csv; built-in synthetic sites have no surveyed protected-surface geometry")
+        requested_sites = None if args.sites is None else [s.upper() for s in args.sites]
+        valid_site_ids = {name.split()[0] for name in SITES}
+        if requested_sites is not None:
+            invalid_sites = sorted(set(requested_sites) - valid_site_ids)
+            if invalid_sites:
+                ap.error(f"unknown site ID(s): {', '.join(invalid_sites)}; choose from A, B, C, D, E")
         sites = {k: f for k, f in SITES.items()
                  if requested_sites is None or k.split()[0] in requested_sites}
     if not sites:
@@ -724,8 +1019,28 @@ def main(argv=None):
     os.makedirs(args.outdir, exist_ok=True)
     out = lambda f: os.path.join(args.outdir, f)
 
-    # Persist the exact run configuration and software versions beside outputs.
-    # This adds provenance metadata without changing the simulation algorithm.
+    raw_cli = list(sys.argv[1:] if argv is None else argv)
+    source_flags = {
+        "mode": "--mode", "sites": "--sites", "polygon_csv": "--polygon-csv",
+        "heads_csv": "--heads-csv", "protected_surface_csv": "--protected-surface-csv",
+        "outdir": "--outdir", "quick": "--quick",
+        "seed": "--seed", "cell_size": "--cell-size", "profile_csv": "--profile-csv",
+        "radial_slope": "--radial-slope", "performance_csv": "--performance-csv",
+        "pressure_kpa": "--pressure-kpa", "dry_fraction_limit": "--dry-fraction-limit",
+        "target_factor": "--target-factor", "cu_drop_budget": "--cu-drop-budget",
+        "max_overspray_increase": "--max-overspray-increase",
+        "pareto_weights": "--pareto-weights",
+    }
+    parameter_sources = {}
+    for key, flag in source_flags.items():
+        if flag in raw_cli:
+            parameter_sources[key] = "command_line"
+        elif key in config_data:
+            parameter_sources[key] = "config_file"
+        else:
+            parameter_sources[key] = "built_in_default"
+
+    # Persist exact settings and distinguish configuration inputs from measured data.
     metadata = {
         "schema_version": 1,
         "project": "campOS",
@@ -736,24 +1051,70 @@ def main(argv=None):
         "matplotlib_version": matplotlib.__version__,
         "source_sha256": hashlib.sha256(FilePath(__file__).read_bytes()).hexdigest(),
         "arguments": vars(args),
+        "configuration_input": {
+            "path": str(config_path) if config_path else None,
+            "sha256": config_sha256,
+            "parameter_sources": parameter_sources,
+            "precedence": "command-line arguments override JSON configuration; otherwise built-in defaults apply",
+        },
+        "data_classification": {
+            "site_geometry": "user_supplied" if args.polygon_csv else "synthetic_builtin",
+            "protected_surface_geometry": "user_supplied_surveyed_polygon" if protected_surface_polygon is not None else "not_configured",
+            "sprinkler_layout": "user_supplied_initial_layout" if args.heads_csv else "generated_baseline_layout",
+            "radial_field": "measured_profile_file" if args.profile_csv else "illustrative_sensitivity_model",
+            "hydraulic_curve": "user_supplied_performance_file" if args.performance_csv else "not_configured",
+            "economic_inputs": "placeholders_not_validated",
+        },
         "selected_modes": modes,
         "selected_sites": list(sites.keys()),
-        "config": {k: v for k, v in cfg.items() if k != "radial_profile"},
+        "config": {k: v for k, v in cfg.items() if k not in {"radial_profile", "initial_heads", "protected_polygon"}},
+        "site_input": {
+            "polygon_csv": args.polygon_csv,
+            "polygon_sha256": polygon_sha256,
+            "protected_surface_csv": args.protected_surface_csv,
+            "protected_surface_sha256": protected_surface_sha256,
+            "protected_surface_vertex_count": int(len(protected_surface_polygon)) if protected_surface_polygon is not None else None,
+            "protected_surface_status": "user_supplied_surveyed_polygon" if protected_surface_polygon is not None else "not_configured",
+            "polygon_vertex_count": int(len(custom_polygon)) if args.polygon_csv else None,
+            "coordinate_units": "metres",
+            "heads_csv": args.heads_csv,
+            "heads_sha256": heads_sha256,
+            "initial_head_count": int(len(cfg["initial_heads"])) if cfg.get("initial_heads") is not None else None,
+            "status": "user_supplied_geometry_and_heads" if args.polygon_csv and args.heads_csv else ("user_supplied_geometry" if args.polygon_csv else "built_in_synthetic_geometry"),
+        },
+        "optimization_policy": {
+            "legacy_modes": ["movable", "fixed"],
+            "pareto_objectives": {
+                "f1": ("water on supplied protected-surface polygon / baseline total modelled water"
+                      if protected_surface_polygon is not None
+                      else "water outside lawn / baseline total modelled water"),
+                "f2": "mean relative shortfall below target depth over lawn cells",
+            },
+            "protected_surface_metric": {
+                "active": protected_surface_polygon is not None,
+                "objective": "protected-surface water" if protected_surface_polygon is not None else "outside-lawn water",
+                "outside_lawn_water_is_also_reported": True,
+                "rasterization": "cell-centre point-in-polygon on configured simulation grid",
+                "status": "simulated proxy; requires surveyed geometry and field validation",
+            },
+            "dry_fraction_limit": cfg["dry_frac_limit"],
+            "target_factor": cfg["target_factor"],
+            "cu_drop_budget": cfg["cu_drop_budget"],
+            "max_overspray_increase": cfg["max_overspray_increase"],
+            "pareto_overspray_weights": list(cfg["pareto_weights"]),
+            "note": "weights guide stochastic search, not a single weighted score; selected trade-off must respect baseline overspray tolerance, keep CU within the configured absolute loss budget, and not worsen interior deficit; if no Pareto point meets all guardrails, no trade-off is selected",
+            "selection_guardrails": {
+                "max_overspray_increase_vs_baseline": cfg["max_overspray_increase"],
+                "max_active_f1_increase_vs_baseline": cfg["max_overspray_increase"],
+                "minimum_CU": "baseline_CU - cu_drop_budget",
+                "maximum_f2": "baseline_f2 (interior deficit must not worsen)",
+                "fallback": "no selection when no feasible Pareto point meets all guardrails",
+            },
+        },
         "radial_distribution": {
             "model": "measured_profile" if profile_sha256 else "normalized_linear_sensitivity_family",
             "radial_slope": cfg.get("radial_slope", 0.0),
             "interpretation": "user-selected sensitivity scenario; not calibrated",
-        },
-        "site_geometry": {
-            "source_csv": args.polygon_csv,
-            "sha256": polygon_sha256,
-            "coordinate_system": "local projected Cartesian metres" if polygon_sha256 else "synthetic polygon",
-            "status": "custom_polygon_loaded" if polygon_sha256 else "synthetic_geometry",
-        },
-        "baseline_layout": {
-            "source_csv": args.heads_csv,
-            "sha256": heads_sha256,
-            "status": "imported_layout" if heads_sha256 else "generated_grid_layout",
         },
         "radial_profile": {
             "source_csv": args.profile_csv,
@@ -770,7 +1131,7 @@ def main(argv=None):
         },
     }
     with open(out("run_metadata.json"), "w", encoding="utf-8") as fh:
-        json.dump(metadata, fh, indent=2, sort_keys=True)
+        json.dump(metadata, fh, indent=2, sort_keys=True, default=str)
         fh.write("\n")
 
     t0 = time.time()
@@ -782,7 +1143,7 @@ def main(argv=None):
         fixed = key == "fixed"
         res = []
         for name, f in sites.items():
-            r = run_site(name, f(), cfg, fixed_xy=fixed, baseline_heads=custom_heads)
+            r = run_site(name, f(), cfg, fixed_xy=fixed)
             res.append(r)
             print(f"[{key:7s}] {name}: heads={r['n_heads']} moved={r['moved']} changed={r['changed']} "
                   f"AR {r['m0']['AR']:.2f}->{r['m1']['AR']:.2f} "
@@ -808,7 +1169,7 @@ def main(argv=None):
             if base_key in single:                # mark the single-objective AR optimum
                 r1 = next(x for x in single[base_key] if x["name"] == name)
                 refs = {f"AR-optimum ({MODES[base_key]['key']}, legacy)": r1["heads1"]}
-            pr = run_pareto(name, f(), cfg, fixed_xy=fixed, refs=refs, baseline_heads=custom_heads)
+            pr = run_pareto(name, f(), cfg, fixed_xy=fixed, refs=refs)
             res.append(pr)
             fr = pr["front"]
             sel = fr[pr["selected"]] if pr["selected"] is not None else None
@@ -818,7 +1179,7 @@ def main(argv=None):
                   f"f2 {fr[0]['f2']*100:.1f}..{fr[-1]['f2']*100:.1f}%  "
                   f"baseline(f1={base['f1']*100:.1f}%,f2={base['f2']*100:.1f}%)  "
                   + (f"selected(f1={sel['f1']*100:.1f}%,f2={sel['f2']*100:.1f}%,CU={sel['CU']:.2f})"
-                     if sel else "no feasible point")
+                     if sel else "no point meets baseline overspray/CU guardrails")
                   + f"  [{time.time()-t0:.0f}s]", flush=True)
         write_pareto_csv(res, out(f"pareto_{key.split('-')[1]}.csv"), cfg)
         plot_pareto(res, out(f"pareto_{key.split('-')[1]}.png"), cfg)

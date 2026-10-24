@@ -1,0 +1,1 @@
+site_id,run_id,can_id,x_m,y_m,zone,collection_duration_s,collected_volume_ml,measured_depth_mm,container_opening_area_cm2,pressure_kpa,wind_speed_m_s,wind_direction_deg,air_temperature_c,observation_datetime,validity_flag,exclusion_reason,notes,split

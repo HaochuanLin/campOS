@@ -15,9 +15,16 @@ dependencies = [
 
 [project.optional-dependencies]
 dev = ["pytest>=7.4"]
+ai = ["scikit-learn>=1.3"]
+ui = ["streamlit>=1.35"]
 
 [project.scripts]
 campos-sim = "campos.campos_sim:main"
+campos-field-evaluate = "campos.field_validation:main"
+campos-observation-qc = "campos.field_observations:main"
+campos-field-report = "campos.field_report:main"
+campos-start = "campos.quickstart:main"
+campos-verify-artifacts = "campos.artifact_verification:main"
 
 [tool.setuptools]
 package-dir = {"" = "src"}

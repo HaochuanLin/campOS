@@ -1,0 +1,36 @@
+name: ui-smoke
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  streamlit-startup:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v7
+      - name: Set up Python
+        uses: actions/setup-python@v7
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: pyproject.toml
+      - name: Install UI dependencies
+        run: python -m pip install -e ".[ui,ai]"
+      - name: Compile the UI module
+        run: python -m py_compile src/campos/app.py streamlit_app.py
+      - name: Start the Streamlit app
+        run: |
+          set +e
+          timeout 25s streamlit run streamlit_app.py \
+            --server.headless true --server.address 127.0.0.1 --server.port 8501 \
+            > out-streamlit.log 2>&1
+          status=$?
+          set -e
+          cat out-streamlit.log
+          if [ "$status" -ne 124 ]; then
+            echo "Expected Streamlit to remain alive until the timeout; exit code was $status"
+            exit 1
+          fi
+          grep -Eqi "You can now view your Streamlit app|Network URL|Local URL" out-streamlit.log

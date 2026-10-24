@@ -1,0 +1,45 @@
+# campOS local UI guide
+
+## Start the app
+
+Install the optional UI dependency and launch the local app:
+
+```bash
+python -m pip install -e ".[ui]"
+streamlit run src/campos/app.py
+```
+
+The app runs locally. It is a user interface for the research prototype, not a hosted service or a certified engineering tool. To enable the experimental AI residual-correction option as well, install `python -m pip install -e ".[ui,ai]"`; it is optional and should only be used after a successful field-evaluation run.
+
+## Publish a hosted demo
+
+For a hosted demo, configure Streamlit Community Cloud to use repository `HaochuanLin/campOS`, the branch containing this entry point, and `streamlit_app.py` as the main file. The root entry point adds the `src` directory to Python's import path and loads the existing UI module. Dependencies are declared in the repository-root `requirements.txt`.
+
+A local launch or a successful CI smoke test does not mean the hosted deployment has been created. Publishing requires an authorized Streamlit account and a deployment action in that account. For an open pull request, select its branch only for a temporary review deployment; use the default branch once the changes have been merged.
+
+## Synthetic mode
+
+Leave **Use surveyed site CSVs** unchecked, select one or more built-in site shapes, choose an optimization mode, random seed, and grid cell size, then run. The comparison mode evaluates fixed-position and movable-head search on the same synthetic sites. A seed and cell size are displayed with the result and are forwarded to the simulator.
+
+## Surveyed-site mode
+
+Check **Use surveyed site CSVs** and upload two CSV files:
+
+- Lawn polygon: `x_m,y_m` columns, at least three distinct vertices, coordinates in metres. An optional repeated closing vertex is accepted.
+- Sprinkler layout: `x_m,y_m,radius_m,start_angle_deg,arc_width_deg` columns. Head coordinates must lie inside the polygon; radius must be within the optimizer's configured bounds; arc width must be in (0, 360].
+- Optional radial profile: `radius_fraction,relative_rate` columns. Use a measured profile prepared from catch-can data; the downloaded template is empty and is not a measured profile.
+- Optional pressure-performance curve: `pressure_kpa,flow_lpm,throw_m` columns plus the operating pressure entered in the UI. The operating pressure must lie within the supplied curve range; no extrapolation is performed. This curve affects the simulation, while catch-can evaluation still requires measured per-head flow in the layout CSV or the explicit fallback flow.
+
+The UI offers downloads of example polygon, sprinkler-layout, and protected-surface CSVs, plus the empty catch-can observation template. Their coordinates are illustrative; replace them with surveyed measurements and do not use example rows as real site data. You may optionally upload a catch-can observation CSV to run pointwise model evaluation after the layout simulation. If any sprinkler row lacks a measured `flow_lpm`, enter a documented measured fallback flow; leave the fallback at zero when every head has a measured flow.
+
+Choose a single mode in surveyed-site mode. The app runs the custom geometry and layout using the selected seed and grid resolution. In Pareto modes, you may also upload a separate road/sidewalk polygon. It must not overlap the lawn interior; sharing a boundary is allowed. The protected-surface objective is only active in Pareto modes.
+
+## Reading results
+
+Inspect all generated CSVs and plots, not just the first score. The run's seed and grid resolution are shown in the UI. Downloaded run metadata records input provenance when the underlying CLI supports it.
+
+A successful run only means the simulation completed. It does not prove that the model predicts actual spray distribution, road wetting, water savings, or a safe installation. Wind/drift, pressure loss, evaporation, and network hydraulics remain incompletely modelled.
+
+## Field measurements
+
+The UI does not fabricate catch-can observations or treat synthetic example rows as field data. If you upload observations, it writes paired predictions and calibration/holdout metrics when the input contract is satisfied and surfaces holdout RMSE, MAE, bias, and sample count in the results view. If evaluation fails, the optimization outputs remain available and the UI shows diagnostics. To prepare valid observations, follow the field-evaluation workflow documented in [the real-site validation protocol](REAL_SITE_VALIDATION_PROTOCOL.md). Preserve raw observations, split complete runs into calibration or holdout, pre-register acceptance thresholds, and do not tune on holdout data. Before viewing holdout results, you may upload a pre-registered JSON threshold file; if any limit fails, the UI retains the metrics and predictions, shows a gate-failure warning, and blocks AI correction. The optional **Fail on zone/polygon label mismatch** control also makes inside/outside catch-can labels that contradict the uploaded lawn polygon a hard gate. Boundary cans should use the `boundary` zone label.
