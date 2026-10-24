@@ -1032,10 +1032,10 @@ def test_protected_surface_resolution_checker_reports_converging_area_error(tmp_
     protected_csv = tmp_path / "sidewalk.csv"
     output_csv = tmp_path / "resolution.csv"
     lawn_csv.write_text(
-        "x_m,y_m\\n0,0\\n40,0\\n40,25\\n0,25\\n", encoding="utf-8"
+        "x_m,y_m\n0,0\n40,0\n40,25\n0,25\n", encoding="utf-8"
     )
     protected_csv.write_text(
-        "x_m,y_m\\n-4.25,0.3\\n-4.25,24.7\\n-1.65,24.7\\n-1.65,0.3\\n",
+        "x_m,y_m\n-4.25,0.3\n-4.25,24.7\n-1.65,24.7\n-1.65,0.3\n",
         encoding="utf-8",
     )
     completed = subprocess.run(
