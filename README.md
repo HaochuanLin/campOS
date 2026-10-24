@@ -393,3 +393,21 @@ python scripts/check_optimizer_resolution.py \
 ```
 
 This checks optimizer-output sensitivity separately from fixed-layout rasterization error. Thresholds are user-selected numerical tolerances, not universal engineering standards. It does not prove real-world performance or water savings; see [custom-site validation and resolution guidance](docs/CUSTOM_SITE_INPUTS.md).
+
+
+### Validate the model against catch-can observations
+
+After measuring the lawn boundary, sprinkler layout, watering duration, and catch-can depths, run pointwise predictions against an explicit calibration/holdout split:
+
+~~~bash
+python scripts/validate_catch_can_data.py \
+  --polygon-csv data/site_polygon.csv \
+  --heads-csv data/sprinkler_layout.csv \
+  --observations-csv data/catch_can_observations.csv \
+  --profile-csv data/measured_radial_profile.csv \
+  --duration-minutes 20 \
+  --out out/catch-can-predictions.csv \
+  --summary-json out/catch-can-validation-summary.json
+~~~
+
+The script fits a single scale factor using calibration rows only and reports independent holdout RMSE, MAE, bias, and R² where defined. Without measured flow, the unscaled field is relative rather than absolute precipitation. Do not tune against holdout rows or treat a fitted scale factor as proof of generalization. See [custom-site validation guidance](docs/CUSTOM_SITE_INPUTS.md).
