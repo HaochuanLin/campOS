@@ -997,3 +997,35 @@ def test_pareto_overspray_objective_counts_only_water_outside_lawn():
     np.testing.assert_allclose(f1, expected_outside_water / reference_total_water)
     assert f2 == 0.0
     assert dry == 0.0
+
+
+
+def test_baseline_guard_rejects_pareto_points_that_increase_overspray():
+    baseline = {"f1": 0.007, "CU": 0.700}
+    front = [
+        {"f1": 0.051, "CU": 0.765},
+        {"f1": 0.142, "CU": 0.729},
+    ]
+    assert sim.select_tradeoff(front, budget=0.03, baseline=baseline) is None
+
+
+def test_baseline_guard_selects_lowest_overspray_without_exceeding_cu_budget():
+    baseline = {"f1": 0.10, "CU": 0.80}
+    front = [
+        {"f1": 0.08, "CU": 0.75},
+        {"f1": 0.06, "CU": 0.76},
+        {"f1": 0.04, "CU": 0.70},
+    ]
+    selected = sim.select_tradeoff(front, budget=0.05, baseline=baseline)
+    assert selected == 1
+    assert front[selected]["f1"] <= baseline["f1"]
+    assert front[selected]["CU"] >= baseline["CU"] - 0.05
+
+
+def test_baseline_guard_returns_none_when_cu_budget_is_violated():
+    baseline = {"f1": 0.10, "CU": 0.80}
+    front = [
+        {"f1": 0.05, "CU": 0.70},
+        {"f1": 0.08, "CU": 0.74},
+    ]
+    assert sim.select_tradeoff(front, budget=0.03, baseline=baseline) is None
