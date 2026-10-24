@@ -188,9 +188,20 @@ if run:
                         tables[name] = list(csv.DictReader(io.StringIO(payload.decode("utf-8-sig"))))
                     except (UnicodeDecodeError, csv.Error):
                         continue
+            field_metrics = {}
+            metrics_payload = artifacts.get("field_evaluation_metrics.json")
+            if metrics_payload:
+                try:
+                    evaluation_report = json.loads(metrics_payload.decode("utf-8"))
+                    field_metrics = (
+                        evaluation_report.get("metrics", {}).get("metrics", {}).get("holdout") or {}
+                    )
+                except (UnicodeDecodeError, json.JSONDecodeError, AttributeError):
+                    field_metrics = {}
             st.session_state["campos_run"] = {
                 "artifacts": artifacts,
                 "tables": tables,
+                "field_metrics": field_metrics,
                 "mode": mode,
                 "sites": result_sites,
                 "custom_site": custom_site,
@@ -220,6 +231,19 @@ if result:
         if result.get("field_eval_log"):
             with st.expander("Field-evaluation diagnostics"):
                 st.code(result["field_eval_log"])
+    if result.get("field_metrics"):
+        metrics = result["field_metrics"]
+        st.subheader("Catch-can holdout diagnostics")
+        st.caption("Descriptive error metrics in millimetres; these are not a universal pass/fail certification.")
+        metric_columns = st.columns(4)
+        metric_columns[0].metric("Holdout observations", str(metrics.get("n", "—")))
+        metric_columns[1].metric("RMSE (mm)", f"{metrics['rmse_mm']:.3f}" if metrics.get("rmse_mm") is not None else "—")
+        metric_columns[2].metric("MAE (mm)", f"{metrics['mae_mm']:.3f}" if metrics.get("mae_mm") is not None else "—")
+        metric_columns[3].metric(
+            "Bias (mm)",
+            f"{metrics['bias_mm_predicted_minus_measured']:.3f}"
+            if metrics.get("bias_mm_predicted_minus_measured") is not None else "—",
+        )
     if "results_fixed.csv" in result["artifacts"] and "results_movable.csv" in result["artifacts"]:
         left, right = st.columns(2)
         for column, title, filename in (
