@@ -13,6 +13,52 @@ sys.path.insert(0, str(SRC.parent.parent))
 from campos import campos_sim as sim  # noqa: E402
 
 
+def test_catch_can_validation_keeps_holdout_out_of_scale_fit(tmp_path):
+    lawn_csv = tmp_path / "lawn.csv"
+    heads_csv = tmp_path / "heads.csv"
+    observations_csv = tmp_path / "catch-cans.csv"
+    predictions_csv = tmp_path / "predictions.csv"
+    summary_json = tmp_path / "summary.json"
+    lawn_csv.write_text(
+        "x_m,y_m\n0,0\n10,0\n10,10\n0,10\n", encoding="utf-8"
+    )
+    heads_csv.write_text(
+        "x_m,y_m,radius_m,start_angle_deg,arc_width_deg\n5,5,6,0,360\n",
+        encoding="utf-8",
+    )
+    observations_csv.write_text(
+        "observation_id,x_m,y_m,observed_depth_mm,split\n"
+        "c1,5,5,3.0,calibration\n"
+        "c2,6,5,3.5,calibration\n"
+        "c3,7,5,4.0,calibration\n"
+        "h1,8,5,4.5,holdout\n"
+        "h2,9,5,5.0,holdout\n",
+        encoding="utf-8",
+    )
+    completed = subprocess.run(
+        [
+            sys.executable, str(ROOT / "scripts" / "validate_catch_can_data.py"),
+            "--polygon-csv", str(lawn_csv),
+            "--heads-csv", str(heads_csv),
+            "--observations-csv", str(observations_csv),
+            "--radial-slope", "1.0",
+            "--duration-minutes", "15",
+            "--out", str(predictions_csv),
+            "--summary-json", str(summary_json),
+        ],
+        cwd=ROOT, text=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, check=False,
+    )
+    assert completed.returncode == 0, completed.stdout
+    summary = json.loads(summary_json.read_text(encoding="utf-8"))
+    assert summary["calibration_metrics_after_scale_fit"]["rmse_mm"] < 1e-6
+    assert summary["holdout_metrics_after_scale_fit"]["rmse_mm"] < 1e-6
+    assert summary["holdout_metrics_after_scale_fit"]["n"] == 2
+    with predictions_csv.open(newline="", encoding="utf-8-sig") as fh:
+        rows = list(csv.DictReader(fh))
+    assert [row["split"] for row in rows][-2:] == ["holdout", "holdout"]
+    assert all(float(row["predicted_depth_mm_after_calibration"]) >= 0 for row in rows)
+
+
 def test_fixed_position_optimizer_preserves_xy_coordinates():
     cfg = dict(sim.CFG)
     cfg["sa_iters"] = 8  # Test-only reduction; production defaults remain unchanged.
