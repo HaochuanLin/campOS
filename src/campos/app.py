@@ -45,11 +45,15 @@ with st.sidebar:
             type=["csv"],
             key="sprinkler-layout",
         )
-        protected_upload = st.file_uploader(
-            "Protected road/sidewalk polygon CSV (optional)",
-            type=["csv"],
-            key="protected-surface",
-        )
+        if mode.startswith("pareto-"):
+            protected_upload = st.file_uploader(
+                "Protected road/sidewalk polygon CSV (optional)",
+                type=["csv"],
+                key="protected-surface",
+                help="In Pareto modes, this polygon becomes the protected-surface water objective.",
+            )
+        else:
+            st.caption("The protected-surface objective is active in Pareto modes only. Choose pareto-fixed or pareto-movable to optimize against a road/sidewalk polygon.")
         st.caption("Coordinates and radii must be in metres. Use these templates to get the required column names.")
         template_dir = Path(__file__).resolve().parents[2] / "data" / "templates"
         for label, filename in (
