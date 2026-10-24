@@ -38,7 +38,9 @@ with st.sidebar:
     )
     sites = []
     polygon_upload = heads_upload = protected_upload = observations_upload = None
+    profile_upload = performance_upload = None
     fallback_flow_lpm = 0.0
+    pressure_kpa = 0.0
     ai_correction = False
     if custom_site:
         polygon_upload = st.file_uploader("Lawn polygon CSV (x_m,y_m)", type=["csv"], key="lawn-polygon")
@@ -47,6 +49,22 @@ with st.sidebar:
             type=["csv"],
             key="sprinkler-layout",
         )
+        profile_upload = st.file_uploader(
+            "Measured radial profile CSV (optional: radius_fraction,relative_rate)",
+            type=["csv"],
+            key="radial-profile",
+        )
+        performance_upload = st.file_uploader(
+            "Manufacturer/bench pressure-flow-throw CSV (optional)",
+            type=["csv"],
+            key="pressure-performance",
+        )
+        if performance_upload is not None:
+            pressure_kpa = st.number_input(
+                "Measured operating pressure (kPa)",
+                min_value=1.0, max_value=1500.0, value=200.0, step=5.0,
+                help="Required with a pressure-flow-throw curve; the model will not extrapolate beyond its measured pressure range.",
+            )
         observations_upload = st.file_uploader(
             "Catch-can observations CSV (optional, for model evaluation)",
             type=["csv"],
@@ -80,6 +98,8 @@ with st.sidebar:
             ("Download sprinkler layout example", "sprinkler_layout_template.csv"),
             ("Download protected-surface example", "protected_surface_template.csv"),
             ("Download catch-can observation template", "field_catch_can_template.csv"),
+            ("Download radial-profile template", "catch_can_profile_template.csv"),
+            ("Download pressure-performance template", "sprinkler_performance_template.csv"),
         ):
             template_path = template_dir / filename
             if template_path.is_file():
@@ -117,6 +137,14 @@ if run:
                 if observations_upload is not None:
                     observations_path = workdir / "catch_can_observations.csv"
                     observations_path.write_bytes(observations_upload.getvalue())
+                profile_path = None
+                if profile_upload is not None:
+                    profile_path = workdir / "radial_profile.csv"
+                    profile_path.write_bytes(profile_upload.getvalue())
+                performance_path = None
+                if performance_upload is not None:
+                    performance_path = workdir / "pressure_performance.csv"
+                    performance_path.write_bytes(performance_upload.getvalue())
                 command = shutil.which("campos-sim")
                 invocation = [command] if command else [sys.executable, "-m", "campos.campos_sim"]
                 invocation += [
@@ -131,6 +159,13 @@ if run:
                     protected_path = workdir / "protected_surface.csv"
                     protected_path.write_bytes(protected_upload.getvalue())
                     invocation += ["--protected-surface-csv", str(protected_path)]
+                if profile_path is not None:
+                    invocation += ["--profile-csv", str(profile_path)]
+                if performance_path is not None:
+                    invocation += [
+                        "--performance-csv", str(performance_path),
+                        "--pressure-kpa", str(float(pressure_kpa)),
+                    ]
                 if not full:
                     invocation.append("--quick")
                 result_sites = ["custom surveyed site"]
@@ -175,6 +210,8 @@ if run:
                 ]
                 if fallback_flow_lpm > 0:
                     eval_invocation += ["--flow-lpm", str(float(fallback_flow_lpm))]
+                if profile_path is not None:
+                    eval_invocation += ["--profile-csv", str(profile_path)]
                 try:
                     evaluated = subprocess.run(
                         eval_invocation, check=False, capture_output=True, text=True, timeout=300
