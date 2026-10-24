@@ -1051,6 +1051,7 @@ def test_protected_surface_resolution_checker_reports_converging_area_error(tmp_
             "--heads-csv", str(heads_csv),
             "--cell-sizes", "2,1,0.5,0.25",
             "--max-relative-error", "0.05",
+            "--max-water-share-spread", "100",
             "--out", str(output_csv),
         ],
         check=False, capture_output=True, text=True,
