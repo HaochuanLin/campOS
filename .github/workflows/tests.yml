@@ -93,6 +93,42 @@ jobs:
         run: |
           python scripts/compare_optimization_modes.py --quick --sites E --outdir out/optimization-benchmark
           python -c "import csv; p='out/optimization-benchmark/benchmark_summary.csv'; rows=list(csv.DictReader(open(p, newline='', encoding='utf-8-sig'))); chosen=[r for r in rows if r['mode'].startswith('pareto-')]; assert len(chosen)==2; assert all(r['selected_tradeoff'] != 'YES' for r in chosen); assert all(r['selection_failure_reasons'] for r in chosen); assert all(sum(int(r[k]) for k in ('guardrail_cu_rejected_candidates','guardrail_overspray_rejected_candidates','guardrail_interior_deficit_rejected_candidates','guardrail_dry_area_rejected_candidates')) > 0 for r in chosen)"
+      - name: Run protected-surface objective smoke test
+        if: matrix.python-version == '3.10'
+        run: |
+          mkdir -p out/protected-surface-inputs
+          cat > out/protected-surface-inputs/lawn.csv <<'CSV'
+          x_m,y_m
+          0,0
+          10,0
+          10,10
+          0,10
+          CSV
+          cat > out/protected-surface-inputs/heads.csv <<'CSV'
+          x_m,y_m,radius_m,start_angle_deg,arc_width_deg
+          8,5,3.5,180,180
+          CSV
+          cat > out/protected-surface-inputs/sidewalk.csv <<'CSV'
+          x_m,y_m
+          10,0
+          10,10
+          13,10
+          13,0
+          CSV
+          python campos_sim.py --mode pareto-fixed --quick --cell-size 1.0 \
+            --polygon-csv out/protected-surface-inputs/lawn.csv \
+            --heads-csv out/protected-surface-inputs/heads.csv \
+            --protected-surface-csv out/protected-surface-inputs/sidewalk.csv \
+            --outdir out/protected-surface-smoke
+          python -c "import csv,json; p='out/protected-surface-smoke/pareto_fixed.csv'; f=open(p,newline='',encoding='utf-8-sig'); r=csv.DictReader(f); assert 'protected_surface_water_pct_of_baseline_total_water_f1' in r.fieldnames; assert 'outside_lawn_water_pct_of_baseline_total_water' in r.fieldnames; assert 'protected_surface_water_pct_of_baseline_total_water' in r.fieldnames; m=json.load(open('out/protected-surface-smoke/run_metadata.json')); assert m['optimization_policy']['protected_surface_metric']['active'] is True; assert m['site_input']['protected_surface_sha256']"
+      - name: Upload protected-surface smoke artifact
+        if: always() && matrix.python-version == '3.10'
+        uses: actions/upload-artifact@v7
+        with:
+          name: campos-protected-surface-smoke
+          path: out/protected-surface-smoke/
+          if-no-files-found: warn
+          retention-days: 14
       - name: Upload optimization benchmark results
         if: always() && matrix.python-version == '3.10'
         uses: actions/upload-artifact@v7
