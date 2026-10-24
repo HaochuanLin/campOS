@@ -68,3 +68,32 @@ def test_quickstart_rejects_invalid_seed_and_grid_size(capsys):
             quickstart.main(["--cell-size", invalid_cell_size])
         assert cell_error.value.code == 2
         assert "--cell-size must be finite and greater than zero" in capsys.readouterr().err
+
+
+def test_quickstart_excludes_stale_outputs_from_report_and_manifest(tmp_path, monkeypatch):
+    import json
+
+    stale_movable = tmp_path / "results_movable.csv"
+    stale_movable.write_text("site,baseline_AR,optimized_AR\nOLD,9,8\n", encoding="utf-8")
+    stale_plot = tmp_path / "old_plot.png"
+    stale_plot.write_bytes(b"stale plot")
+    monkeypatch.setattr(quickstart.shutil, "which", lambda _name: "/fake/campos-sim")
+
+    def fake_run(command, check):
+        outdir = Path(command[command.index("--outdir") + 1])
+        (outdir / "run_metadata.json").write_text('{"mode":"fixed"}', encoding="utf-8")
+        (outdir / "results_fixed.csv").write_text(
+            "site,baseline_AR,optimized_AR\nA,2,1.5\n", encoding="utf-8"
+        )
+
+    monkeypatch.setattr(quickstart.subprocess, "run", fake_run)
+    assert quickstart.main(["--mode", "fixed", "--outdir", str(tmp_path)]) == 0
+
+    manifest = json.loads((tmp_path / "quickstart_manifest.json").read_text(encoding="utf-8"))
+    assert "results_fixed.csv" in manifest["artifact_checksums"]
+    assert "results_movable.csv" not in manifest["artifact_checksums"]
+    assert "old_plot.png" not in manifest["artifact_checksums"]
+    page = (tmp_path / "index.html").read_text(encoding="utf-8")
+    assert "results_fixed.csv" in page
+    assert "results_movable.csv" not in page
+    assert "old_plot.png" not in page
