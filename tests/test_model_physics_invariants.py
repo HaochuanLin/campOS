@@ -1,7 +1,7 @@
 import numpy as np
 import pytest
 
-from campos.model import head_field, orifice_flow_lpm, spacing_precipitation_mm_h
+from campos.model import Site, head_field, orifice_flow_lpm, spacing_precipitation_mm_h
 
 
 def test_uniform_full_circle_flow_field_integrates_to_configured_flow():
@@ -50,3 +50,20 @@ def test_spacing_precipitation_respects_square_and_triangular_cell_area():
 def test_orifice_flow_rejects_nonphysical_inputs(pressure, diameter):
     with pytest.raises(ValueError):
         orifice_flow_lpm(pressure, diameter)
+
+
+
+def test_site_rejects_excessive_grid_before_allocating_large_arrays():
+    polygon = np.asarray([(0, 0), (1000, 0), (1000, 1000), (0, 1000)], dtype=float)
+    with pytest.raises(ValueError, match="safety limit"):
+        Site(polygon, {"cell": 0.01, "margin": 0.0})
+
+
+@pytest.mark.parametrize(
+    "cell,margin",
+    [(0.0, 1.0), (-1.0, 1.0), (float("nan"), 1.0), (1.0, -1.0)],
+)
+def test_site_rejects_invalid_grid_parameters(cell, margin):
+    polygon = np.asarray([(0, 0), (4, 0), (4, 4), (0, 4)], dtype=float)
+    with pytest.raises(ValueError):
+        Site(polygon, {"cell": cell, "margin": margin})
