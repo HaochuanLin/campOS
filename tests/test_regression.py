@@ -955,3 +955,26 @@ def test_catch_can_prediction_rejects_a_run_mixed_across_splits(tmp_path):
     )
     assert completed.returncode != 0
     assert "mixes calibration and holdout" in completed.stderr
+
+
+
+def test_pareto_tradeoff_selection_minimizes_overspray_within_cu_budget():
+    front = [
+        {"f1": 0.05, "CU": 0.90},
+        {"f1": 0.08, "CU": 0.93},
+        {"f1": 0.12, "CU": 0.95},
+        {"f1": 0.20, "CU": 0.97},
+    ]
+    selected = sim.select_tradeoff(front, budget=0.03)
+    assert selected == 1
+    assert front[selected]["f1"] == 0.08
+    assert front[selected]["CU"] >= max(point["CU"] for point in front) - 0.03
+
+
+def test_pareto_tradeoff_zero_cu_budget_selects_most_uniform_point():
+    front = [
+        {"f1": 0.05, "CU": 0.90},
+        {"f1": 0.08, "CU": 0.93},
+        {"f1": 0.12, "CU": 0.95},
+    ]
+    assert sim.select_tradeoff(front, budget=0.0) == 2
