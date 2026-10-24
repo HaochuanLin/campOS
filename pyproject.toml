@@ -19,6 +19,7 @@ dev = ["pytest>=7.4"]
 [project.scripts]
 campos-sim = "campos.campos_sim:main"
 campos-field-evaluate = "campos.field_validation:main"
+campos-observation-qc = "campos.field_observations:main"
 
 [tool.setuptools]
 package-dir = {"" = "src"}
