@@ -215,8 +215,18 @@ class Site:
         all_points = np.vstack(bounds)
         x0, y0 = all_points.min(axis=0) - m
         x1, y1 = all_points.max(axis=0) + m
-        nx = max(1, int(np.ceil((x1 - x0) / c)))
-        ny = max(1, int(np.ceil((y1 - y0) / c)))
+        width_m, height_m = x1 - x0, y1 - y0
+        cells_x, cells_y = width_m / c, height_m / c
+        if (
+            not np.all(np.isfinite([x0, y0, x1, y1, cells_x, cells_y]))
+            or width_m <= 0 or height_m <= 0
+        ):
+            raise ValueError(
+                "grid dimensions are outside the numeric range; increase cell size "
+                "or reduce the simulated geometry extent"
+            )
+        nx = max(1, int(np.ceil(cells_x)))
+        ny = max(1, int(np.ceil(cells_y)))
         estimated_cells = nx * ny
         if estimated_cells > MAX_GRID_CELLS:
             raise ValueError(
