@@ -31,6 +31,16 @@ jobs:
           campos-field-evaluate --help
           campos-observation-qc --help
           campos-field-report --help
+          campos-start --help
+      - name: Run one-command quickstart smoke test
+        if: matrix.python-version == '3.10'
+        run: |
+          campos-start --outdir out/campos-quickstart-smoke
+          test -s out/campos-quickstart-smoke/index.html
+          test -s out/campos-quickstart-smoke/quickstart_manifest.json
+          test -s out/campos-quickstart-smoke/run_metadata.json
+          test -s out/campos-quickstart-smoke/results_movable.csv
+          python -c "from pathlib import Path; p=Path('out/campos-quickstart-smoke/index.html').read_text(); assert 'synthetic' in p.lower() and 'field-validated' in p and 'results_movable.csv' in p"
       - name: Check precipitation benchmark
         if: matrix.python-version == '3.10'
         run: python scripts/benchmark_sprinkler_curve.py
