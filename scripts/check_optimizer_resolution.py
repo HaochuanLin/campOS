@@ -88,8 +88,12 @@ def main(argv=None):
         parser.error("--max-f1-spread must be in [0,1]")
     if args.max_f2_spread is not None and not (0 <= args.max_f2_spread <= 1):
         parser.error("--max-f2-spread must be in [0,1]")
-    if args.max_position_rms is not None and args.max_position_rms < 0:
-        parser.error("--max-position-rms must be non-negative")
+    if args.seed < 0:
+        parser.error("--seed must be non-negative")
+    if args.max_position_rms is not None and (
+        not (args.max_position_rms >= 0 and args.max_position_rms < float("inf"))
+    ):
+        parser.error("--max-position-rms must be finite and non-negative")
     try:
         polygon = sim.load_polygon_csv(args.polygon_csv)
         protected = sim.load_polygon_csv(args.protected_surface_csv)
