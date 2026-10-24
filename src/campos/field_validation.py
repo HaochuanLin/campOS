@@ -13,6 +13,7 @@ import csv
 import hashlib
 import json
 import math
+import platform
 from pathlib import Path
 
 import numpy as np
@@ -267,6 +268,15 @@ def main() -> None:
             "polygon_csv": sha256(args.polygon_csv),
             "heads_csv": sha256(args.heads_csv),
             "observations_csv": sha256(args.observations),
+        },
+        "software": {
+            "python_version": platform.python_version(),
+            "numpy_version": np.__version__,
+            "source_sha256": {
+                "field_validation.py": sha256(Path(__file__)),
+                "model.py": sha256(Path(__file__).with_name("model.py")),
+                "observation_errors.py": sha256(Path(__file__).with_name("observation_errors.py")),
+            },
         },
         "metrics": metrics,
         "metrics_by_zone": metrics_by_zone,
