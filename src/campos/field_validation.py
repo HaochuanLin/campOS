@@ -204,6 +204,74 @@ def predict(
     return output
 
 
+def validate_acceptance_thresholds(
+    thresholds: dict[str, object],
+) -> dict[str, float]:
+    """Validate explicit, pre-registered holdout acceptance limits.
+
+    Supported keys are max_holdout_mae_mm, max_holdout_rmse_mm, and
+    max_absolute_bias_mm. Values must be finite and non-negative.
+    """
+    allowed = {
+        "max_holdout_mae_mm",
+        "max_holdout_rmse_mm",
+        "max_absolute_bias_mm",
+    }
+    unknown = set(thresholds) - allowed
+    if unknown:
+        raise ValueError("unknown acceptance threshold(s): " + ", ".join(sorted(unknown)))
+    normalized: dict[str, float] = {}
+    for key, raw_value in thresholds.items():
+        try:
+            value = float(raw_value)
+        except (TypeError, ValueError) as exc:
+            raise ValueError(f"{key} must be a finite non-negative number") from exc
+        if not math.isfinite(value) or value < 0:
+            raise ValueError(f"{key} must be a finite non-negative number")
+        normalized[key] = value
+    if not normalized:
+        raise ValueError("at least one pre-registered acceptance threshold is required")
+    return normalized
+
+
+def assess_holdout(metrics: dict[str, object], thresholds: dict[str, float]) -> dict[str, object]:
+    """Compare holdout metrics with user-defined limits without inventing defaults."""
+    holdout = metrics.get("holdout")
+    if not isinstance(holdout, dict):
+        raise ValueError("holdout metrics are required to assess acceptance")
+    metric_map = {
+        "max_holdout_mae_mm": "mae_mm",
+        "max_holdout_rmse_mm": "rmse_mm",
+        "max_absolute_bias_mm": "bias_mm_predicted_minus_measured",
+    }
+    checks = []
+    for threshold_key, metric_key in metric_map.items():
+        if threshold_key not in thresholds:
+            continue
+        raw = holdout.get(metric_key)
+        if raw is None:
+            raise ValueError(f"holdout metric {metric_key} is unavailable")
+        try:
+            observed = float(raw)
+        except (TypeError, ValueError) as exc:
+            raise ValueError(f"holdout metric {metric_key} is not numeric") from exc
+        if not math.isfinite(observed):
+            raise ValueError(f"holdout metric {metric_key} must be finite")
+        limit = thresholds[threshold_key]
+        value = abs(observed) if threshold_key == "max_absolute_bias_mm" else observed
+        checks.append({
+            "metric": metric_key,
+            "observed": value,
+            "limit": limit,
+            "passed": value <= limit,
+        })
+    return {
+        "status": "pass" if all(item["passed"] for item in checks) else "fail",
+        "checks": checks,
+        "note": "User-defined limits only; this result is not a certification of model validity.",
+    }
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--polygon-csv", required=True, type=Path, help="surveyed polygon x_m,y_m")
