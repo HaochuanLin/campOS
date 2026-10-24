@@ -29,7 +29,7 @@ except ImportError as exc:  # pragma: no cover - environment-dependent
 
 
 def load_predictions(path: Path) -> list[dict[str, object]]:
-    required = {"x_m", "y_m", "measured_mm", "predicted_mm", "split"}
+    required = {"site_id", "run_id", "x_m", "y_m", "measured_mm", "predicted_mm", "split"}
     with path.open(newline="", encoding="utf-8-sig") as handle:
         reader = csv.DictReader(handle)
         if reader.fieldnames is None or not required.issubset(reader.fieldnames):
@@ -45,6 +45,10 @@ def load_predictions(path: Path) -> list[dict[str, object]]:
             measured, predicted = float(row["measured_mm"]), float(row["predicted_mm"])
         except (TypeError, ValueError) as exc:
             raise ValueError(f"row {line}: coordinates and depths must be numeric") from exc
+        site_id = str(row.get("site_id", "")).strip()
+        run_id = str(row.get("run_id", "")).strip()
+        if not site_id or not run_id:
+            raise ValueError(f"row {line}: site_id and run_id must be non-empty")
         split = row["split"].strip().lower()
         if not all(math.isfinite(v) for v in (x, y, measured, predicted)):
             raise ValueError(f"row {line}: all numeric values must be finite")
@@ -54,6 +58,7 @@ def load_predictions(path: Path) -> list[dict[str, object]]:
             raise ValueError(f"row {line}: split must be calibration or holdout")
         parsed.append({
             **row,
+            "site_id": site_id, "run_id": run_id,
             "x_m": x, "y_m": y,
             "measured_mm": measured, "predicted_mm": predicted, "split": split,
         })
@@ -71,8 +76,6 @@ def load_predictions(path: Path) -> list[dict[str, object]]:
         raise ValueError("AI correction requires at least 5 unique calibration coordinates")
     if len(holdout_coords) < 3:
         raise ValueError("AI evaluation requires at least 3 unique holdout coordinates")
-    if not all(str(r.get("run_id", "")).strip() for r in parsed):
-        raise ValueError("input CSV must include a non-empty run_id for run-level split validation")
     run_splits = {}
     for row in parsed:
         run_key = (
