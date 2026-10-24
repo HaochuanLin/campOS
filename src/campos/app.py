@@ -290,7 +290,7 @@ if run:
                     f"The simulation process exited with code {completed.returncode}. "
                     "No successful result is being shown."
                 )
-                diagnostic = "\\n".join(
+                diagnostic = "\n".join(
                     part.strip()
                     for part in (completed.stderr, completed.stdout)
                     if part and part.strip()
