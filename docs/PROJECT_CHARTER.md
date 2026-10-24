@@ -81,12 +81,11 @@ Current work primarily strengthens levels 1 and 2 and prepares workflows for lev
 
 ### Phase B — Strengthen physical consistency
 
-- Add an explicit surveyed protected-surface mask (e.g. sidewalk/road polygons) so the objective can distinguish protected hardscape from other outside-lawn areas; report both total outside-lawn water and protected-surface water separately.
-- Validate protected-surface geometry and predictions with catch-can observations before describing results as road/sidewalk-specific.
-- Trace pressure-performance input through flow, throw, radial distribution, and applied-depth calculation.
-- Make units and conversions explicit at each boundary.
-- Test full-circle and sector-flow conservation and verify that pressure interpolation is restricted to measured input ranges.
-- Distinguish aggregate sprinkler performance from the spatial radial profile; one does not replace the other.
+- Stress-test the implemented surveyed protected-surface mask across grid resolutions and representative geometries; record rasterization error and fail fast when a protected region has no represented grid cells.
+- Collect independent catch-can observations on both lawn and protected surfaces before describing outputs as road/sidewalk-specific predictive results.
+- Extend wind/drift and pressure-loss physics only when parameters can be supported by documented measurements; do not add unidentifiable knobs just to make the model appear more realistic.
+- Preserve explicit units and conversions at each boundary, and keep manufacturer aggregate flow/throw data distinct from a measured spatial radial profile.
+- Continue testing full-circle and sector-flow conservation, orifice-flow monotonicity, and interpolation restricted to measured pressure ranges.
 
 ### Phase C — Validate predictions
 
