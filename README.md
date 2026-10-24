@@ -55,6 +55,7 @@ campos-field-evaluate --help
 campos-observation-qc --help
 campos-field-report --help
 campos-start --help
+campos-verify-artifacts --help
 python -m pytest -q
 ```
 
