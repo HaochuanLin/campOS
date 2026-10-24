@@ -25,7 +25,7 @@ def verify_manifest(manifest_path: Path) -> tuple[list[str], list[str]]:
     """Return (verified artifact names, failures) for a quickstart manifest."""
     try:
         manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
-    except (OSError, json.JSONDecodeError) as exc:
+    except (OSError, UnicodeError, json.JSONDecodeError) as exc:
         return [], [f"cannot read manifest: {exc}"]
     if not isinstance(manifest, dict):
         return [], ["manifest root must be a JSON object"]
