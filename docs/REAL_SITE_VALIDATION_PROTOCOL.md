@@ -129,6 +129,8 @@ campos-field-evaluate \
 
 The metrics JSON and generated HTML/Markdown reports then record each observed holdout metric, its user-supplied limit, and whether that individual check passed. The threshold file's SHA-256 is recorded for provenance. Without this option, the tool reports descriptive errors and does not invent an acceptance result. A software-level pass only means the chosen numeric limits were met for these supplied observations; it does not establish general validity, independent sampling, or water savings.
 
+When a pre-registered threshold fails, the command still writes the prediction CSV and metrics JSON for audit, but exits with status 2 so shell scripts and CI can block downstream acceptance. To make contradictory `inside`/`outside` catch-can labels a separate hard gate, add `--fail-on-zone-geometry-mismatch`. The report records whether that gate was enabled, how many labels conflicted with the supplied lawn polygon, and whether the gate passed. Boundary observations should be labelled `boundary` rather than `inside` or `outside`; this geometric check cannot determine whether a can was physically exposed to spray drift.
+
 ## Paired error metrics for predictions already available
 
 campOS also includes `scripts/evaluate_observation_errors.py`. It computes descriptive bias, MAE, RMSE, maximum absolute error, and an optional R-squared-style comparison for paired depths supplied by the user. It requires a CSV with `measured_mm,predicted_mm,split`; `split` must be `calibration` or `holdout`, and at least two holdout rows are required by default.
