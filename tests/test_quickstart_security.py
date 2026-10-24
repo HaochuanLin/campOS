@@ -39,3 +39,32 @@ def test_quickstart_report_escapes_artifact_names_and_csv_cells(tmp_path):
     assert '&lt;img src=x onerror=&quot;alert(1)&quot;&gt;.csv' in html
     assert "<script>alert(1)</script>" not in html
     assert "&lt;script&gt;alert(1)&lt;/script&gt;" in html
+
+
+def test_quickstart_report_omits_stale_files_not_in_manifest(tmp_path):
+    outdir = tmp_path / "report"
+    outdir.mkdir()
+    (outdir / "fresh.csv").write_text("fresh output", encoding="utf-8")
+    (outdir / "stale-private-results.csv").write_text("stale output", encoding="utf-8")
+    (outdir / "results_movable.csv").write_text(
+        "site,optimized_AR\nold-site,999\n", encoding="utf-8"
+    )
+
+    report = quickstart.build_index(
+        outdir,
+        {
+            "finished_at_utc": "2026-10-24T00:00:00+00:00",
+            "mode": "movable",
+            "sites": ["A"],
+            "quick": True,
+            "artifact_checksums": {
+                "fresh.csv": {"size_bytes": 12, "sha256": "0" * 64},
+            },
+        },
+    )
+
+    html = report.read_text(encoding="utf-8")
+    assert "fresh.csv" in html
+    assert "stale-private-results.csv" not in html
+    assert "old-site" not in html
+    assert "999" not in html
