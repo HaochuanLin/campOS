@@ -209,7 +209,20 @@ def polygons_overlap(poly_a, poly_b):
     a = np.asarray(poly_a, dtype=float)
     b = np.asarray(poly_b, dtype=float)
     path_a, path_b = Path(a), Path(b)
-    if np.any(path_a.contains_points(b, radius=-1e-8)) or np.any(path_b.contains_points(a, radius=-1e-8)):
+
+    def strictly_inside(point, polygon, path):
+        # Matplotlib treats boundary points as implementation-defined; remove
+        # them explicitly so adjacent polygons sharing an edge remain valid.
+        on_boundary = any(
+            _orientation(polygon[i], polygon[(i + 1) % len(polygon)], point) == 0
+            and _on_segment(polygon[i], polygon[(i + 1) % len(polygon)], point)
+            for i in range(len(polygon))
+        )
+        return False if on_boundary else bool(path.contains_point(point))
+
+    if any(strictly_inside(point, a, path_a) for point in b):
+        return True
+    if any(strictly_inside(point, b, path_b) for point in a):
         return True
     for i in range(len(a)):
         a0, a1 = a[i], a[(i + 1) % len(a)]
