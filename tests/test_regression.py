@@ -22,10 +22,14 @@ def test_ai_residual_correction_trains_only_on_calibration_rows(tmp_path):
         x = float(i % 6) * 2.0
         y = float(i // 6) * 4.0
         split = "calibration" if i < 8 else "holdout"
+        # Repeated coordinate across distinct runs is a valid repeat-run holdout.
+        if i == 8:
+            x, y = 0.0, 0.0
         # Smooth spatial residual trend gives the GP a meaningful, but synthetic, test signal.
         predicted = 5.0
         measured = predicted + 0.2 * x - 0.1 * y
-        rows.append(f"site,run,can{i},{x},{y},{measured},{predicted},{split}")
+        run_id = "calibration-run" if split == "calibration" else "holdout-run"
+        rows.append(f"site,{run_id},can{i},{x},{y},{measured},{predicted},{split}")
     predictions.write_text("\n".join(rows) + "\n", encoding="utf-8")
     completed = subprocess.run(
         [
@@ -60,7 +64,8 @@ def test_ai_residual_correction_can_fail_predeclared_rmse_gate(tmp_path):
         split = "calibration" if i < 8 else "holdout"
         predicted = 5.0
         measured = 6.0 if split == "calibration" else 5.0
-        rows.append(f"site,run,can{i},{float(i)},0.0,{measured},{predicted},{split}")
+        run_id = "calibration-run" if split == "calibration" else "holdout-run"
+        rows.append(f"site,{run_id},can{i},{float(i)},0.0,{measured},{predicted},{split}")
     predictions.write_text("\n".join(rows) + "\n", encoding="utf-8")
     completed = subprocess.run(
         [
@@ -79,17 +84,16 @@ def test_ai_residual_correction_can_fail_predeclared_rmse_gate(tmp_path):
     assert summary["holdout_rmse_change_mm_corrected_minus_baseline"] > 0.0
 
 
-def test_ai_residual_correction_rejects_spatial_leakage(tmp_path):
-    predictions = tmp_path / "overlapping_coordinates.csv"
+def test_ai_residual_correction_rejects_run_split_leakage(tmp_path):
+    predictions = tmp_path / "mixed_run.csv"
     rows = ["site_id,run_id,can_id,x_m,y_m,measured_mm,predicted_mm,split"]
     for i in range(12):
         x = float(i % 6) * 2.0
         y = float(i // 6) * 4.0
         split = "calibration" if i < 8 else "holdout"
-        # Force one holdout point to reuse a calibration coordinate.
-        if i == 8:
-            x, y = 0.0, 0.0
-        rows.append(f"site,run,can{i},{x},{y},5.0,5.0,{split}")
+        # Invalid design: one run appears in both splits, even at different coordinates.
+        run_id = "same-run" if i in (0, 8) else ("calibration-run" if split == "calibration" else "holdout-run")
+        rows.append(f"site,{run_id},can{i},{x},{y},5.0,5.0,{split}")
     predictions.write_text("\n".join(rows) + "\n", encoding="utf-8")
     completed = subprocess.run(
         [
@@ -100,7 +104,7 @@ def test_ai_residual_correction_rejects_spatial_leakage(tmp_path):
         cwd=ROOT, text=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, check=False,
     )
     assert completed.returncode != 0
-    assert "coordinates must be disjoint to prevent spatial leakage" in completed.stdout
+    assert "appears in both calibration and holdout" in completed.stdout
 
 
 def test_catch_can_validation_keeps_holdout_out_of_scale_fit(tmp_path):
