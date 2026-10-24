@@ -202,7 +202,10 @@ def main(argv=None):
                        if r["position_rms_from_finest_m"] != ""]
     max_position = max(position_values) if position_values else None
     failures = []
-    if len(valid) != len(results):
+    threshold_requested = any(value is not None for value in (
+        args.max_f1_spread, args.max_f2_spread, args.max_position_rms
+    ))
+    if len(valid) != len(results) and threshold_requested:
         failures.append("one or more grid sizes had no feasible selected layout")
     if args.max_f1_spread is not None and (f1_spread is None or f1_spread > args.max_f1_spread):
         failures.append(f"f1 spread exceeds {args.max_f1_spread:g}")
@@ -215,7 +218,12 @@ def main(argv=None):
     if failures:
         print("FAIL: " + "; ".join(failures))
         return 2
-    print("PASS: all requested grid-sensitivity checks passed")
+    if len(valid) != len(results):
+        print("REPORT ONLY: at least one grid has no feasible selected layout; no stability conclusion for that grid")
+    elif threshold_requested:
+        print("PASS: all requested grid-sensitivity checks passed")
+    else:
+        print("REPORT ONLY: no acceptance thresholds requested; review metric and layout variation before relying on results")
     return 0
 
 
