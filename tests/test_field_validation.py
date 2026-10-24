@@ -229,7 +229,7 @@ def test_field_report_displays_optional_acceptance_assessment(tmp_path):
         }},
         "metrics_by_zone": {},
         "zone_geometry_mismatch_count": 1,
-        "zone_geometry_mismatch_can_ids": ["can|<script>alert(1)</script>\\n|injected"],
+        "zone_geometry_mismatch_can_ids": ["can|<script>alert(1)</script>\n|injected"],
         "zone_geometry_gate": {"enabled": True, "mismatch_count": 1, "passed": False},
         "limitations": [],
         "acceptance_thresholds_json_sha256": "abc123",
@@ -250,7 +250,7 @@ def test_field_report_displays_optional_acceptance_assessment(tmp_path):
     assert "abc123" in html_report
     assert "<script>alert(1)</script>" not in markdown
     assert "can\\|&lt;script&gt;alert(1)&lt;/script&gt;" in markdown
-    assert "\\n|injected" not in markdown
+    assert "\n|injected" not in markdown
     assert "alert(1)&lt;/script&gt; |injected" in markdown
     assert "Strict zone-geometry gate enabled: True" in markdown
     assert "Strict zone-geometry gate passed: False" in markdown
