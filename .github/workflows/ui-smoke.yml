@@ -34,7 +34,7 @@ jobs:
 
           run_button = next(button for button in app.button if button.label == "Run simulation")
           run_button.click().run()
-          assert not app.exception, "\\n".join(str(item) for item in app.exception)
+          assert not app.exception, "\n".join(str(item) for item in app.exception)
           downloads = app.get("download_button")
           assert any(item.label == "Download complete run bundle (.zip)" for item in downloads), "Complete-run ZIP download is missing after simulation"
           print("Streamlit AppTest passed: app rendered, synthetic simulation ran, and ZIP download appeared.")
