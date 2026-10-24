@@ -128,3 +128,12 @@ def test_artifact_verifier_rejects_empty_checksum_manifest(tmp_path):
 
     assert verified == []
     assert failures == ["manifest contains no artifact checksums"]
+
+def test_artifact_verifier_reports_invalid_json(tmp_path):
+    manifest = tmp_path / "quickstart_manifest.json"
+    manifest.write_text("{not valid json", encoding="utf-8")
+
+    verified, failures = verifier.verify_manifest(manifest)
+
+    assert verified == []
+    assert failures and failures[0].startswith("cannot read manifest:")
