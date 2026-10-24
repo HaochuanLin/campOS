@@ -84,7 +84,10 @@ def main():
         "baseline_CU", "result_CU", "baseline_dry_area_pct_legacy_definition",
         "result_dry_area_pct", "pareto_f1_pct_of_baseline_total_water",
         "pareto_f2_pct_mean_relative_target_shortfall", "pareto_total_water_relative",
-        "pareto_front_points", "selected_tradeoff", "status",
+        "pareto_front_points", "selected_tradeoff",
+        "guardrail_cu_rejected_candidates", "guardrail_overspray_rejected_candidates",
+        "guardrail_interior_deficit_rejected_candidates", "guardrail_dry_area_rejected_candidates",
+        "selection_failure_reasons", "status",
     ]
     rows = []
     for mode in MODES:
@@ -109,13 +112,35 @@ def main():
                 "pareto_f1_pct_of_baseline_total_water": "",
                 "pareto_f2_pct_mean_relative_target_shortfall": "",
                 "pareto_total_water_relative": "", "pareto_front_points": 0,
-                "selected_tradeoff": "", "status": "completed",
+                "selected_tradeoff": "",
+                "guardrail_cu_rejected_candidates": 0,
+                "guardrail_overspray_rejected_candidates": 0,
+                "guardrail_interior_deficit_rejected_candidates": 0,
+                "guardrail_dry_area_rejected_candidates": 0,
+                "selection_failure_reasons": "", "status": "completed",
             }
             if mode.startswith("pareto-"):
                 candidates = [r for r in pareto[mode]
                               if r["site"].split()[0] == site_id and r["point_type"] == "PARETO"]
                 selected = next((r for r in candidates if r["selected_tradeoff"].upper() == "YES"), None)
                 row["pareto_front_points"] = len(candidates)
+                diagnostic_fields = {
+                    "guardrail_cu_pass": "guardrail_cu_rejected_candidates",
+                    "guardrail_overspray_pass": "guardrail_overspray_rejected_candidates",
+                    "guardrail_interior_deficit_pass": "guardrail_interior_deficit_rejected_candidates",
+                    "guardrail_dry_area_pass": "guardrail_dry_area_rejected_candidates",
+                }
+                for check_field, count_field in diagnostic_fields.items():
+                    row[count_field] = sum(candidate.get(check_field, "").lower() == "false"
+                                            for candidate in candidates)
+                if not selected:
+                    failed = [label for field, label in (
+                        ("guardrail_cu_pass", "CU"),
+                        ("guardrail_overspray_pass", "overspray"),
+                        ("guardrail_interior_deficit_pass", "interior_deficit"),
+                        ("guardrail_dry_area_pass", "dry_area"),
+                    ) if any(candidate.get(field, "").lower() == "false" for candidate in candidates)]
+                    row["selection_failure_reasons"] = ";".join(failed) or "no_candidates"
                 if selected:
                     row.update({
                         "selected_tradeoff": "YES", "result_AR": selected["AR_legacy"],
