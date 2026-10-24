@@ -4,9 +4,11 @@ from __future__ import annotations
 import argparse
 import csv
 from datetime import datetime, timezone
+import hashlib
 import html
 import json
 from pathlib import Path
+import platform
 import shutil
 import subprocess
 import sys
@@ -18,6 +20,28 @@ LIMITATIONS = [
     "Wind, drift, pressure losses, evaporation, soil response, and other site effects are not fully modelled.",
     "Do not use this output as an installation instruction or certified engineering design.",
 ]
+
+
+def sha256_file(path: Path) -> str:
+    """Return the SHA-256 digest of a file without loading it all into memory."""
+    digest = hashlib.sha256()
+    with path.open("rb") as handle:
+        for chunk in iter(lambda: handle.read(1024 * 1024), b""):
+            digest.update(chunk)
+    return digest.hexdigest()
+
+
+def artifact_checksums(outdir: Path) -> dict[str, dict[str, int | str]]:
+    """Hash generated artifacts, excluding the self-referential manifest and HTML index."""
+    excluded = {"index.html", "quickstart_manifest.json"}
+    artifacts = {}
+    for path in sorted(outdir.iterdir()):
+        if path.is_file() and path.name not in excluded:
+            artifacts[path.name] = {
+                "size_bytes": path.stat().st_size,
+                "sha256": sha256_file(path),
+            }
+    return artifacts
 
 
 def build_index(outdir: Path, manifest: dict) -> Path:
@@ -163,6 +187,9 @@ def main(argv: list[str] | None = None) -> int:
         "quick": not args.full,
         "commands": invocations,
         "output_directory": str(outdir),
+        "python_version": platform.python_version(),
+        "platform": platform.platform(),
+        "artifact_checksums": artifact_checksums(outdir),
         "limitations": LIMITATIONS,
         "status": "simulation_completed_not_field_validated",
     }
