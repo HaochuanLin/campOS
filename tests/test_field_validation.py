@@ -228,6 +228,7 @@ def test_field_report_displays_optional_acceptance_assessment(tmp_path):
         }},
         "metrics_by_zone": {},
         "limitations": [],
+        "acceptance_thresholds_json_sha256": "abc123",
         "acceptance_assessment": {
             "status": "pass",
             "note": "User-defined limits only.",
@@ -241,3 +242,5 @@ def test_field_report_displays_optional_acceptance_assessment(tmp_path):
     assert "mae_mm" in markdown
     assert "Pre-registered holdout acceptance assessment" in html_report
     assert "User-defined limits only." in html_report
+    assert "abc123" in markdown
+    assert "abc123" in html_report
