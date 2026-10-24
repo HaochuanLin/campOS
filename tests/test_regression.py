@@ -1411,7 +1411,7 @@ def test_quickstart_index_is_browsable_and_labels_synthetic_results(tmp_path):
     report = build_index(tmp_path, manifest)
     page = report.read_text(encoding="utf-8")
     assert "campOS quickstart" in page
-    assert "not field-validated" in page
+    assert "field-validated irrigation design" in page
     assert "results_movable.csv" in page
     assert "layouts.png" in page
     assert "optimized_AR" in page
