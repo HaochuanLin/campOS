@@ -128,6 +128,6 @@ jobs:
             echo
             echo "- Job result: $JOB_STATUS"
             echo "- Commit: $GITHUB_SHA"
-            echo "- Checks: pytest, Python compilation, Streamlit AppTest, HTTP health endpoint."
+            echo "- Checks: dependency consistency, six CLI entry points, pytest, Python compilation, synthetic quickstart, artifact SHA-256 verification, Streamlit AppTest, HTTP health endpoint."
             echo "- Surveyed-site mode checks the starter-template ZIP and all six source CSVs."
           } >> "$GITHUB_STEP_SUMMARY"
