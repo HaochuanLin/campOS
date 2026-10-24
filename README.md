@@ -66,14 +66,15 @@ After installation, run:
 campos-start
 ```
 
-This runs a quick synthetic demonstration on site A and writes a browsable `index.html`, model output CSVs/plots, `run_metadata.json`, and `quickstart_manifest.json` under `out/campos-quickstart/`. Open the generated `index.html` in a browser to review the outputs and limitations. You can choose a different mode, site, or output directory:
+This runs quick fixed-position and movable-head synthetic scenarios on site A using the same quick settings, then writes a browsable `index.html`, model output CSVs/plots, mode-specific run metadata, and `quickstart_manifest.json` under `out/campos-quickstart/`. Open the generated `index.html` in a browser to compare the model-defined outcomes and review limitations. You can choose a different mode, site, or output directory:
 
 ```bash
+campos-start --mode compare --sites A C --outdir out/compare-demo
 campos-start --mode pareto-fixed --sites C --outdir out/pareto-demo
 campos-start --mode fixed --sites A C --outdir out/fixed-demo
 ```
 
-Add `--full` to omit the quick smoke-test settings; longer searches may take substantially more time. The command does not need field observations or training data, and it does not silently fabricate them: it uses built-in synthetic geometry and labels the report accordingly.
+Add `--full` to omit the quick smoke-test settings; longer searches may take substantially more time. The default `compare` mode runs both fixed and movable layouts. A single mode can be selected explicitly. The command does not need field observations or training data, and it does not silently fabricate them: it uses built-in synthetic geometry and labels the report accordingly.
 
 This is a software demo, not a real-site design. It cannot establish field accuracy, actual road wetting, or water savings.
 
