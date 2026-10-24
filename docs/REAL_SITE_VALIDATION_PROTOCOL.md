@@ -97,8 +97,8 @@ python scripts/predict_catch_can_depths.py \
 
 Replace the example paths and flow with the actual measured inputs. The script evaluates the model at each exact catch-can coordinate (rather than silently matching a nearby raster cell), multiplies predicted precipitation rate by the recorded collection duration, and writes:
 
-- `paired_predictions.csv`: measured and predicted depth, residual, absolute error, location, zone, and split.
-- `field_evaluation_metrics.json`: input SHA-256 hashes, assumptions, calibration and holdout counts, and descriptive error metrics.
+- `paired_predictions.csv`: measured and predicted depth, residual, absolute error, location, zone, split, and whether the coordinate falls inside the supplied polygon.
+- `field_evaluation_metrics.json`: input SHA-256 hashes, assumptions, calibration and holdout counts, descriptive error metrics, and any conflict between a row's inside/outside label and the polygon geometry.
 
 The sprinkler layout may include an optional `flow_lpm` column with a measured flow for each head. If a head's value is blank, supply `--flow-lpm` as a fallback; a CLI fallback is unnecessary when every head has a measured value. The field CSV must include a `split` column set to `calibration` or `holdout`. All cans from a single `site_id,run_id` must remain in one split; the tool rejects mixed splits within a run. The default uniform radial profile is a null-model assumption. A measured relative radial profile can be supplied with `--profile-csv`, but it still requires measured flow for absolute depth prediction.
 
