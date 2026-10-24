@@ -1019,8 +1019,12 @@ def test_protected_surface_too_narrow_for_grid_fails_fast():
     lawn = sim.site_rect()
     thin_strip = np.array([[40.1, 0.0], [40.1, 25.0], [40.2, 25.0], [40.2, 0.0]])
     cfg = dict(sim.CFG, cell=1.0, margin=2.0, protected_polygon=thin_strip)
-    with pytest.raises(ValueError, match="contains no grid-cell centres"):
+    try:
         sim.Site(lawn, cfg)
+    except ValueError as exc:
+        assert "contains no grid-cell centres" in str(exc)
+    else:
+        raise AssertionError("sub-grid protected surface should fail fast")
 
 
 def test_protected_surface_polygon_csv_loader_accepts_valid_polygon(tmp_path):
