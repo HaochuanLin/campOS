@@ -56,6 +56,16 @@ The next step should be an evidence-led objective redesign, not a claim that the
 The test suite now guards two important semantics of the existing Pareto workflow:
 
 - The overspray objective f1 is calculated from water outside the lawn polygon divided by the baseline total modelled water.
-- The displayed trade-off is the lowest-overspray point among points whose CU remains within the configured absolute loss budget from the most uniform feasible point.
+- A displayed trade-off must not increase overspray relative to the baseline and must keep CU within the configured absolute loss budget relative to baseline CU. If no Pareto point satisfies both conditions, the tool reports no selected trade-off rather than silently accepting more overspray.
 
 These tests protect the meaning of the existing metrics and selection policy; they do not demonstrate that a particular layout is physically accurate or that a real site will save water. The optimizer remains a synthetic research prototype until its assumptions are calibrated and its predictions are assessed against independent field observations.
+
+
+## Baseline-aware Pareto selection
+
+A roadside-strip benchmark exposed a policy failure in the earlier selector: it measured CU loss from the most uniform point on the searched front, not from the installed baseline, and could select a solution with much more overspray than baseline. The selector now applies two explicit guardrails to displayed recommendations:
+
+1. CU must be at least baseline CU minus the configured absolute CU-loss budget.
+2. The modelled overspray ratio must not exceed baseline overspray.
+
+If the approximate Pareto front contains no candidate satisfying both, no candidate is labelled as selected. This does not mean the baseline meets the dry-area constraint; it means the current search did not find a solution satisfying all reported constraints. The roadside-strip synthetic run is a useful regression case because its baseline overspray is low but its dry-zone fraction violates the Pareto feasibility threshold.
