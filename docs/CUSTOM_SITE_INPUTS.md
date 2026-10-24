@@ -60,3 +60,19 @@ Example invocation (replace paths with surveyed inputs):
       --outdir out/protected-surface
 
 When supplied, Pareto f1 becomes modelled water on the protected polygon divided by baseline total modelled water. CSV output also reports outside-lawn water separately. The polygon must be valid and must not overlap the lawn interior; a shared boundary is allowed. Identical polygons and polygons with coincident edges whose interiors overlap are rejected. The grid uses cell-centre inclusion, so results depend on grid resolution; if no grid-cell centre falls inside the protected polygon, the run now fails fast instead of reporting a misleading zero-water objective. Reduce `--cell-size` or correct the surveyed polygon. This is not a runoff or drift model and is not field validation; compare resolutions and validate with catch-can observations.
+
+
+### Check protected-surface grid resolution before interpreting results
+
+Run the area diagnostic before optimization to quantify how cell-centre rasterization approximates the surveyed road/sidewalk polygon's area:
+
+```bash
+python scripts/check_protected_surface_resolution.py \
+  --polygon-csv data/site_polygon.csv \
+  --protected-surface-csv data/sidewalk_polygon.csv \
+  --cell-sizes 2,1,0.5,0.25 \
+  --max-relative-error 0.05 \
+  --out out/protected-surface-resolution.csv
+```
+
+The optional error limit applies to the finest requested grid; the command exits non-zero if its rasterized protected area exceeds that relative error. Choose a tolerance appropriate to the site and decision, not merely one that makes the check pass. This diagnostic checks **area representation only**. It does not prove that the simulated water objective, spray drift, or real road wetting has converged; compare model outputs across resolutions and validate with field measurements.
