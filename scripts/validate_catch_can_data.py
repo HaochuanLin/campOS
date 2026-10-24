@@ -63,8 +63,8 @@ def read_observations(path):
         if reader.fieldnames is None or not required.issubset(reader.fieldnames):
             raise ValueError("observations CSV must contain x_m,y_m,observed_depth_mm,split columns")
         rows = list(reader)
-    if len(rows) < 4:
-        raise ValueError("at least four observations are required to keep calibration and holdout separate")
+    if len(rows) < 5:
+        raise ValueError("at least five observations are required (minimum 3 calibration and 2 holdout)")
     parsed = []
     for index, row in enumerate(rows, start=1):
         try:
@@ -81,10 +81,12 @@ def read_observations(path):
     ids = [row["observation_id"] for row in parsed]
     if len(set(ids)) != len(ids):
         raise ValueError("observation_id values must be unique")
-    if not any(row["split"] == "calibration" for row in parsed):
-        raise ValueError("at least one calibration observation is required")
-    if not any(row["split"] == "holdout" for row in parsed):
-        raise ValueError("at least one independent holdout observation is required")
+    calibration_count = sum(row["split"] == "calibration" for row in parsed)
+    holdout_count = sum(row["split"] == "holdout" for row in parsed)
+    if calibration_count < 3:
+        raise ValueError("at least three calibration observations are required for a meaningful scale fit")
+    if holdout_count < 2:
+        raise ValueError("at least two independent holdout observations are required")
     return parsed
 
 
