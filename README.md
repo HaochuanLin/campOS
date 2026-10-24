@@ -30,6 +30,16 @@ It is not an autonomous irrigation controller, a certified engineering design to
 
 See [the project charter](docs/PROJECT_CHARTER.md) for the intended scope, evidence standards, and development priorities. For a practical measurement plan, required field records, and the distinction between calibration and independent evaluation, see the [real-site validation protocol](docs/REAL_SITE_VALIDATION_PROTOCOL.md).
 
+Before any model comparison, run the field-observation data-quality checker on a completed catch-can CSV:
+
+```bash
+python scripts/check_field_observations.py \
+  --input data/field_catch_can_observations.csv \
+  --outdir out/field-data-qc
+```
+
+It checks required columns, unique can IDs per site/run, numeric values, units, and basic flags; if depth is blank, it derives depth in mm from collected volume and opening area. It writes a normalized CSV and JSON quality summary. This is **data QC only**—it does not compare observations with model predictions or count as field validation.
+
 ## Quick start
 
 Requires Python 3.10 or newer.
