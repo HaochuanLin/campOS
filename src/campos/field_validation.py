@@ -19,7 +19,7 @@ import numpy as np
 
 from .campos_sim import load_polygon_csv, load_radial_profile_csv
 from .model import head_field
-from .observation_errors import evaluate
+from .observation_errors import evaluate, summarize
 
 
 HEAD_COLUMNS = ("x_m", "y_m", "radius_m", "start_angle_deg", "arc_width_deg")
@@ -225,6 +225,19 @@ def main() -> None:
             for row in predictions
         ]
         metrics = evaluate(metric_input)
+    metrics_by_zone = {}
+    for zone in sorted({str(row["zone"]) for row in predictions}):
+        zone_rows = [
+            {"measured_mm": row["measured_mm"], "predicted_mm": row["predicted_mm"], "split": row["split"]}
+            for row in predictions if str(row["zone"]) == zone
+        ]
+        zone_holdout = [row for row in zone_rows if row["split"] == "holdout"]
+        metrics_by_zone[zone] = {
+            "n": len(zone_rows),
+            "holdout_n": len(zone_holdout),
+            "all": summarize(zone_rows) if zone_rows else None,
+            "holdout": summarize(zone_holdout) if zone_holdout else None,
+        }
     except (OSError, ValueError) as exc:
         parser.error(str(exc))
 
@@ -253,6 +266,7 @@ def main() -> None:
             "observations_csv": sha256(args.observations),
         },
         "metrics": metrics,
+        "metrics_by_zone": metrics_by_zone,
         "limitations": [
             "Each head uses its supplied flow_lpm, or the CLI fallback if the per-head value is blank; flows must be measured at documented operating conditions.",
             "Predictions assume steady operation and omit wind, drift, evaporation, pressure loss, and network hydraulics.",
