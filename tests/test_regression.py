@@ -154,6 +154,31 @@ def test_optimizer_resolution_rejects_nonfinite_threshold_and_negative_seed(tmp_
         assert "Traceback" not in completed.stdout
 
 
+def test_protected_surface_objective_uses_only_protected_polygon_water():
+    lawn = np.asarray([(0, 0), (4, 0), (4, 4), (0, 4)], dtype=float)
+    sidewalk = np.asarray([(4, 0), (6, 0), (6, 4), (4, 4)], dtype=float)
+    cfg = dict(sim.CFG, cell=1.0, margin=2.0, protected_polygon=sidewalk)
+    site = sim.Site(lawn, cfg)
+    assert site.protected_mask.any()
+
+    field = np.zeros_like(site.X, dtype=float)
+    field[site.mask] = 1.0
+    field[site.protected_mask] = 2.0
+    # Other surrounding ground receives much more modelled water than the
+    # sidewalk, so the two candidate objectives must remain distinguishable.
+    field[~(site.mask | site.protected_mask)] = 5.0
+    reference = {"W0": float(field.sum())}
+
+    f1, _, _ = sim.bi_eval(site, field, reference, cfg)
+    expected_protected_share = float(field[site.protected_mask].sum() / reference["W0"])
+    outside_lawn_share = float(
+        (field.sum() - field.ravel()[site.idx].sum()) / reference["W0"]
+    )
+
+    assert f1 == expected_protected_share
+    assert f1 < outside_lawn_share
+
+
 def test_catch_can_validation_keeps_holdout_out_of_scale_fit(tmp_path):
     lawn_csv = tmp_path / "lawn.csv"
     heads_csv = tmp_path / "heads.csv"
