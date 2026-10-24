@@ -65,8 +65,19 @@ def load_predictions(path: Path) -> list[dict[str, object]]:
         raise ValueError(f"AI correction requires at least 8 calibration points; found {len(calibration)}")
     if len(holdout) < 3:
         raise ValueError(f"AI evaluation requires at least 3 independent holdout points; found {len(holdout)}")
-    if len({(r["x_m"], r["y_m"]) for r in calibration}) < 5:
+    calibration_coords = {(r["x_m"], r["y_m"]) for r in calibration}
+    holdout_coords = {(r["x_m"], r["y_m"]) for r in holdout}
+    if len(calibration_coords) < 5:
         raise ValueError("AI correction requires at least 5 unique calibration coordinates")
+    if len(holdout_coords) < 3:
+        raise ValueError("AI evaluation requires at least 3 unique holdout coordinates")
+    overlap = calibration_coords & holdout_coords
+    if overlap:
+        examples = sorted(overlap)[:3]
+        raise ValueError(
+            "calibration and holdout coordinates must be disjoint to prevent spatial leakage; "
+            f"overlapping coordinates include {examples}"
+        )
     return parsed
 
 
