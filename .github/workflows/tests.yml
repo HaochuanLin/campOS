@@ -31,6 +31,9 @@ jobs:
           campos-field-evaluate --help
           campos-observation-qc --help
           campos-field-report --help
+      - name: Check precipitation benchmark
+        if: matrix.python-version == '3.10'
+        run: python scripts/benchmark_sprinkler_curve.py
       - name: Run field-evaluation CLI smoke test
         if: matrix.python-version == '3.10'
         run: |
