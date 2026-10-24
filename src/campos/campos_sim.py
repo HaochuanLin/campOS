@@ -1094,7 +1094,7 @@ def main(argv=None):
         },
     }
     with open(out("run_metadata.json"), "w", encoding="utf-8") as fh:
-        json.dump(metadata, fh, indent=2, sort_keys=True)
+        json.dump(metadata, fh, indent=2, sort_keys=True, default=str)
         fh.write("\n")
 
     t0 = time.time()
