@@ -10,6 +10,8 @@ import csv
 from pathlib import Path
 import sys
 
+import numpy as np
+
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "src"))
 
@@ -20,8 +22,7 @@ from campos.model import Site  # noqa: E402
 def polygon_area(polygon):
     """Return absolute shoelace area in square metres."""
     x, y = polygon.T
-    return abs(0.5 * float((x * __import__("numpy").roll(y, -1)
-                            - __import__("numpy").roll(x, -1) * y).sum()))
+    return abs(0.5 * float(np.sum(x * np.roll(y, -1) - np.roll(x, -1) * y)))
 
 
 def parse_cell_sizes(value):
