@@ -50,7 +50,18 @@ with st.sidebar:
             type=["csv"],
             key="protected-surface",
         )
-        st.caption("Use the CSV templates in data/templates/. Coordinates and radii are in metres.")
+        st.caption("Coordinates and radii must be in metres. Use these templates to get the required column names.")
+        template_dir = Path(__file__).resolve().parents[2] / "data" / "templates"
+        for label, filename in (
+            ("Download lawn polygon template", "site_polygon_template.csv"),
+            ("Download sprinkler layout template", "sprinkler_layout_template.csv"),
+        ):
+            template_path = template_dir / filename
+            if template_path.is_file():
+                st.download_button(
+                    label, data=template_path.read_bytes(), file_name=filename,
+                    mime="text/csv", key=f"template-{filename}", use_container_width=True,
+                )
     else:
         sites = st.multiselect("Synthetic sites", ["A", "B", "C", "D", "E"], default=["A"])
     seed = st.number_input("Random seed", min_value=0, max_value=2147483647, value=7, step=1)
