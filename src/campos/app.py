@@ -54,11 +54,12 @@ with st.sidebar:
             )
         else:
             st.caption("The protected-surface objective is active in Pareto modes only. Choose pareto-fixed or pareto-movable to optimize against a road/sidewalk polygon.")
-        st.caption("Coordinates and radii must be in metres. Use these templates to get the required column names.")
+        st.caption("Coordinates and radii must be in metres. These are illustrative examples, not surveyed measurements.")
         template_dir = Path(__file__).resolve().parents[2] / "data" / "templates"
         for label, filename in (
-            ("Download lawn polygon template", "site_polygon_template.csv"),
-            ("Download sprinkler layout template", "sprinkler_layout_template.csv"),
+            ("Download lawn polygon example", "site_polygon_template.csv"),
+            ("Download sprinkler layout example", "sprinkler_layout_template.csv"),
+            ("Download protected-surface example", "protected_surface_template.csv"),
         ):
             template_path = template_dir / filename
             if template_path.is_file():
