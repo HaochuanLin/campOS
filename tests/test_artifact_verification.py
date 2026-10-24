@@ -98,3 +98,33 @@ def test_artifact_verifier_reports_non_utf8_manifest(tmp_path):
     verified, failures = verifier.verify_manifest(manifest)
     assert verified == []
     assert failures and failures[0].startswith("cannot read manifest:")
+
+
+def test_artifact_verifier_rejects_malformed_checksum_records(tmp_path):
+    manifest = tmp_path / "quickstart_manifest.json"
+    manifest.write_text(json.dumps({
+        "artifact_checksums": {
+            "bad-hash.csv": {"size_bytes": 0, "sha256": "not-a-sha256"},
+            "boolean-size.csv": {"size_bytes": True, "sha256": "0" * 64},
+            "negative-size.csv": {"size_bytes": -1, "sha256": "0" * 64},
+            "nested\\file.csv": {"size_bytes": 0, "sha256": "0" * 64},
+        }
+    }), encoding="utf-8")
+
+    verified, failures = verifier.verify_manifest(manifest)
+
+    assert verified == []
+    assert len(failures) == 4
+    assert any("invalid SHA-256" in failure for failure in failures)
+    assert any("invalid size_bytes" in failure for failure in failures)
+    assert any("unsafe artifact name" in failure for failure in failures)
+
+
+def test_artifact_verifier_rejects_empty_checksum_manifest(tmp_path):
+    manifest = tmp_path / "quickstart_manifest.json"
+    manifest.write_text(json.dumps({"artifact_checksums": {}}), encoding="utf-8")
+
+    verified, failures = verifier.verify_manifest(manifest)
+
+    assert verified == []
+    assert failures == ["manifest contains no artifact checksums"]
