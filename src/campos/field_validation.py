@@ -38,6 +38,16 @@ def sha256(path: Path) -> str:
     return digest.hexdigest()
 
 
+def unique_json_object(pairs: list[tuple[str, object]]) -> dict[str, object]:
+    """Build a JSON object while rejecting duplicate keys instead of silently overriding them."""
+    result: dict[str, object] = {}
+    for key, value in pairs:
+        if key in result:
+            raise ValueError(f"duplicate JSON key in acceptance thresholds: {key!r}")
+        result[key] = value
+    return result
+
+
 def finite_float(value: str, name: str, line: int) -> float:
     try:
         result = float(value)
@@ -321,7 +331,10 @@ def main() -> int:
                 "holdout": summarize(zone_holdout) if zone_holdout else None,
             }
         if args.acceptance_thresholds_json is not None:
-            raw_thresholds = json.loads(args.acceptance_thresholds_json.read_text(encoding="utf-8"))
+            raw_thresholds = json.loads(
+                args.acceptance_thresholds_json.read_text(encoding="utf-8"),
+                object_pairs_hook=unique_json_object,
+            )
             if not isinstance(raw_thresholds, dict):
                 raise ValueError("acceptance thresholds JSON must be an object")
             thresholds = validate_acceptance_thresholds(raw_thresholds)
