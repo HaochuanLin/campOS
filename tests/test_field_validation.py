@@ -328,7 +328,7 @@ def test_cli_returns_nonzero_when_pre_registered_holdout_gate_fails(tmp_path, mo
 
 
 
-def test_cli_can_fail_when_zone_labels_conflict_with_polygon(tmp_path, monkeypatch):
+def test_cli_can_fail_when_zone_labels_conflict_with_polygon(tmp_path, monkeypatch, capsys):
     polygon_path = write_csv(
         tmp_path / "polygon.csv",
         ["x_m", "y_m"],
@@ -370,8 +370,10 @@ def test_cli_can_fail_when_zone_labels_conflict_with_polygon(tmp_path, monkeypat
     ])
 
     exit_code = field_validation_main()
+    captured = capsys.readouterr()
 
     assert exit_code == 2
+    assert "strict geometry gate failed" in captured.out
     report = json.loads((outdir / "field_evaluation_metrics.json").read_text(encoding="utf-8"))
     assert report["status"] == "zone_geometry_gate_failed"
     assert report["acceptance_assessment"]["status"] == "pass"
