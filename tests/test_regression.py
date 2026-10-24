@@ -1029,3 +1029,18 @@ def test_baseline_guard_returns_none_when_cu_budget_is_violated():
         {"f1": 0.08, "CU": 0.74},
     ]
     assert sim.select_tradeoff(front, budget=0.03, baseline=baseline) is None
+
+
+
+def test_baseline_guard_allows_only_explicit_overspray_tolerance():
+    baseline = {"f1": 0.007, "CU": 0.700}
+    front = [
+        {"f1": 0.015, "CU": 0.700},
+        {"f1": 0.030, "CU": 0.710},
+    ]
+    assert sim.select_tradeoff(
+        front, budget=0.03, baseline=baseline, max_overspray_increase=0.01
+    ) == 0
+    assert sim.select_tradeoff(
+        front, budget=0.03, baseline=baseline, max_overspray_increase=0.005
+    ) is None
