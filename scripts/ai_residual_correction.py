@@ -169,6 +169,18 @@ def main(argv: list[str] | None = None) -> int:
 
     holdout_baseline = regression_metrics(holdout, "baseline_predicted_mm")
     holdout_corrected = regression_metrics(holdout, "ai_corrected_predicted_mm")
+    holdout_interval_covered = [
+        float(row["ai_corrected_95pct_lower_mm"])
+        <= float(row["measured_mm"])
+        <= float(row["ai_corrected_95pct_upper_mm"])
+        for row in holdout
+    ]
+    holdout_interval_coverage = float(np.mean(holdout_interval_covered))
+    holdout_mean_interval_width = float(np.mean([
+        float(row["ai_corrected_95pct_upper_mm"])
+        - float(row["ai_corrected_95pct_lower_mm"])
+        for row in holdout
+    ]))
     summary = {
         "schema_version": 1,
         "method": "GaussianProcessRegressor with spatial RBF kernel and white-noise term",
@@ -180,6 +192,8 @@ def main(argv: list[str] | None = None) -> int:
         "kernel_after_calibration_fit": str(model.kernel_),
         "holdout_baseline_metrics": holdout_baseline,
         "holdout_ai_corrected_metrics": holdout_corrected,
+        "holdout_ai_95pct_interval_empirical_coverage": holdout_interval_coverage,
+        "holdout_ai_mean_95pct_interval_width_mm": holdout_mean_interval_width,
         "holdout_rmse_change_mm_corrected_minus_baseline": (
             holdout_corrected["rmse_mm"] - holdout_baseline["rmse_mm"]
         ),
@@ -201,6 +215,8 @@ def main(argv: list[str] | None = None) -> int:
         "holdout_n": len(holdout),
         "holdout_baseline_rmse_mm": holdout_baseline["rmse_mm"],
         "holdout_ai_corrected_rmse_mm": holdout_corrected["rmse_mm"],
+        "holdout_ai_95pct_interval_empirical_coverage": holdout_interval_coverage,
+        "holdout_ai_mean_95pct_interval_width_mm": holdout_mean_interval_width,
         "holdout_rmse_change_mm_corrected_minus_baseline": summary["holdout_rmse_change_mm_corrected_minus_baseline"],
         "note": "AI correction is experimental; compare on independent data and do not tune against this holdout set.",
     }, indent=2))
