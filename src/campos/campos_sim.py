@@ -963,7 +963,8 @@ def main(argv=None):
     raw_cli = list(sys.argv[1:] if argv is None else argv)
     source_flags = {
         "mode": "--mode", "sites": "--sites", "polygon_csv": "--polygon-csv",
-        "heads_csv": "--heads-csv", "outdir": "--outdir", "quick": "--quick",
+        "heads_csv": "--heads-csv", "protected_surface_csv": "--protected-surface-csv",
+        "outdir": "--outdir", "quick": "--quick",
         "seed": "--seed", "cell_size": "--cell-size", "profile_csv": "--profile-csv",
         "radial_slope": "--radial-slope", "performance_csv": "--performance-csv",
         "pressure_kpa": "--pressure-kpa", "dry_fraction_limit": "--dry-fraction-limit",
@@ -999,6 +1000,7 @@ def main(argv=None):
         },
         "data_classification": {
             "site_geometry": "user_supplied" if args.polygon_csv else "synthetic_builtin",
+            "protected_surface_geometry": "user_supplied_surveyed_polygon" if protected_surface_polygon is not None else "not_configured",
             "sprinkler_layout": "user_supplied_initial_layout" if args.heads_csv else "generated_baseline_layout",
             "radial_field": "measured_profile_file" if args.profile_csv else "illustrative_sensitivity_model",
             "hydraulic_curve": "user_supplied_performance_file" if args.performance_csv else "not_configured",
@@ -1010,6 +1012,10 @@ def main(argv=None):
         "site_input": {
             "polygon_csv": args.polygon_csv,
             "polygon_sha256": polygon_sha256,
+            "protected_surface_csv": args.protected_surface_csv,
+            "protected_surface_sha256": protected_surface_sha256,
+            "protected_surface_vertex_count": int(len(protected_surface_polygon)) if protected_surface_polygon is not None else None,
+            "protected_surface_status": "user_supplied_surveyed_polygon" if protected_surface_polygon is not None else "not_configured",
             "polygon_vertex_count": int(len(custom_polygon)) if args.polygon_csv else None,
             "coordinate_units": "metres",
             "heads_csv": args.heads_csv,
@@ -1020,8 +1026,17 @@ def main(argv=None):
         "optimization_policy": {
             "legacy_modes": ["movable", "fixed"],
             "pareto_objectives": {
-                "f1": "water outside lawn / baseline total modelled water",
+                "f1": ("water on supplied protected-surface polygon / baseline total modelled water"
+                      if protected_surface_polygon is not None
+                      else "water outside lawn / baseline total modelled water"),
                 "f2": "mean relative shortfall below target depth over lawn cells",
+            },
+            "protected_surface_metric": {
+                "active": protected_surface_polygon is not None,
+                "objective": "protected-surface water" if protected_surface_polygon is not None else "outside-lawn water",
+                "outside_lawn_water_is_also_reported": True,
+                "rasterization": "cell-centre point-in-polygon on configured simulation grid",
+                "status": "simulated proxy; requires surveyed geometry and field validation",
             },
             "dry_fraction_limit": cfg["dry_frac_limit"],
             "target_factor": cfg["target_factor"],
