@@ -75,12 +75,15 @@ def load_predictions(path: Path) -> list[dict[str, object]]:
         raise ValueError("input CSV must include a non-empty run_id for run-level split validation")
     run_splits = {}
     for row in parsed:
-        run_id = str(row["run_id"]).strip()
-        previous = run_splits.setdefault(run_id, row["split"])
+        run_key = (
+            str(row.get("site_id", "")).strip(),
+            str(row["run_id"]).strip(),
+        )
+        previous = run_splits.setdefault(run_key, row["split"])
         if previous != row["split"]:
             raise ValueError(
-                f"run_id {run_id!r} appears in both calibration and holdout; "
-                "keep each complete run in one split"
+                f"site_id/run_id {run_key!r} appears in both calibration and holdout; "
+                "keep each complete site run in one split"
             )
     return parsed
 
