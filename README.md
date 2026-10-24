@@ -3,6 +3,7 @@
 **A research prototype for sprinkler-layout optimization on synthetic lawn geometries.**
 
 [![Tests](https://github.com/HaochuanLin/campOS/actions/workflows/tests.yml/badge.svg)](https://github.com/HaochuanLin/campOS/actions/workflows/tests.yml)
+[![UI smoke](https://github.com/HaochuanLin/campOS/actions/workflows/ui-smoke.yml/badge.svg)](https://github.com/HaochuanLin/campOS/actions/workflows/ui-smoke.yml)
 [![Python 3.10–3.12](https://img.shields.io/badge/python-3.10%E2%80%933.12-blue)](https://www.python.org/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
 
@@ -20,6 +21,8 @@ streamlit run streamlit_app.py
 To publish a hosted demo on **Streamlit Community Cloud**, sign in to Streamlit and authorize access to this GitHub repository. Select repository `HaochuanLin/campOS`, branch `main`, and main file path `streamlit_app.py`. Streamlit installs dependencies from `requirements.txt`. If you already created the app, pushes to `main` should trigger a redeploy; check **Manage app → Logs** if the deployment fails. The hosted demo uses temporary runtime storage, so download outputs you need to keep. Do not upload private site surveys or sensitive location data to a public demo.
 
 The hosted demo is a shared web application with temporary runtime storage; download outputs you need to keep. Do not upload private site surveys or sensitive location data to a public demo. The app remains a research prototype and its outputs are not field-validated.
+
+The dedicated **UI smoke** workflow checks the Streamlit app render, a synthetic simulation run, both result/template ZIP download controls, required starter-template files, and the local Streamlit health endpoint. You can inspect the run history in [GitHub Actions](https://github.com/HaochuanLin/campOS/actions/workflows/ui-smoke.yml); the workflow also supports manual runs. A green CI run verifies the tested code path, not the availability or field accuracy of the hosted demo.
 
 ## Project concept
 
