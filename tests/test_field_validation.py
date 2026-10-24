@@ -1,4 +1,5 @@
 import csv
+import json
 import sys
 from pathlib import Path
 
@@ -11,6 +12,7 @@ from campos.field_validation import (  # noqa: E402
     assess_holdout, load_heads, load_observations, validate_acceptance_thresholds,
 )
 from campos.field_observations import validate_file  # noqa: E402
+from campos.field_report import build_report  # noqa: E402
 from campos.observation_errors import evaluate  # noqa: E402
 
 
@@ -209,3 +211,32 @@ def test_acceptance_assessment_integrates_with_evaluation_metrics():
     assessment = assess_holdout(evaluated["metrics"], thresholds)
     assert assessment["status"] == "pass"
     assert assessment["checks"][0]["observed"] == pytest.approx(0.35)
+
+
+
+def test_field_report_displays_optional_acceptance_assessment(tmp_path):
+    report_path = tmp_path / "metrics.json"
+    report_path.write_text(json.dumps({
+        "status": "paired_spatial_predictions_and_descriptive_errors_generated",
+        "metrics": {"metrics": {
+            "all": {"n": 2, "bias_mm_predicted_minus_measured": 0.1,
+                    "mae_mm": 0.2, "rmse_mm": 0.25, "max_absolute_error_mm": 0.3},
+            "calibration": None,
+            "holdout": {"n": 2, "bias_mm_predicted_minus_measured": 0.1,
+                         "mae_mm": 0.2, "rmse_mm": 0.25, "max_absolute_error_mm": 0.3},
+        }},
+        "metrics_by_zone": {},
+        "limitations": [],
+        "acceptance_assessment": {
+            "status": "pass",
+            "note": "User-defined limits only.",
+            "checks": [{"metric": "mae_mm", "observed": 0.2, "limit": 0.5, "passed": True}],
+        },
+    }), encoding="utf-8")
+
+    markdown, html_report = build_report(report_path)
+
+    assert "Pre-registered holdout acceptance assessment" in markdown
+    assert "mae_mm" in markdown
+    assert "Pre-registered holdout acceptance assessment" in html_report
+    assert "User-defined limits only." in html_report
