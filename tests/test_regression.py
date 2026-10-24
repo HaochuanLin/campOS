@@ -881,7 +881,7 @@ def test_catch_can_prediction_uses_exact_coordinates_and_reports_holdout_metrics
     polygon.write_text("x_m,y_m\n0,0\n20,0\n20,20\n0,20\n", encoding="utf-8")
     heads = tmp_path / "heads.csv"
     heads.write_text(
-        "x_m,y_m,radius_m,start_angle_deg,arc_width_deg\n10,10,5,0,360\n",
+        "x_m,y_m,radius_m,start_angle_deg,arc_width_deg,flow_lpm\n10,10,5,0,360,1.0\n",
         encoding="utf-8",
     )
     observations = tmp_path / "observations.csv"
@@ -899,7 +899,7 @@ def test_catch_can_prediction_uses_exact_coordinates_and_reports_holdout_metrics
         [
             sys.executable, str(ROOT / "scripts" / "predict_catch_can_depths.py"),
             "--polygon-csv", str(polygon), "--heads-csv", str(heads),
-            "--observations", str(observations), "--flow-lpm", "1",
+            "--observations", str(observations), "--flow-lpm", "2",
             "--outdir", str(outdir),
         ],
         cwd=ROOT, text=True, capture_output=True, timeout=30,
