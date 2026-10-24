@@ -1015,6 +1015,14 @@ def test_protected_surface_polygon_is_disjoint_and_objective_is_surface_specific
     assert not np.any(site.protected_mask & site.mask)
 
 
+def test_protected_surface_too_narrow_for_grid_fails_fast():
+    lawn = sim.site_rect()
+    thin_strip = np.array([[40.1, 0.0], [40.1, 25.0], [40.2, 25.0], [40.2, 0.0]])
+    cfg = dict(sim.CFG, cell=1.0, margin=2.0, protected_polygon=thin_strip)
+    with pytest.raises(ValueError, match="contains no grid-cell centres"):
+        sim.Site(lawn, cfg)
+
+
 def test_protected_surface_polygon_csv_loader_accepts_valid_polygon(tmp_path):
     path = tmp_path / "sidewalk.csv"
     path.write_text("x_m,y_m\n-4,0\n-4,25\n-2,25\n-2,0", encoding="utf-8")
