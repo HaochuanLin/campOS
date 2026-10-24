@@ -50,3 +50,12 @@ Do not replace the entire optimizer or rename AR improvement as water savings. T
 4. Add regression tests for the chosen criteria before changing the default search behavior.
 
 The next step should be an evidence-led objective redesign, not a claim that the current AR optimizer is universally better or worse. Any final objective weights or hard limits are product/design choices that should be justified by a stated use case and then tested for sensitivity.
+
+## Regression guards added after the audit
+
+The test suite now guards two important semantics of the existing Pareto workflow:
+
+- The overspray objective f1 is calculated from water outside the lawn polygon divided by the baseline total modelled water.
+- The displayed trade-off is the lowest-overspray point among points whose CU remains within the configured absolute loss budget from the most uniform feasible point.
+
+These tests protect the meaning of the existing metrics and selection policy; they do not demonstrate that a particular layout is physically accurate or that a real site will save water. The optimizer remains a synthetic research prototype until its assumptions are calibrated and its predictions are assessed against independent field observations.
