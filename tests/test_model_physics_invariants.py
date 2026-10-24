@@ -1,3 +1,5 @@
+import warnings
+
 import numpy as np
 import pytest
 
@@ -65,5 +67,7 @@ def test_site_rejects_excessive_grid_before_allocating_large_arrays():
 )
 def test_site_rejects_invalid_grid_parameters(cell, margin):
     polygon = np.asarray([(0, 0), (4, 0), (4, 4), (0, 4)], dtype=float)
-    with pytest.raises(ValueError):
-        Site(polygon, {"cell": cell, "margin": margin})
+    with warnings.catch_warnings():
+        warnings.simplefilter("error", RuntimeWarning)
+        with pytest.raises(ValueError):
+            Site(polygon, {"cell": cell, "margin": margin})
