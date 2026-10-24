@@ -52,8 +52,32 @@ cd campOS
 python -m pip install -e ".[dev]"
 campos-sim --help
 campos-field-evaluate --help
+python -m pytest -q
+```
 
-Run the included synthetic field-evaluation example end to end:
+### Run a short synthetic simulation
+
+```bash
+python campos_sim.py --mode movable --quick --sites A --outdir out/demo
+```
+
+This is a software smoke test, not a real-site design. The command writes CSV summaries, PNG plots, and `run_metadata.json` to `out/demo/`.
+
+### Compare overspray against interior coverage
+
+For the project's central trade-off, start with a Pareto run. The fixed-position mode is useful for retrofit studies where head locations cannot be moved:
+
+```bash
+# Quick software smoke test only
+python campos_sim.py --mode pareto-fixed --quick --sites C --outdir out/pareto-smoke
+
+# More thorough synthetic exploration
+python campos_sim.py --mode pareto-fixed --sites C --outdir out/pareto
+```
+
+The Pareto modes explore the trade-off between modelled water outside the lawn and interior depth deficit, subject to the configured dry-area constraint. The search is stochastic and approximate; review the CSV, metadata, and plots rather than treating one selected point as a guaranteed optimum.
+
+### Run the included field-evaluation example
 
 ```bash
 campos-field-evaluate \
@@ -63,18 +87,7 @@ campos-field-evaluate \
   --outdir out/field-evaluation-demo
 ```
 
-This example is **software smoke-test data only**, not field evidence. See [the example notes](examples/field_evaluation_demo/README.md) before adapting the workflow to real measurements.
-python campos_sim.py --help
-python -m pytest -q
-```
-
-Run a short smoke test on one synthetic rectangular site:
-
-```bash
-python campos_sim.py --mode movable --quick --sites A --outdir out/demo
-```
-
-The command writes CSV summaries, PNG plots, and `run_metadata.json` to `out/demo/`. The metadata records the selected modes and sites, effective model configuration, Python/platform details, NumPy/Matplotlib versions, and a SHA-256 hash of the simulation source.
+This example is **synthetic software smoke-test data only**, not field evidence or a calibration dataset. Read [the example notes](examples/field_evaluation_demo/README.md) before adapting the workflow to real measurements. The field-evaluation command uses measured per-head `flow_lpm` values in the layout CSV; if any are blank, pass `--flow-lpm` as a fallback.
 
 ### Import a measured site polygon and existing sprinkler positions
 
@@ -88,48 +101,15 @@ python campos_sim.py --mode fixed --quick \
 python scripts/build_design_report.py --input-dir out/custom-site
 ```
 
-The checked-in templates contain **illustrative example coordinates only**, not a surveyed site or installation recommendation. For future catch-can measurements, start with the empty [field observation CSV template](data/templates/field_catch_can_template.csv) and follow the [validation protocol](docs/REAL_SITE_VALIDATION_PROTOCOL.md). Replace them with surveyed geometry and actual sprinkler coordinates. The run metadata records hashes and counts for the input files. If you provide only `--polygon-csv`, campOS generates its own baseline layout. Custom geometry runs as one site and cannot be combined with `--sites`.
+The checked-in coordinate templates are illustrative only, not surveyed measurements or installation recommendations. For field observations, fill the empty [catch-can template](data/templates/field_catch_can_template.csv), record calibration/holdout splits by whole run, and follow the [real-site validation protocol](docs/REAL_SITE_VALIDATION_PROTOCOL.md). Replace all example geometry, layout, and observation data with documented site measurements before field evaluation.
 
-
-Generate a shareable, self-contained HTML report and a Markdown copy from any completed run:
+### Generate a shareable report
 
 ```bash
 python scripts/build_design_report.py --input-dir out/demo
 ```
 
-This creates `design_report.html` (figures embedded, no external assets required) and `design_report.md` alongside the run outputs. The report records the run configuration and available CSV results, and explicitly states the model's validation and economics limits. It does not convert AR changes into water savings or certify a real-site layout.
-
-
-For a single-objective run, the main artifacts are `results_<mode>.csv`, `layouts_<mode>.png`, and `ranking_<mode>.png`. Pareto runs write `pareto_<fixed|movable>.csv` and `pareto_<fixed|movable>.png`. When both single-objective modes run together, a `comparison_single_objective.csv` is also written.
-
-More examples:
-
-```bash
-# Fixed-position retrofit mode
-python campos_sim.py --mode fixed --sites A C --outdir out/fixed
-
-# Pareto trade-off for the synthetic kidney-shaped site
-python campos_sim.py --mode pareto-fixed --quick --sites C --outdir out/pareto
-
-# All four modes across all five synthetic sites (computationally expensive)
-python campos_sim.py --mode all --outdir out/full
-```
-
-Use `--seed` to set the random seed and `--cell-size` to change the spatial grid resolution (in metres), for example:
-
-```bash
-python campos_sim.py --mode movable --quick --sites A --seed 19 --cell-size 1.0 --outdir out/coarse-grid
-```
-
-Compare grid resolutions for one synthetic site:
-
-```bash
-python scripts/grid_sensitivity.py --site 'A Rectangle' --cell-sizes 2,1,0.5 --out out/grid_sensitivity.csv
-```
-
-The seed and cell size are recorded in `run_metadata.json`. Smaller cells increase spatial resolution and runtime; results from different cell sizes should be treated as a sensitivity comparison, not directly interchangeable measurements. Invalid site IDs and non-positive or non-finite cell sizes are rejected with a clear CLI error.
-
-`--quick` reduces optimization iterations for smoke testing. It is not a substitute for a full run. Generated output is ignored by Git by default; publish results only after reviewing the CSVs, metadata, and figures.
+This creates a self-contained `design_report.html` and `design_report.md`. The report summarizes the run; it does not convert AR changes into water savings or certify a real-site layout.
 
 ## Model inputs and physics references
 
