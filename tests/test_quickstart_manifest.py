@@ -24,3 +24,32 @@ def test_artifact_checksums_are_stable_and_exclude_self_referential_files(tmp_pa
     assert list(first) == ["results.csv"]
     assert first["results.csv"]["size_bytes"] == csv_file.stat().st_size
     assert first["results.csv"]["sha256"] == hashlib.sha256(csv_file.read_bytes()).hexdigest()
+
+
+def test_quickstart_records_and_forwards_reproducibility_settings(tmp_path, monkeypatch):
+    import json
+
+    monkeypatch.setattr(quickstart.shutil, "which", lambda _name: "/fake/campos-sim")
+
+    def fake_run(command, check):
+        assert check is True
+        outdir = Path(command[command.index("--outdir") + 1])
+        mode = command[command.index("--mode") + 1]
+        assert command[command.index("--seed") + 1] == "19"
+        assert command[command.index("--cell-size") + 1] == "0.25"
+        (outdir / "run_metadata.json").write_text(json.dumps({"mode": mode}), encoding="utf-8")
+        (outdir / f"results_{mode}.csv").write_text(
+            "site,baseline_AR,optimized_AR\nA,2,1.5\n", encoding="utf-8"
+        )
+
+    monkeypatch.setattr(quickstart.subprocess, "run", fake_run)
+    assert quickstart.main([
+        "--outdir", str(tmp_path), "--seed", "19", "--cell-size", "0.25"
+    ]) == 0
+
+    manifest = json.loads((tmp_path / "quickstart_manifest.json").read_text(encoding="utf-8"))
+    assert manifest["seed"] == 19
+    assert manifest["cell_size_m"] == 0.25
+    assert all("--seed" in command and "--cell-size" in command for command in manifest["commands"])
+    assert "results_fixed.csv" in manifest["artifact_checksums"]
+    assert "results_movable.csv" in manifest["artifact_checksums"]
