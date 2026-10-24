@@ -17,7 +17,7 @@ python -m pip install -r requirements.txt
 streamlit run streamlit_app.py
 ```
 
-To publish a hosted demo on **Streamlit Community Cloud**, you need to sign in to Streamlit and authorize access to this GitHub repository. Create a new app and select repository `HaochuanLin/campOS`, branch `objective-audit-step-1` while this work remains in the open pull request (or select the default branch after the changes are merged), and main file path `streamlit_app.py`. Streamlit installs dependencies from `requirements.txt`. You do not need to create a separate app file or copy the code manually. I can prepare the repository, but I cannot authorize your account or publish the app inside your Streamlit account from this GitHub session.
+To publish a hosted demo on **Streamlit Community Cloud**, sign in to Streamlit and authorize access to this GitHub repository. Select repository `HaochuanLin/campOS`, branch `main`, and main file path `streamlit_app.py`. Streamlit installs dependencies from `requirements.txt`. If you already created the app, pushes to `main` should trigger a redeploy; check **Manage app → Logs** if the deployment fails. The hosted demo uses temporary runtime storage, so download outputs you need to keep. Do not upload private site surveys or sensitive location data to a public demo.
 
 The hosted demo is a shared web application with temporary runtime storage; download outputs you need to keep. Do not upload private site surveys or sensitive location data to a public demo. The app remains a research prototype and its outputs are not field-validated.
 
