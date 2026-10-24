@@ -15,7 +15,7 @@ import numpy as np
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "src"))
 
-from campos.campos_sim import CFG, load_polygon_csv, polygons_overlap  # noqa: E402
+from campos.campos_sim import CFG, load_heads_csv, load_polygon_csv, polygons_overlap  # noqa: E402
 from campos.model import Site  # noqa: E402
 
 
@@ -42,6 +42,8 @@ def main(argv=None):
     parser.add_argument("--polygon-csv", required=True, help="surveyed lawn polygon CSV (x_m,y_m)")
     parser.add_argument("--protected-surface-csv", required=True,
                         help="surveyed road/sidewalk polygon CSV (x_m,y_m)")
+    parser.add_argument("--heads-csv", default=None,
+                        help="optional fixed sprinkler layout; if supplied, compare protected-water share across grids")
     parser.add_argument("--cell-sizes", type=parse_cell_sizes, default=parse_cell_sizes("2,1,0.5,0.25"),
                         help="comma-separated cell sizes in metres (default: 2,1,0.5,0.25)")
     parser.add_argument("--margin", type=float, default=CFG["margin"],
@@ -74,6 +76,23 @@ def main(argv=None):
         raster_area = int(site.protected_mask.sum()) * cell * cell
         abs_error = abs(raster_area - exact_area)
         rel_error = abs_error / exact_area
+        water_metrics = {
+            "protected_water_integral_m2_relative_depth": "",
+            "total_water_integral_m2_relative_depth": "",
+            "protected_water_pct_of_total_water": "",
+        }
+        if args.heads_csv:
+            heads = load_heads_csv(args.heads_csv, lawn, cfg)
+            total = site.total(heads)
+            total_integral = float(total.sum()) * cell * cell
+            protected_integral = float(total[site.protected_mask].sum()) * cell * cell
+            if total_integral <= 0:
+                parser.error("supplied sprinkler layout produces zero total modelled water")
+            water_metrics = {
+                "protected_water_integral_m2_relative_depth": f"{protected_integral:.6f}",
+                "total_water_integral_m2_relative_depth": f"{total_integral:.6f}",
+                "protected_water_pct_of_total_water": f"{100 * protected_integral / total_integral:.3f}",
+            }
         rows.append({
             "cell_size_m": f"{cell:g}",
             "exact_protected_area_m2": f"{exact_area:.6f}",
@@ -81,6 +100,7 @@ def main(argv=None):
             "absolute_area_error_m2": f"{abs_error:.6f}",
             "relative_area_error_pct": f"{rel_error * 100:.3f}",
             "grid_cells_in_protected_surface": int(site.protected_mask.sum()),
+            **water_metrics,
         })
 
     output = Path(args.out)
@@ -92,9 +112,12 @@ def main(argv=None):
 
     print(f"Exact surveyed protected area: {exact_area:.3f} m^2")
     for row in rows:
-        print(f"cell={row['cell_size_m']} m  raster={row['rasterized_protected_area_m2']} m^2  "
-              f"relative area error={row['relative_area_error_pct']}%  "
-              f"cells={row['grid_cells_in_protected_surface']}")
+        line = (f"cell={row['cell_size_m']} m  raster={row['rasterized_protected_area_m2']} m^2  "
+                f"relative area error={row['relative_area_error_pct']}%  "
+                f"cells={row['grid_cells_in_protected_surface']}")
+        if row["protected_water_pct_of_total_water"]:
+            line += f"  protected water share={row['protected_water_pct_of_total_water']}%"
+        print(line)
     print(f"CSV written to {output}")
     finest = min(rows, key=lambda row: float(row["cell_size_m"]))
     if (args.max_relative_error is not None
