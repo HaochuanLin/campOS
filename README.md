@@ -60,7 +60,6 @@ campos-field-evaluate \
   --polygon-csv examples/field_evaluation_demo/site_polygon.csv \
   --heads-csv examples/field_evaluation_demo/sprinkler_layout.csv \
   --observations examples/field_evaluation_demo/catch_can_observations.csv \
-  --flow-lpm 1.0 \
   --outdir out/field-evaluation-demo
 ```
 
