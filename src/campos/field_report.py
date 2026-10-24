@@ -86,6 +86,24 @@ def build_report(metrics_path: Path) -> tuple[str, str]:
         "Do not infer a pass/fail conclusion unless a site-specific acceptance threshold was documented before inspecting holdout results. A split label alone cannot prove independence.",
         "",
     ]
+    acceptance = report.get("acceptance_assessment")
+    if acceptance:
+        md.extend([
+            "## Pre-registered holdout acceptance assessment",
+            "",
+            f"- Status: {acceptance.get('status', 'unknown')}",
+            f"- Note: {acceptance.get('note', '')}",
+            "",
+            "| Metric | Observed | Limit | Passed |",
+            "|---|---:|---:|:---:|",
+        ])
+        for check in acceptance.get("checks", []):
+            md.append(
+                f"| {check.get('metric', 'unknown')} | {fmt(check.get('observed'))} | "
+                f"{fmt(check.get('limit'))} | {'yes' if check.get('passed') else 'no'} |"
+            )
+        md.append("")
+
     markdown = chr(10).join(md)
 
     def esc(value):
@@ -128,6 +146,24 @@ def build_report(metrics_path: Path) -> tuple[str, str]:
     for key, value in software.get("source_sha256", {}).items():
         software_html += f"<li>{esc(key)} SHA-256: <code>{esc(value)}</code></li>"
     limitations_html = "".join(f"<li>{esc(item)}</li>" for item in limitations)
+    acceptance_html = ""
+    if acceptance:
+        acceptance_rows = "".join(
+            "<tr>" + "".join([
+                f"<td>{esc(check.get('metric', 'unknown'))}</td>",
+                f"<td>{esc(fmt(check.get('observed')))}</td>",
+                f"<td>{esc(fmt(check.get('limit')))}</td>",
+                f"<td>{'yes' if check.get('passed') else 'no'}</td>",
+            ]) + "</tr>"
+            for check in acceptance.get("checks", [])
+        )
+        acceptance_html = (
+            "<h2>Pre-registered holdout acceptance assessment</h2>"
+            f"<p><strong>Status:</strong> {esc(acceptance.get('status', 'unknown'))}</p>"
+            f"<p>{esc(acceptance.get('note', ''))}</p>"
+            "<table><thead><tr><th>Metric</th><th>Observed</th><th>Limit</th>"
+            f"<th>Passed</th></tr></thead><tbody>{acceptance_rows}</tbody></table>"
+        )
     hashes_html = "".join(
         f"<li>{esc(key)}: <code>{esc(value)}</code></li>"
         for key, value in report.get("input_sha256", {}).items()
@@ -152,6 +188,7 @@ table{{border-collapse:collapse;width:100%;margin:1rem 0;font-variant-numeric:ta
 <ul><li>Sprinkler heads: {esc(report.get('n_sprinkler_heads', 'n/a'))}</li><li>Valid observations: {esc(report.get('n_valid_observations', 'n/a'))}</li><li>Per-head flow rates (L/min): <code>{esc(json.dumps(report.get('flow_lpm_per_head', [])))}</code></li><li>Input hashes:</li>{hashes_html}{software_html}</ul>
 <h2>Geometry / zone-label checks</h2>
 <p>Zone/polygon mismatches: {esc(report.get('zone_geometry_mismatch_count', 0))}; affected catch-can IDs: {esc(', '.join(mismatches) if mismatches else 'none')}.</p>
+{acceptance_html}
 <h2>Limitations</h2><ul>{limitations_html}</ul>
 <p>Do not infer a pass/fail conclusion unless a site-specific acceptance threshold was documented before inspecting holdout results. A split label alone cannot prove independence.</p>
 </body></html>"""
