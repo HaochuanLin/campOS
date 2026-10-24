@@ -142,6 +142,10 @@ if run:
             except subprocess.TimeoutExpired:
                 st.error("The run exceeded the 15-minute safety timeout. Try quick mode or fewer sites.")
                 st.stop()
+            except OSError as exc:
+                st.error("The simulation command could not be launched.")
+                st.code(str(exc))
+                st.stop()
             if completed.returncode:
                 st.error("The simulation failed. No successful result is being shown.")
                 st.code((completed.stderr or completed.stdout)[-12000:])
