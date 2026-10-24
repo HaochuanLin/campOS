@@ -38,6 +38,7 @@ with st.sidebar:
     )
     sites = []
     polygon_upload = heads_upload = protected_upload = observations_upload = None
+    thresholds_upload = None
     profile_upload = performance_upload = None
     fallback_flow_lpm = 0.0
     pressure_kpa = 0.0
@@ -77,6 +78,12 @@ with st.sidebar:
             help="Only used when a head has no flow_lpm value in the layout CSV.",
         )
         if observations_upload is not None:
+            thresholds_upload = st.file_uploader(
+                "Pre-registered holdout acceptance thresholds JSON (optional)",
+                type=["json"],
+                key="field-acceptance-thresholds",
+                help="Upload limits decided before inspecting holdout errors. A failed limit marks the evaluation as failed while preserving outputs.",
+            )
             strict_zone_gate = st.checkbox(
                 "Fail on zone/polygon label mismatch",
                 value=False,
@@ -143,6 +150,10 @@ if run:
                 if observations_upload is not None:
                     observations_path = workdir / "catch_can_observations.csv"
                     observations_path.write_bytes(observations_upload.getvalue())
+                thresholds_path = None
+                if thresholds_upload is not None:
+                    thresholds_path = workdir / "acceptance_thresholds.json"
+                    thresholds_path.write_bytes(thresholds_upload.getvalue())
                 profile_path = None
                 if profile_upload is not None:
                     profile_path = workdir / "radial_profile.csv"
@@ -218,6 +229,8 @@ if run:
                     eval_invocation += ["--flow-lpm", str(float(fallback_flow_lpm))]
                 if strict_zone_gate:
                     eval_invocation.append("--fail-on-zone-geometry-mismatch")
+                if thresholds_path is not None:
+                    eval_invocation += ["--acceptance-thresholds-json", str(thresholds_path)]
                 if profile_path is not None:
                     eval_invocation += ["--profile-csv", str(profile_path)]
                 try:
