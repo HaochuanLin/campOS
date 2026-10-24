@@ -925,6 +925,10 @@ def main(argv=None):
         except (OSError, ValueError) as exc:
             ap.error(f"invalid --polygon-csv: {exc}")
         polygon_sha256 = hashlib.sha256(FilePath(args.polygon_csv).read_bytes()).hexdigest()
+        if protected_surface_polygon is not None:
+            if polygons_overlap(custom_polygon, protected_surface_polygon):
+                ap.error("--protected-surface-csv polygon must not overlap or touch the lawn polygon")
+            cfg["protected_polygon"] = protected_surface_polygon
         sites = {"Custom site": lambda: custom_polygon}
         if args.heads_csv:
             try:
@@ -933,6 +937,8 @@ def main(argv=None):
                 ap.error(f"invalid --heads-csv: {exc}")
             heads_sha256 = hashlib.sha256(FilePath(args.heads_csv).read_bytes()).hexdigest()
     else:
+        if protected_surface_polygon is not None:
+            ap.error("--protected-surface-csv requires --polygon-csv; built-in synthetic sites have no surveyed protected-surface geometry")
         requested_sites = None if args.sites is None else [s.upper() for s in args.sites]
         valid_site_ids = {name.split()[0] for name in SITES}
         if requested_sites is not None:
