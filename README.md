@@ -58,6 +58,17 @@ campos-start --help
 python -m pytest -q
 ```
 
+### Optional local web interface
+
+If you prefer buttons and tables over a terminal, install the optional UI dependency and start the local app:
+
+```bash
+python -m pip install -e ".[ui]"
+streamlit run src/campos/app.py
+```
+
+The interface lets you select synthetic sites and optimization modes, run a simulation, inspect result tables and plots, and download generated artifacts. It runs locally; it is not a hosted service, and the first version is a synthetic demo interface rather than a surveyed-site editor.
+
 ### One-command start (no real data required)
 
 After installation, run:
