@@ -438,10 +438,11 @@ def reference_levels(site, heads0, cfg):
 
 
 def bi_eval(site, total, ref, cfg):
-    """(f1 overspray_ratio, f2 deficit, dry_frac) for a depth field.
-    f1: water outside the polygon / W0 (physical loss, relative to baseline).
-    f2: mean relative shortfall below the target depth T over the lawn.
-    dry_frac: share of lawn cells with depth < dry_thresh_frac * T."""
+    """(f1 selected outside-water objective, f2 deficit, dry_frac).
+    f1 is protected-surface water / W0 when a surveyed protected polygon is
+    configured, otherwise all water outside the lawn / W0. f2 is mean relative
+    shortfall below target depth T over the lawn; dry_frac is the lawn share
+    below dry_thresh_frac * T."""
     lawn = total.ravel()[site.idx]
     outside = total.sum() - lawn.sum()
     objective_water = float(total[site.protected_mask].sum()) if site.protected_path is not None else float(outside)
@@ -747,9 +748,8 @@ def write_pareto_csv(results, fn, cfg):
 
 
 def plot_pareto(results, fn, cfg):
-    """Rows: (1) deficit f2 [objective 2], (2) CU [uniformity], (3) dry fraction
-    [constraint].  X axis in every panel: overspray ratio f1 (% of the
-    baseline's total applied water)."""
+    """Rows: (1) deficit f2, (2) CU [uniformity], (3) dry fraction.
+    X axis is the active f1 objective as a share of baseline total water."""
     n = len(results)
     mode = results[0]["mode"]
     fig, axes = plt.subplots(3, n, figsize=(4.6 * n, 10.5), constrained_layout=True, squeeze=False)
@@ -758,6 +758,9 @@ def plot_pareto(results, fn, cfg):
     for c, r in enumerate(results):
         fr = r["front"]
         x = np.array([p["f1"] for p in fr]) * 100
+        x_label = ("Protected-surface water / baseline total water [%]"
+                   if r["site"].protected_path is not None
+                   else "Outside-lawn water / baseline total water [%]")
         series = [("f2", "Interior deficit f2 [% of target]", 100),
                   ("CU", "Uniformity CU  (higher = better)", 1),
                   ("dry", "Dry-zone fraction [% of lawn]", 100)]
