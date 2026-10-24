@@ -820,8 +820,8 @@ def test_field_observation_qc_derives_depth_and_marks_scope(tmp_path):
     source = tmp_path / "observations.csv"
     source.write_text(
         "site_id,run_id,can_id,x_m,y_m,zone,collection_duration_s,"
-        "collected_volume_ml,measured_depth_mm,container_opening_area_cm2,validity_flag,split\n"
-        "site-1,run-1,can-1,1,2,inside,600,50,,10,valid,calibration\n",
+        "collected_volume_ml,measured_depth_mm,container_opening_area_cm2,validity_flag,split,pressure_kpa,wind_speed_m_s,wind_direction_deg,air_temperature_c\n"
+        "site-1,run-1,can-1,1,2,inside,600,50,,10,valid,calibration,101,1.2,180,22\n",
         encoding="utf-8",
     )
     outdir = tmp_path / "qc"
@@ -843,6 +843,10 @@ def test_field_observation_qc_derives_depth_and_marks_scope(tmp_path):
     normalized = list(csv.DictReader((outdir / "field_observation_qc.csv").open(encoding="utf-8")))
     assert len(normalized) == 1
     assert np.isclose(float(normalized[0]["measured_depth_mm_normalized"]), 50.0)
+    assert float(normalized[0]["pressure_kpa"]) == 101.0
+    assert float(normalized[0]["wind_speed_m_s"]) == 1.2
+    assert float(normalized[0]["wind_direction_deg"]) == 180.0
+    assert float(normalized[0]["air_temperature_c"]) == 22.0
     summary = json.loads((outdir / "field_observation_qc.json").read_text(encoding="utf-8"))
     assert summary["status"] == "schema_and_unit_checks_passed"
     assert "no model comparison" in summary["scope_note"]
