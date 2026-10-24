@@ -11,7 +11,7 @@
 - One-command synthetic quickstart, local Streamlit UI, and artifact SHA-256 verification.
 - Regression tests for model invariants, geometry contracts, artifact integrity, and reproducible quickstart configuration.
 - CI workflows for the Python test matrix, artifact verification, and local UI startup.
-- Input hardening for ambiguous acceptance-threshold and simulator-config JSON, duplicate catch-can records, out-of-range AI kernel settings, and oversized or numerically invalid simulation grids.
+- Input hardening for ambiguous acceptance-threshold and simulator-config JSON, duplicate catch-can records, raw-input overwrite collisions, out-of-range AI kernel settings, and oversized or numerically invalid simulation grids.
 
 ### Clarifications
 - Synthetic geometry and model-defined metrics are not field validation or proof of water savings.
