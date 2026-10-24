@@ -425,7 +425,8 @@ def bi_eval(site, total, ref, cfg):
     dry_frac: share of lawn cells with depth < dry_thresh_frac * T."""
     lawn = total.ravel()[site.idx]
     outside = total.sum() - lawn.sum()
-    f1 = max(0.0, outside / ref["W0"])   # clip float noise (-0.0)
+    objective_water = float(total[site.protected_mask].sum()) if site.protected_path is not None else float(outside)
+    f1 = max(0.0, objective_water / ref["W0"])   # selected objective / baseline total water
     f2 = float(np.mean(np.clip(1.0 - lawn / ref["T"], 0.0, None)))
     dry = float(np.mean(lawn < cfg["dry_thresh_frac"] * ref["T"]))
     return float(f1), f2, dry
@@ -436,9 +437,11 @@ def bi_report(site, heads, ref, cfg):
     total = site.total(heads)
     f1, f2, dry = bi_eval(site, total, ref, cfg)
     _, m = score(site, total, cfg)
+    protected_water = float(total[site.protected_mask].sum()) if site.protected_path is not None else 0.0
     return dict(f1=f1, f2=f2, dry=dry, CU=float(m["CU"]), AR=float(m["AR"]),
                 over_own=float(m["overspray"]), water_rel=float(total.sum() / ref["W0"]),
-                heads=heads)
+                outside_lawn_water=float(max(0.0, total.sum() - total.ravel()[site.idx].sum())),
+                protected_surface_water=protected_water, heads=heads)
 
 
 class ParetoArchive:
