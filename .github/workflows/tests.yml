@@ -32,33 +32,14 @@ jobs:
       - name: Run field-evaluation CLI smoke test
         if: matrix.python-version == '3.10'
         run: |
-          mkdir -p out/field-evaluation-smoke
-          cat > out/field-evaluation-smoke/polygon.csv <<'CSV'
-          x_m,y_m
-          0,0
-          20,0
-          20,20
-          0,20
-          CSV
-          cat > out/field-evaluation-smoke/heads.csv <<'CSV'
-          x_m,y_m,radius_m,start_angle_deg,arc_width_deg
-          10,10,5,0,360
-          CSV
-          cat > out/field-evaluation-smoke/observations.csv <<'CSV'
-          site_id,run_id,can_id,x_m,y_m,zone,collection_duration_s,collected_volume_ml,measured_depth_mm,container_opening_area_cm2,validity_flag,split
-          synthetic,cal-run,can-1,10,10,inside,600,,0.127323954,,valid,calibration
-          synthetic,cal-run,can-2,11,10,inside,600,,0.127323954,,valid,calibration
-          synthetic,holdout-run,can-3,12,10,inside,600,,0.127323954,,valid,holdout
-          synthetic,holdout-run,can-4,13,10,inside,600,,0.127323954,,valid,holdout
-          CSV
           campos-field-evaluate \
-            --polygon-csv out/field-evaluation-smoke/polygon.csv \
-            --heads-csv out/field-evaluation-smoke/heads.csv \
-            --observations out/field-evaluation-smoke/observations.csv \
-            --flow-lpm 1 \
-            --outdir out/field-evaluation-smoke/result
-          test -s out/field-evaluation-smoke/result/paired_predictions.csv
-          test -s out/field-evaluation-smoke/result/field_evaluation_metrics.json
+            --polygon-csv examples/field_evaluation_demo/site_polygon.csv \
+            --heads-csv examples/field_evaluation_demo/sprinkler_layout.csv \
+            --observations examples/field_evaluation_demo/catch_can_observations.csv \
+            --flow-lpm 1.0 \
+            --outdir out/field-evaluation-smoke
+          test -s out/field-evaluation-smoke/paired_predictions.csv
+          test -s out/field-evaluation-smoke/field_evaluation_metrics.json
       - name: Run radial sensitivity scenarios
         if: matrix.python-version == '3.10'
         run: python scripts/radial_sensitivity.py --outdir out/radial-sensitivity
