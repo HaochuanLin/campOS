@@ -225,19 +225,19 @@ def main() -> None:
             for row in predictions
         ]
         metrics = evaluate(metric_input)
-    metrics_by_zone = {}
-    for zone in sorted({str(row["zone"]) for row in predictions}):
-        zone_rows = [
-            {"measured_mm": row["measured_mm"], "predicted_mm": row["predicted_mm"], "split": row["split"]}
-            for row in predictions if str(row["zone"]) == zone
-        ]
-        zone_holdout = [row for row in zone_rows if row["split"] == "holdout"]
-        metrics_by_zone[zone] = {
-            "n": len(zone_rows),
-            "holdout_n": len(zone_holdout),
-            "all": summarize(zone_rows) if zone_rows else None,
-            "holdout": summarize(zone_holdout) if zone_holdout else None,
-        }
+        metrics_by_zone = {}
+        for zone in sorted({str(row["zone"]) for row in predictions}):
+            zone_rows = [
+                {"measured_mm": row["measured_mm"], "predicted_mm": row["predicted_mm"], "split": row["split"]}
+                for row in predictions if str(row["zone"]) == zone
+            ]
+            zone_holdout = [row for row in zone_rows if row["split"] == "holdout"]
+            metrics_by_zone[zone] = {
+                "n": len(zone_rows),
+                "holdout_n": len(zone_holdout),
+                "all": summarize(zone_rows) if zone_rows else None,
+                "holdout": summarize(zone_holdout) if zone_holdout else None,
+            }
     except (OSError, ValueError) as exc:
         parser.error(str(exc))
 
