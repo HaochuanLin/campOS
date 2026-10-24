@@ -10,7 +10,7 @@ sys.path.insert(0, str(ROOT / "src"))
 
 from campos.field_validation import (  # noqa: E402
     assess_holdout, load_heads, load_observations, main as field_validation_main,
-    validate_acceptance_thresholds,
+    validate_acceptance_thresholds, unique_json_object,
 )
 from campos.field_observations import validate_file  # noqa: E402
 from campos.field_report import build_report  # noqa: E402
@@ -165,6 +165,14 @@ def test_qc_still_requires_measurement_for_valid_observation(tmp_path):
     with pytest.raises(ValueError, match="for valid observations"):
         validate_file(input_path, tmp_path / "normalized.csv", tmp_path / "summary.json")
 
+
+
+def test_acceptance_threshold_json_rejects_duplicate_keys():
+    with pytest.raises(ValueError, match="duplicate JSON key"):
+        json.loads(
+            '{"max_holdout_mae_mm": 1, "max_holdout_mae_mm": 1000}',
+            object_pairs_hook=unique_json_object,
+        )
 
 
 def test_acceptance_thresholds_require_explicit_finite_nonnegative_limits():
