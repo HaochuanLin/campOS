@@ -304,6 +304,26 @@ def main() -> int:
     )
     parser.add_argument("--outdir", type=Path, default=Path("out/field-evaluation"))
     args = parser.parse_args()
+    input_paths = {
+        args.polygon_csv.expanduser().resolve(),
+        args.heads_csv.expanduser().resolve(),
+        args.observations.expanduser().resolve(),
+    }
+    if args.profile_csv is not None:
+        input_paths.add(args.profile_csv.expanduser().resolve())
+    if args.acceptance_thresholds_json is not None:
+        input_paths.add(args.acceptance_thresholds_json.expanduser().resolve())
+    output_dir = args.outdir.expanduser().resolve()
+    output_paths = {
+        output_dir / "paired_predictions.csv",
+        output_dir / "field_evaluation_metrics.json",
+    }
+    collisions = sorted(str(path) for path in input_paths & output_paths)
+    if collisions:
+        parser.error(
+            "output path would overwrite an input file; choose a different --outdir: "
+            + ", ".join(collisions)
+        )
     acceptance_assessment = None
 
     try:
