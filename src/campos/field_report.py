@@ -8,6 +8,14 @@ import math
 from pathlib import Path
 
 
+def md_escape(value: object) -> str:
+    """Escape untrusted values before placing them in Markdown prose or tables."""
+    return (
+        str(value).replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
+        .replace("|", "\\|").replace("\\r", " ").replace("\\n", " ")
+    )
+
+
 def fmt(value):
     if value is None:
         return "n/a"
@@ -75,7 +83,7 @@ def build_report(metrics_path: Path) -> tuple[str, str]:
         "## Geometry / zone-label checks",
         "",
         f"- Zone/polygon mismatches: {report.get('zone_geometry_mismatch_count', 0)}",
-        f"- Affected catch-can IDs: {', '.join(mismatches) if mismatches else 'none'}",
+        f"- Affected catch-can IDs: {', '.join(md_escape(item) for item in mismatches) if mismatches else 'none'}",
         "",
         "## Limitations",
         "",
