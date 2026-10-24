@@ -991,6 +991,10 @@ def test_protected_surface_polygon_is_disjoint_and_objective_is_surface_specific
     assert not sim.polygons_overlap(lawn, protected)
     adjacent = np.array([[40.0, 0.0], [40.0, 25.0], [43.0, 25.0], [43.0, 0.0]])
     assert not sim.polygons_overlap(lawn, adjacent)
+    # Coincident polygons are an overlap, even though every vertex lies on
+    # the other polygon's boundary and no edges cross properly.
+    assert sim.polygons_overlap(lawn, lawn.copy())
+    assert sim.polygons_overlap(lawn, lawn[::-1].copy())
     overlapping = np.array([[-1.0, 0.0], [-1.0, 5.0], [2.0, 5.0], [2.0, 0.0]])
     assert sim.polygons_overlap(lawn, overlapping)
 
