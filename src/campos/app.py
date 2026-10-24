@@ -387,8 +387,11 @@ if result:
         geometry_columns[1].metric("Strict geometry gate", gate_status)
         mismatch_ids = evaluation_report.get("zone_geometry_mismatch_can_ids") or []
         if mismatch_ids:
-            mismatch_labels = ", ".join(str(item).replace("\r", " ").replace("\n", " ") for item in mismatch_ids)
-            st.warning("Review zone labels for: " + mismatch_labels)
+            mismatch_labels = "\n".join(
+                str(item).replace("\r", " ").replace("\n", " ") for item in mismatch_ids
+            )
+            st.warning("Review the zone labels for these catch-can IDs:")
+            st.code(mismatch_labels)
     if result.get("field_metrics"):
         metrics = result["field_metrics"]
         st.subheader("Catch-can holdout diagnostics")
