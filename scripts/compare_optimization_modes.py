@@ -26,6 +26,8 @@ def main():
     parser.add_argument("--dry-fraction-limit", type=float, default=0.02)
     parser.add_argument("--target-factor", type=float, default=1.0)
     parser.add_argument("--cu-drop-budget", type=float, default=0.03)
+    parser.add_argument("--max-overspray-increase", type=float, default=0.0,
+                        help="maximum allowed increase in Pareto f1 over baseline (0..1; default 0)")
     parser.add_argument("--pareto-weights", default="0,0.25,0.5,0.75,1")
     parser.add_argument("--quick", action="store_true")
     args = parser.parse_args()
@@ -40,6 +42,7 @@ def main():
         "--dry-fraction-limit", str(args.dry_fraction_limit),
         "--target-factor", str(args.target_factor),
         "--cu-drop-budget", str(args.cu_drop_budget),
+        "--max-overspray-increase", str(args.max_overspray_increase),
         "--pareto-weights", args.pareto_weights, "--outdir", str(raw),
     ]
     if args.quick:
@@ -57,6 +60,8 @@ def main():
     cfg = metadata["config"]
     if int(cfg["seed"]) != args.seed or abs(float(cfg["cell"]) - args.cell_size) > 1e-12:
         raise SystemExit("Recorded seed or cell size differs from requested settings")
+    if abs(float(cfg["max_overspray_increase"]) - args.max_overspray_increase) > 1e-12:
+        raise SystemExit("Recorded overspray-increase tolerance differs from requested setting")
     if abs(float(cfg["radial_slope"]) - args.radial_slope) > 1e-12:
         raise SystemExit("Recorded radial slope differs from requested setting")
 
@@ -73,7 +78,7 @@ def main():
     if pareto_dry_column is None:
         raise SystemExit("Pareto CSV is missing its dry-area constraint column")
     columns = [
-        "site", "mode", "objective_family", "seed", "cell_size_m", "radial_slope",
+        "site", "mode", "objective_family", "seed", "cell_size_m", "radial_slope", "max_overspray_increase",
         "sprinkler_count", "baseline_AR", "result_AR",
         "baseline_overspray_pct_of_own_water", "result_overspray_pct_of_own_water",
         "baseline_CU", "result_CU", "baseline_dry_area_pct_legacy_definition",
@@ -92,6 +97,7 @@ def main():
                 "site": base["site"], "mode": mode,
                 "objective_family": "Pareto overspray/deficit" if mode.startswith("pareto-") else "legacy AR",
                 "seed": args.seed, "cell_size_m": args.cell_size, "radial_slope": args.radial_slope,
+                "max_overspray_increase": args.max_overspray_increase,
                 "sprinkler_count": base["sprinkler_count"], "baseline_AR": base["baseline_AR"],
                 "result_AR": base["optimized_AR"] if not mode.startswith("pareto-") else "",
                 "baseline_overspray_pct_of_own_water": base["baseline_overspray_pct_of_own_water"],
@@ -131,10 +137,10 @@ def main():
         "# Matched campOS optimization benchmark", "",
         f"- Synthetic sites: {', '.join(args.sites)}.",
         f"- Shared seed: {args.seed}; cell size: {args.cell_size:g} m; radial slope: {args.radial_slope:g}.",
-        f"- Dry-area limit: {args.dry_fraction_limit:g}; target factor: {args.target_factor:g}; CU-drop budget: {args.cu_drop_budget:g}.",
+        f"- Dry-area limit: {args.dry_fraction_limit:g}; target factor: {args.target_factor:g}; CU-drop budget: {args.cu_drop_budget:g}; max overspray increase: {args.max_overspray_increase:g}.",
         f"- Pareto weights: {args.pareto_weights}; quick mode: {args.quick}.",
         "- All four modes ran in one invocation and share site geometry, baseline layouts, and model configuration.",
-        "- Legacy AR and Pareto objectives differ. Pareto rows report the selected CU-budget trade-off when available.",
+        "- Legacy AR and Pareto objectives differ. A Pareto point is selected only if it stays within the baseline-relative CU-loss budget and configured overspray-increase tolerance.",
         "", "| Site | Mode | Heads | AR | Own-water overspray % | CU | Dry area % | Pareto f1 % | Pareto f2 % | Front points | Status |",
         "|---|---|---:|---:|---:|---:|---:|---:|---:|---:|---|",
     ]
