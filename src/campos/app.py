@@ -37,13 +37,24 @@ with st.sidebar:
         help="Custom-site mode uses one explicit optimization mode; synthetic compare runs fixed and movable scenarios.",
     )
     sites = []
-    polygon_upload = heads_upload = protected_upload = None
+    polygon_upload = heads_upload = protected_upload = observations_upload = None
+    fallback_flow_lpm = 0.0
     if custom_site:
         polygon_upload = st.file_uploader("Lawn polygon CSV (x_m,y_m)", type=["csv"], key="lawn-polygon")
         heads_upload = st.file_uploader(
             "Sprinkler layout CSV (x_m,y_m,radius_m,start_angle_deg,arc_width_deg)",
             type=["csv"],
             key="sprinkler-layout",
+        )
+        observations_upload = st.file_uploader(
+            "Catch-can observations CSV (optional, for model evaluation)",
+            type=["csv"],
+            key="catch-can-observations",
+        )
+        fallback_flow_lpm = st.number_input(
+            "Fallback measured flow per head (L/min; 0 = none)",
+            min_value=0.0, max_value=100.0, value=0.0, step=0.1,
+            help="Only used when a head has no flow_lpm value in the layout CSV.",
         )
         if mode.startswith("pareto-"):
             protected_upload = st.file_uploader(
@@ -91,6 +102,10 @@ if run:
                 heads_path = workdir / "sprinkler_layout.csv"
                 polygon_path.write_bytes(polygon_upload.getvalue())
                 heads_path.write_bytes(heads_upload.getvalue())
+                observations_path = None
+                if observations_upload is not None:
+                    observations_path = workdir / "catch_can_observations.csv"
+                    observations_path.write_bytes(observations_upload.getvalue())
                 command = shutil.which("campos-sim")
                 invocation = [command] if command else [sys.executable, "-m", "campos.campos_sim"]
                 invocation += [
@@ -131,6 +146,36 @@ if run:
                 st.code((completed.stderr or completed.stdout)[-12000:])
                 st.stop()
 
+            field_eval_ok = None
+            field_eval_message = None
+            field_eval_log = ""
+            if custom_site and observations_upload is not None:
+                eval_command = shutil.which("campos-field-evaluate")
+                eval_invocation = [eval_command] if eval_command else [sys.executable, "-m", "campos.field_validation"]
+                eval_invocation += [
+                    "--polygon-csv", str(polygon_path),
+                    "--heads-csv", str(heads_path),
+                    "--observations", str(observations_path),
+                    "--outdir", str(outdir),
+                ]
+                if fallback_flow_lpm > 0:
+                    eval_invocation += ["--flow-lpm", str(float(fallback_flow_lpm))]
+                try:
+                    evaluated = subprocess.run(
+                        eval_invocation, check=False, capture_output=True, text=True, timeout=300
+                    )
+                    field_eval_ok = evaluated.returncode == 0
+                    field_eval_log = (evaluated.stdout + "\n" + evaluated.stderr)[-12000:]
+                    field_eval_message = (
+                        "Pointwise field-evaluation artifacts were generated. Review holdout errors; this is not a certification."
+                        if field_eval_ok else
+                        "Field evaluation did not complete. The optimization outputs are still available; inspect the diagnostic log."
+                    )
+                except subprocess.TimeoutExpired:
+                    field_eval_ok = False
+                    field_eval_message = "Field evaluation timed out. The optimization outputs are still available."
+                    field_eval_log = "The field-evaluation command exceeded the 5-minute timeout."
+
             artifacts = {}
             for path in sorted(outdir.iterdir()):
                 if path.is_file():
@@ -150,6 +195,9 @@ if run:
                 "custom_site": custom_site,
                 "seed": int(seed),
                 "cell_size_m": float(cell_size),
+                "field_eval_ok": field_eval_ok,
+                "field_eval_message": field_eval_message,
+                "field_eval_log": field_eval_log,
                 "command": invocation,
                 "stdout": completed.stdout[-6000:],
             }
@@ -162,7 +210,15 @@ if result:
         f"**Seed:** {result['seed']} · **Grid:** {result['cell_size_m']:g} m"
     )
     if result["custom_site"]:
-        st.info("Custom geometry and layout were supplied by you. This simulation still requires independent field validation before real-world use.")
+        st.info("Custom geometry and layout were supplied by you. Simulation output alone is not field validation.")
+    if result.get("field_eval_message"):
+        if result.get("field_eval_ok"):
+            st.info(result["field_eval_message"])
+        else:
+            st.warning(result["field_eval_message"])
+        if result.get("field_eval_log"):
+            with st.expander("Field-evaluation diagnostics"):
+                st.code(result["field_eval_log"])
     if "results_fixed.csv" in result["artifacts"] and "results_movable.csv" in result["artifacts"]:
         left, right = st.columns(2)
         for column, title, filename in (
