@@ -79,6 +79,8 @@ python campos_sim.py --mode pareto-fixed --sites C --outdir out/pareto
 
 The Pareto modes explore the trade-off between modelled water outside the lawn and interior depth deficit, subject to the configured dry-area constraint. The search is stochastic and approximate; review the CSV, metadata, and plots rather than treating one selected point as a guaranteed optimum.
 
+The displayed trade-off is guarded against silent regressions: by default, a selected Pareto point must not increase overspray relative to the baseline and must keep CU within the configured absolute loss budget from baseline CU. If no point satisfies both guardrails, the run reports that no point was selected instead of labelling a worse-overspray layout as the recommendation. If you deliberately want to permit a bounded increase in overspray to improve interior coverage, set `--max-overspray-increase 0.01` to allow up to 1 percentage point of the baseline's total modelled water as additional outside-lawn water. This is an explicit modelling trade-off, not a water-savings claim. The default is `0` (no overspray increase).
+
 ### Run the included field-evaluation example
 
 ```bash
@@ -205,8 +207,9 @@ python campos_sim.py --mode pareto-fixed --quick --sites C \
 
 - `--dry-fraction-limit`: maximum fraction of lawn cells allowed below the configured dry threshold. This is a model constraint, not a plant-health guarantee.
 - `--target-factor`: target depth as a multiple of the baseline lawn mean. The default of 1.0 is a comparison convention, not an agronomic prescription.
-- `--cu-drop-budget`: maximum absolute CU loss allowed relative to the most uniform feasible point when selecting the displayed trade-off.
-- `--pareto-weights`: weights used to guide stochastic exploration toward different parts of the Pareto front. They are search controls, not evidence-based utility weights; the final selected point is chosen using the CU-drop budget and lowest overspray ratio.
+- `--cu-drop-budget`: maximum absolute CU loss allowed relative to baseline CU when selecting the displayed trade-off.
+- `--max-overspray-increase`: maximum allowed increase in Pareto f1 relative to baseline, as a fraction of baseline total modelled water. The default `0` forbids overspray regression; `0.01` permits up to one percentage point of baseline total water as additional outside-lawn water.
+- `--pareto-weights`: weights used to guide stochastic exploration toward different parts of the Pareto front. They are search controls, not evidence-based utility weights; the final selected point must meet the baseline-relative CU budget and overspray-increase tolerance.
 
 These settings make assumptions explicit; they do not make the model field-validated. Compare several settings and report the full trade-off before treating any one selection as a preferred design.
 
