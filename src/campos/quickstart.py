@@ -40,7 +40,7 @@ def artifact_checksums(
     artifacts = {}
     for path in sorted(outdir.iterdir()):
         if (
-            path.is_file() and path.name not in excluded
+            path.is_file() and not path.is_symlink() and path.name not in excluded
             and (include_names is None or path.name in include_names)
         ):
             artifacts[path.name] = {
@@ -184,7 +184,7 @@ def main(argv: list[str] | None = None) -> int:
     invocations = []
     before_artifacts = {}
     for path in outdir.iterdir():
-        if path.is_file() and path.name not in {"index.html", "quickstart_manifest.json"}:
+        if path.is_file() and not path.is_symlink() and path.name not in {"index.html", "quickstart_manifest.json"}:
             stat = path.stat()
             before_artifacts[path.name] = (stat.st_size, stat.st_mtime_ns, sha256_file(path))
     print("campOS quickstart: running synthetic demonstration(s).", flush=True)
@@ -209,7 +209,7 @@ def main(argv: list[str] | None = None) -> int:
         return 2
     generated_names = set()
     for path in outdir.iterdir():
-        if path.is_file() and path.name not in {"index.html", "quickstart_manifest.json"}:
+        if path.is_file() and not path.is_symlink() and path.name not in {"index.html", "quickstart_manifest.json"}:
             stat = path.stat()
             signature = (stat.st_size, stat.st_mtime_ns, sha256_file(path))
             if before_artifacts.get(path.name) != signature:
