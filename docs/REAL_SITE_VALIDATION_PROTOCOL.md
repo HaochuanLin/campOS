@@ -95,7 +95,7 @@ python scripts/predict_catch_can_depths.py \
   --outdir out/field-evaluation
 ```
 
-Replace the example paths and flow with the actual measured inputs. The script evaluates the model at each exact catch-can coordinate (rather than silently matching a nearby raster cell), multiplies predicted precipitation rate by the recorded collection duration, and writes:
+Replace the example paths and flow with the actual measured inputs. The script evaluates the model at each exact catch-can coordinate (rather than silently matching a nearby raster cell), multiplies predicted precipitation rate by the recorded collection duration, and writes: it reports errors overall and separately for the user-labelled inside/outside/boundary zones, so outside-lawn observations can be inspected independently. A conflict between the zone label and polygon geometry is flagged rather than silently corrected.
 
 - `paired_predictions.csv`: measured and predicted depth, residual, absolute error, location, zone, split, and whether the coordinate falls inside the supplied polygon.
 - `field_evaluation_metrics.json`: input SHA-256 hashes, assumptions, calibration and holdout counts, descriptive error metrics, and any conflict between a row's inside/outside label and the polygon geometry.
