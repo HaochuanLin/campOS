@@ -407,6 +407,8 @@ def main() -> int:
         "warning": (
             "pre-registered acceptance thresholds failed; inspect the written metrics and predictions"
             if acceptance_assessment is not None and acceptance_assessment["status"] == "fail"
+            else "zone/polygon labels conflict and the strict geometry gate failed; inspect the written metrics and predictions"
+            if args.fail_on_zone_geometry_mismatch and any(row["zone_geometry_mismatch"] for row in predictions)
             else "descriptive evaluation only; thresholds are user-defined and do not certify physical validity"
         ),
     }, indent=2))
