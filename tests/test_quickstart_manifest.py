@@ -55,6 +55,9 @@ def test_quickstart_records_and_forwards_reproducibility_settings(tmp_path, monk
     assert all("--seed" in command and "--cell-size" in command for command in manifest["commands"])
     assert "results_fixed.csv" in manifest["artifact_checksums"]
     assert "results_movable.csv" in manifest["artifact_checksums"]
+    page = (tmp_path / "index.html").read_text(encoding="utf-8")
+    assert "Seed:" in page and "19" in page
+    assert "Grid:" in page and "0.25 m" in page
 
 
 def test_quickstart_rejects_invalid_seed_and_grid_size(capsys):
