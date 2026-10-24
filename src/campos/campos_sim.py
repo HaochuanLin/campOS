@@ -786,6 +786,8 @@ def main(argv=None):
                     help="optional custom site polygon CSV with x_m,y_m columns (metres)")
     ap.add_argument("--heads-csv", default=None,
                     help="optional initial sprinkler CSV: x_m,y_m,radius_m,start_angle_deg,arc_width_deg; requires --polygon-csv")
+    ap.add_argument("--protected-surface-csv", default=None,
+                    help="optional surveyed road/sidewalk polygon CSV with x_m,y_m columns; activates protected-surface water as Pareto f1")
     ap.add_argument("--outdir", default="out", help="output directory (default: out)")
     ap.add_argument("--quick", action="store_true", help="fewer SA iterations (smoke test)")
     ap.add_argument("--seed", type=int, default=CFG["seed"],
@@ -826,7 +828,7 @@ def main(argv=None):
         if not isinstance(config_data, dict):
             ap.error("--config must contain a JSON object")
         config_keys = {
-            "mode", "sites", "polygon_csv", "heads_csv", "outdir", "quick",
+            "mode", "sites", "polygon_csv", "heads_csv", "protected_surface_csv", "outdir", "quick",
             "seed", "cell_size", "profile_csv", "radial_slope",
             "performance_csv", "pressure_kpa", "dry_fraction_limit",
             "target_factor", "cu_drop_budget", "max_overspray_increase", "pareto_weights",
@@ -904,7 +906,15 @@ def main(argv=None):
     modes = ALL_MODES if "all" in args.mode else [m for m in ALL_MODES if m in args.mode]
     polygon_sha256 = None
     heads_sha256 = None
+    protected_surface_sha256 = None
     custom_polygon = None
+    protected_surface_polygon = None
+    if args.protected_surface_csv:
+        try:
+            protected_surface_polygon = load_polygon_csv(args.protected_surface_csv)
+        except (OSError, ValueError) as exc:
+            ap.error(f"invalid --protected-surface-csv: {exc}")
+        protected_surface_sha256 = hashlib.sha256(FilePath(args.protected_surface_csv).read_bytes()).hexdigest()
     if args.heads_csv and not args.polygon_csv:
         ap.error("--heads-csv requires --polygon-csv")
     if args.polygon_csv:
