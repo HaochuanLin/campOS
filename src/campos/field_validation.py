@@ -110,6 +110,9 @@ def load_observations(path: Path) -> list[dict[str, object]]:
         flag = str(row.get("validity_flag", "")).strip().lower()
         if flag not in {"valid", "exclude", "unknown"}:
             raise ValueError(f"row {line}: validity_flag must be valid, exclude, or unknown")
+        zone = str(row.get("zone", "unknown")).strip().lower() or "unknown"
+        if zone not in {"inside", "outside", "boundary", "unknown"}:
+            raise ValueError(f"row {line}: zone must be inside, outside, boundary, or unknown")
         if flag != "valid":
             continue
         x = finite_float(row.get("x_m", ""), "x_m", line)
@@ -139,7 +142,7 @@ def load_observations(path: Path) -> list[dict[str, object]]:
             "site_id": site_id, "run_id": run_id, "can_id": can_id,
             "x_m": x, "y_m": y, "duration_s": duration,
             "measured_mm": measured, "split": split,
-            "zone": str(row.get("zone", "unknown")).strip().lower() or "unknown",
+            "zone": zone,
         })
     if not parsed:
         raise ValueError("no rows with validity_flag=valid; mark usable measurements as valid")
