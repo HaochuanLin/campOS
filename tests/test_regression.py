@@ -878,20 +878,20 @@ def test_field_observation_qc_rejects_duplicate_can_ids_within_run(tmp_path):
 
 def test_catch_can_prediction_uses_exact_coordinates_and_reports_holdout_metrics(tmp_path):
     polygon = tmp_path / "polygon.csv"
-    polygon.write_text("x_m,y_m\\n0,0\\n20,0\\n20,20\\n0,20\\n", encoding="utf-8")
+    polygon.write_text("x_m,y_m\n0,0\n20,0\n20,20\n0,20\n", encoding="utf-8")
     heads = tmp_path / "heads.csv"
     heads.write_text(
-        "x_m,y_m,radius_m,start_angle_deg,arc_width_deg\\n10,10,5,0,360\\n",
+        "x_m,y_m,radius_m,start_angle_deg,arc_width_deg\n10,10,5,0,360\n",
         encoding="utf-8",
     )
     observations = tmp_path / "observations.csv"
     observations.write_text(
         "site_id,run_id,can_id,x_m,y_m,zone,collection_duration_s,"
-        "collected_volume_ml,measured_depth_mm,container_opening_area_cm2,validity_flag,split\\n"
-        "site-1,cal-run,can-1,10,10,inside,600,,0.127323954,,valid,calibration\\n"
-        "site-1,cal-run,can-2,11,10,inside,600,,0.127323954,,valid,calibration\\n"
-        "site-1,test-run,can-3,12,10,inside,600,,0.127323954,,valid,holdout\\n"
-        "site-1,test-run,can-4,13,10,inside,600,,0.127323954,,valid,holdout\\n",
+        "collected_volume_ml,measured_depth_mm,container_opening_area_cm2,validity_flag,split\n"
+        "site-1,cal-run,can-1,10,10,inside,600,,0.127323954,,valid,calibration\n"
+        "site-1,cal-run,can-2,11,10,inside,600,,0.127323954,,valid,calibration\n"
+        "site-1,test-run,can-3,12,10,inside,600,,0.127323954,,valid,holdout\n"
+        "site-1,test-run,can-4,13,10,inside,600,,0.127323954,,valid,holdout\n",
         encoding="utf-8",
     )
     outdir = tmp_path / "evaluation"
@@ -912,24 +912,24 @@ def test_catch_can_prediction_uses_exact_coordinates_and_reports_holdout_metrics
     report = json.loads((outdir / "field_evaluation_metrics.json").read_text(encoding="utf-8"))
     assert report["metrics"]["split_counts"] == {"calibration": 2, "holdout": 2}
     assert report["metrics"]["metrics"]["holdout"]["mae_mm"] < 1e-6
-    assert "no universal pass threshold" in " ".join(report["limitations"])
+    assert "no universal pass threshold" in " ".join(report["limitations"]).lower()
 
 
 def test_catch_can_prediction_rejects_a_run_mixed_across_splits(tmp_path):
     polygon = tmp_path / "polygon.csv"
-    polygon.write_text("x_m,y_m\\n0,0\\n20,0\\n20,20\\n0,20\\n", encoding="utf-8")
+    polygon.write_text("x_m,y_m\n0,0\n20,0\n20,20\n0,20\n", encoding="utf-8")
     heads = tmp_path / "heads.csv"
     heads.write_text(
-        "x_m,y_m,radius_m,start_angle_deg,arc_width_deg\\n10,10,5,0,360\\n",
+        "x_m,y_m,radius_m,start_angle_deg,arc_width_deg\n10,10,5,0,360\n",
         encoding="utf-8",
     )
     observations = tmp_path / "observations.csv"
     observations.write_text(
         "site_id,run_id,can_id,x_m,y_m,zone,collection_duration_s,"
-        "collected_volume_ml,measured_depth_mm,container_opening_area_cm2,validity_flag,split\\n"
-        "site-1,same-run,can-1,10,10,inside,600,,0.1,,valid,calibration\\n"
-        "site-1,same-run,can-2,11,10,inside,600,,0.1,,valid,holdout\\n"
-        "site-1,test-run,can-3,12,10,inside,600,,0.1,,valid,holdout\\n",
+        "collected_volume_ml,measured_depth_mm,container_opening_area_cm2,validity_flag,split\n"
+        "site-1,same-run,can-1,10,10,inside,600,,0.1,,valid,calibration\n"
+        "site-1,same-run,can-2,11,10,inside,600,,0.1,,valid,holdout\n"
+        "site-1,test-run,can-3,12,10,inside,600,,0.1,,valid,holdout\n",
         encoding="utf-8",
     )
     completed = subprocess.run(
