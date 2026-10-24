@@ -79,8 +79,7 @@ CFG = dict(
     dry_pen_w=30.0,         # SA penalty slope for dry_frac above the limit (search only)
     archive_eps=0.002,      # archive resolution: points within eps of an existing one are dropped
     pareto_max_points=40,   # thin the final front to this many points for CSV/plot
-    cu_drop_budget=0.03,    # PLACEHOLDER: "accept this much CU loss vs. the most uniform
-                            # Pareto point to buy lower overspray" -> marked as 'selected'
+    cu_drop_budget=0.03,    # maximum absolute CU loss from baseline allowed by the selection policy
     # --- economics: ALL PLACEHOLDERS, replace with real numbers ---
     radial_slope=0.0,       # sensitivity parameter; 0 = uniform null model
     price_per_m3=5.0,       # UNUSED until a calibrated water-volume model is implemented
@@ -761,7 +760,7 @@ def main(argv=None):
     ap.add_argument("--target-factor", type=float, default=CFG["target_factor"],
                     help="Pareto target depth as a multiple of baseline mean lawn depth (> 0)")
     ap.add_argument("--cu-drop-budget", type=float, default=CFG["cu_drop_budget"],
-                    help="maximum absolute CU loss from the most uniform feasible Pareto point (0..1)")
+                    help="maximum absolute CU loss from baseline CU for a selected Pareto point (0..1)")
     ap.add_argument("--pareto-weights", default=",".join(str(x) for x in CFG["pareto_weights"]),
                     help="comma-separated overspray weights in [0,1] for Pareto search, e.g. 0,0.25,0.5,0.75,1")
     # Load JSON defaults before the full parse so explicitly supplied CLI values win.
@@ -1028,7 +1027,7 @@ def main(argv=None):
                   f"f2 {fr[0]['f2']*100:.1f}..{fr[-1]['f2']*100:.1f}%  "
                   f"baseline(f1={base['f1']*100:.1f}%,f2={base['f2']*100:.1f}%)  "
                   + (f"selected(f1={sel['f1']*100:.1f}%,f2={sel['f2']*100:.1f}%,CU={sel['CU']:.2f})"
-                     if sel else "no feasible point")
+                     if sel else "no point meets baseline overspray/CU guardrails")
                   + f"  [{time.time()-t0:.0f}s]", flush=True)
         write_pareto_csv(res, out(f"pareto_{key.split('-')[1]}.csv"), cfg)
         plot_pareto(res, out(f"pareto_{key.split('-')[1]}.png"), cfg)
