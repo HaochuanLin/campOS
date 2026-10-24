@@ -152,6 +152,8 @@ def main(argv: list[str] | None = None) -> int:
         default="compare", help="Compare fixed and movable layouts (default: compare)",
     )
     parser.add_argument("--sites", nargs="+", choices=("A", "B", "C", "D", "E"), default=["A"])
+    parser.add_argument("--seed", type=int, default=7, help="random seed shared by compared scenarios (default: 7)")
+    parser.add_argument("--cell-size", type=float, default=0.5, help="simulation grid resolution in metres (default: 0.5)")
     parser.add_argument("--full", action="store_true", help="Run without the quick smoke-test settings")
     args = parser.parse_args(argv)
 
@@ -164,7 +166,11 @@ def main(argv: list[str] | None = None) -> int:
     print("campOS quickstart: running synthetic demonstration(s).", flush=True)
     try:
         for mode in modes:
-            invocation = base_command + ["--mode", mode, "--sites", *args.sites, "--outdir", str(outdir)]
+            invocation = base_command + [
+                "--mode", mode, "--sites", *args.sites,
+                "--seed", str(args.seed), "--cell-size", str(args.cell_size),
+                "--outdir", str(outdir),
+            ]
             if not args.full:
                 invocation.append("--quick")
             invocations.append(invocation)
@@ -184,6 +190,8 @@ def main(argv: list[str] | None = None) -> int:
         "mode": args.mode,
         "runs": modes,
         "sites": args.sites,
+        "seed": args.seed,
+        "cell_size_m": args.cell_size,
         "quick": not args.full,
         "commands": invocations,
         "output_directory": str(outdir),
