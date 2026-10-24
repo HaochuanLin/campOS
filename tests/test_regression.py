@@ -1027,6 +1027,37 @@ def test_protected_surface_too_narrow_for_grid_fails_fast():
         raise AssertionError("sub-grid protected surface should fail fast")
 
 
+def test_protected_surface_resolution_checker_reports_converging_area_error(tmp_path):
+    lawn_csv = tmp_path / "lawn.csv"
+    protected_csv = tmp_path / "sidewalk.csv"
+    output_csv = tmp_path / "resolution.csv"
+    lawn_csv.write_text(
+        "x_m,y_m\\n0,0\\n40,0\\n40,25\\n0,25\\n", encoding="utf-8"
+    )
+    protected_csv.write_text(
+        "x_m,y_m\\n-4.25,0.3\\n-4.25,24.7\\n-1.65,24.7\\n-1.65,0.3\\n",
+        encoding="utf-8",
+    )
+    completed = subprocess.run(
+        [
+            sys.executable, str(ROOT / "scripts" / "check_protected_surface_resolution.py"),
+            "--polygon-csv", str(lawn_csv),
+            "--protected-surface-csv", str(protected_csv),
+            "--cell-sizes", "2,1,0.5,0.25",
+            "--max-relative-error", "0.05",
+            "--out", str(output_csv),
+        ],
+        check=False, capture_output=True, text=True,
+    )
+    assert completed.returncode == 0, completed.stdout + completed.stderr
+    with output_csv.open(newline="", encoding="utf-8-sig") as handle:
+        rows = list(csv.DictReader(handle))
+    assert [float(row["cell_size_m"]) for row in rows] == [2.0, 1.0, 0.5, 0.25]
+    assert float(rows[0]["relative_area_error_pct"]) > float(rows[-1]["relative_area_error_pct"])
+    assert float(rows[-1]["relative_area_error_pct"]) <= 5.0
+    assert all(int(row["grid_cells_in_protected_surface"]) > 0 for row in rows)
+
+
 def test_protected_surface_polygon_csv_loader_accepts_valid_polygon(tmp_path):
     path = tmp_path / "sidewalk.csv"
     path.write_text("x_m,y_m\n-4,0\n-4,25\n-2,25\n-2,0", encoding="utf-8")
