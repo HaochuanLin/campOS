@@ -52,6 +52,33 @@ def test_ai_residual_correction_trains_only_on_calibration_rows(tmp_path):
     assert all(float(row["ai_residual_std_mm"]) >= 0 for row in output_rows)
 
 
+def test_ai_residual_correction_can_fail_predeclared_rmse_gate(tmp_path):
+    predictions = tmp_path / "gate_predictions.csv"
+    outdir = tmp_path / "gate-output"
+    rows = ["site_id,run_id,can_id,x_m,y_m,measured_mm,predicted_mm,split"]
+    for i in range(11):
+        split = "calibration" if i < 8 else "holdout"
+        predicted = 5.0
+        measured = 6.0 if split == "calibration" else 5.0
+        rows.append(f"site,run,can{i},{float(i)},0.0,{measured},{predicted},{split}")
+    predictions.write_text("\n".join(rows) + "\n", encoding="utf-8")
+    completed = subprocess.run(
+        [
+            sys.executable, str(ROOT / "scripts" / "ai_residual_correction.py"),
+            "--predictions-csv", str(predictions),
+            "--outdir", str(outdir),
+            "--length-scale-m", "5.0",
+            "--max-holdout-rmse-increase-mm", "0",
+        ],
+        cwd=ROOT, text=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, check=False,
+    )
+    assert completed.returncode == 2, completed.stdout
+    summary = json.loads((outdir / "ai_residual_correction_summary.json").read_text(encoding="utf-8"))
+    assert summary["predeclared_rmse_gate_threshold_mm"] == 0.0
+    assert summary["predeclared_rmse_gate_passed"] is False
+    assert summary["holdout_rmse_change_mm_corrected_minus_baseline"] > 0.0
+
+
 def test_ai_residual_correction_rejects_spatial_leakage(tmp_path):
     predictions = tmp_path / "overlapping_coordinates.csv"
     rows = ["site_id,run_id,can_id,x_m,y_m,measured_mm,predicted_mm,split"]
