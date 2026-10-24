@@ -24,6 +24,34 @@ from campos import campos_sim as sim  # noqa: E402
 from campos.model import head_field, load_radial_profile_csv  # noqa: E402
 
 
+def read_heads(path):
+    required = {"x_m", "y_m", "radius_m", "start_angle_deg", "arc_width_deg"}
+    with open(path, newline="", encoding="utf-8-sig") as fh:
+        reader = csv.DictReader(fh)
+        if reader.fieldnames is None or not required.issubset(reader.fieldnames):
+            raise ValueError("heads CSV must contain x_m,y_m,radius_m,start_angle_deg,arc_width_deg columns")
+        rows = list(reader)
+    if not rows:
+        raise ValueError("heads CSV must contain at least one sprinkler")
+    try:
+        heads = np.asarray([[float(row[key]) for key in (
+            "x_m", "y_m", "radius_m", "start_angle_deg", "arc_width_deg"
+        )] for row in rows], dtype=float)
+    except (TypeError, ValueError) as exc:
+        raise ValueError("sprinkler layout values must be numeric") from exc
+    if not np.all(np.isfinite(heads)):
+        raise ValueError("sprinkler layout values must be finite")
+    if np.any(heads[:, 2] <= 0):
+        raise ValueError("sprinkler radius_m values must be positive")
+    if np.any(heads[:, 4] <= 0) or np.any(heads[:, 4] > 360):
+        raise ValueError("arc_width_deg values must be in (0, 360]")
+    heads[:, 3] %= 360.0
+    # Unlike optimizer-input validation, measured heads may legitimately sit
+    # outside the lawn boundary, so do not enforce optimizer radius bounds or
+    # lawn containment here.
+    return heads
+
+
 def read_observations(path):
     required = {"x_m", "y_m", "observed_depth_mm", "split"}
     with open(path, newline="", encoding="utf-8-sig") as fh:
@@ -94,7 +122,7 @@ def main(argv=None):
 
     try:
         polygon = sim.load_polygon_csv(args.polygon_csv)
-        heads = sim.load_heads_csv(args.heads_csv, polygon, dict(sim.CFG))
+        heads = read_heads(args.heads_csv)
         observations = read_observations(args.observations_csv)
         profile = load_radial_profile_csv(args.profile_csv) if args.profile_csv else None
     except (OSError, ValueError) as exc:
@@ -158,6 +186,12 @@ def main(argv=None):
         "split_policy": "explicit CSV split column; holdout rows never used to fit scale",
         "calibration_metrics_after_scale_fit": metrics(observed[calibration_idx], scaled[calibration_idx]),
         "holdout_metrics_after_scale_fit": metrics(observed[holdout_idx], scaled[holdout_idx]),
+        "raw_physical_input_calibration_metrics": (
+            metrics(observed[calibration_idx], raw[calibration_idx]) if args.flow_lpm is not None else None
+        ),
+        "raw_physical_input_holdout_metrics": (
+            metrics(observed[holdout_idx], raw[holdout_idx]) if args.flow_lpm is not None else None
+        ),
         "warning": "This validates pointwise agreement only for this observed run. A fitted scale factor does not calibrate wind, drift, pressure variation, or future operating conditions and does not establish water savings.",
     }
     summary_path = Path(args.summary_json)
