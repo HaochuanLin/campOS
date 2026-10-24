@@ -17,7 +17,7 @@ jobs:
           cache: pip
           cache-dependency-path: pyproject.toml
       - name: Install UI dependencies
-        run: python -m pip install -e ".[ui]"
+        run: python -m pip install -e ".[ui,ai]"
       - name: Compile the UI module
         run: python -m py_compile src/campos/app.py
       - name: Start the Streamlit app
