@@ -32,12 +32,17 @@ def sha256_file(path: Path) -> str:
     return digest.hexdigest()
 
 
-def artifact_checksums(outdir: Path) -> dict[str, dict[str, int | str]]:
+def artifact_checksums(
+    outdir: Path, include_names: set[str] | None = None
+) -> dict[str, dict[str, int | str]]:
     """Hash generated artifacts, excluding the self-referential manifest and HTML index."""
     excluded = {"index.html", "quickstart_manifest.json"}
     artifacts = {}
     for path in sorted(outdir.iterdir()):
-        if path.is_file() and path.name not in excluded:
+        if (
+            path.is_file() and path.name not in excluded
+            and (include_names is None or path.name in include_names)
+        ):
             artifacts[path.name] = {
                 "size_bytes": path.stat().st_size,
                 "sha256": sha256_file(path),
@@ -46,9 +51,16 @@ def artifact_checksums(outdir: Path) -> dict[str, dict[str, int | str]]:
 
 
 def build_index(outdir: Path, manifest: dict) -> Path:
+    artifact_checksums_in_manifest = manifest.get("artifact_checksums")
+    artifact_names = (
+        set(artifact_checksums_in_manifest)
+        if isinstance(artifact_checksums_in_manifest, dict) else None
+    )
     files = sorted(
         p for p in outdir.iterdir()
-        if p.is_file() and p.name not in {"index.html", "quickstart_manifest.json"}
+        if p.is_file()
+        and p.name not in {"index.html", "quickstart_manifest.json"}
+        and (artifact_names is None or p.name in artifact_names)
     )
     artifact_rows = "".join(
         "<tr><td><a href=\"{}\">{}</a></td><td>{}</td></tr>".format(
@@ -168,6 +180,11 @@ def main(argv: list[str] | None = None) -> int:
     base_command = [command] if command else [sys.executable, "-m", "campos.campos_sim"]
     modes = ["fixed", "movable"] if args.mode == "compare" else [args.mode]
     invocations = []
+    before_artifacts = {}
+    for path in outdir.iterdir():
+        if path.is_file() and path.name not in {"index.html", "quickstart_manifest.json"}:
+            stat = path.stat()
+            before_artifacts[path.name] = (stat.st_size, stat.st_mtime_ns, sha256_file(path))
     print("campOS quickstart: running synthetic demonstration(s).", flush=True)
     try:
         for mode in modes:
@@ -188,6 +205,14 @@ def main(argv: list[str] | None = None) -> int:
         print(f"campOS simulation failed: {exc}", file=sys.stderr)
         print("No success report was written. Check the error above and retry.", file=sys.stderr)
         return 2
+    generated_names = set()
+    for path in outdir.iterdir():
+        if path.is_file() and path.name not in {"index.html", "quickstart_manifest.json"}:
+            stat = path.stat()
+            signature = (stat.st_size, stat.st_mtime_ns, sha256_file(path))
+            if before_artifacts.get(path.name) != signature:
+                generated_names.add(path.name)
+
     manifest = {
         "product": "campOS",
         "workflow": "quickstart-synthetic-demo",
@@ -202,7 +227,7 @@ def main(argv: list[str] | None = None) -> int:
         "output_directory": str(outdir),
         "python_version": platform.python_version(),
         "platform": platform.platform(),
-        "artifact_checksums": artifact_checksums(outdir),
+        "artifact_checksums": artifact_checksums(outdir, include_names=generated_names),
         "limitations": LIMITATIONS,
         "status": "simulation_completed_not_field_validated",
     }
