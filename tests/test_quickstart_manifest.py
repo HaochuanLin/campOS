@@ -2,6 +2,8 @@ import hashlib
 import importlib.util
 from pathlib import Path
 
+import pytest
+
 
 ROOT = Path(__file__).resolve().parents[1]
 QUICKSTART_PATH = ROOT / "src" / "campos" / "quickstart.py"
@@ -53,3 +55,16 @@ def test_quickstart_records_and_forwards_reproducibility_settings(tmp_path, monk
     assert all("--seed" in command and "--cell-size" in command for command in manifest["commands"])
     assert "results_fixed.csv" in manifest["artifact_checksums"]
     assert "results_movable.csv" in manifest["artifact_checksums"]
+
+
+def test_quickstart_rejects_invalid_seed_and_grid_size(capsys):
+    with pytest.raises(SystemExit) as seed_error:
+        quickstart.main(["--seed", "-1"])
+    assert seed_error.value.code == 2
+    assert "--seed must be a non-negative integer" in capsys.readouterr().err
+
+    for invalid_cell_size in ("0", "-0.5", "nan", "inf"):
+        with pytest.raises(SystemExit) as cell_error:
+            quickstart.main(["--cell-size", invalid_cell_size])
+        assert cell_error.value.code == 2
+        assert "--cell-size must be finite and greater than zero" in capsys.readouterr().err
