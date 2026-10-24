@@ -1027,6 +1027,43 @@ def test_protected_surface_too_narrow_for_grid_fails_fast():
         raise AssertionError("sub-grid protected surface should fail fast")
 
 
+def test_optimizer_resolution_checker_reports_selected_solution_sensitivity(tmp_path):
+    lawn_csv = tmp_path / "lawn.csv"
+    protected_csv = tmp_path / "sidewalk.csv"
+    heads_csv = tmp_path / "heads.csv"
+    output_csv = tmp_path / "optimizer-resolution.csv"
+    lawn_csv.write_text(
+        "x_m,y_m\n0,0\n10,0\n10,10\n0,10\n", encoding="utf-8"
+    )
+    protected_csv.write_text(
+        "x_m,y_m\n10,0\n10,10\n14,10\n14,0\n", encoding="utf-8"
+    )
+    heads_csv.write_text(
+        "x_m,y_m,radius_m,start_angle_deg,arc_width_deg\n8,5,6,180,180\n",
+        encoding="utf-8",
+    )
+    completed = subprocess.run(
+        [
+            sys.executable, str(ROOT / "scripts" / "check_optimizer_resolution.py"),
+            "--polygon-csv", str(lawn_csv),
+            "--protected-surface-csv", str(protected_csv),
+            "--heads-csv", str(heads_csv),
+            "--cell-sizes", "2,1",
+            "--mode", "fixed",
+            "--quick",
+            "--out", str(output_csv),
+        ],
+        cwd=ROOT, text=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, check=False,
+    )
+    assert completed.returncode == 0, completed.stdout
+    with output_csv.open(newline="", encoding="utf-8-sig") as fh:
+        rows = list(csv.DictReader(fh))
+    assert [float(row["cell_size_m"]) for row in rows] == [2.0, 1.0]
+    assert all(int(row["grid_cells_protected_surface"]) > 0 for row in rows)
+    assert all("selected_f1_pct_baseline_total_water" in row for row in rows)
+    assert all("position_rms_from_finest_m" in row for row in rows)
+
+
 def test_protected_surface_resolution_checker_reports_converging_area_error(tmp_path):
     lawn_csv = tmp_path / "lawn.csv"
     protected_csv = tmp_path / "sidewalk.csv"
