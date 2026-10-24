@@ -53,6 +53,7 @@ python -m pip install -e ".[dev]"
 campos-sim --help
 campos-field-evaluate --help
 campos-observation-qc --help
+campos-field-report --help
 python -m pytest -q
 ```
 
@@ -89,6 +90,16 @@ campos-field-evaluate \
 ```
 
 This example is **synthetic software smoke-test data only**, not field evidence or a calibration dataset. Read [the example notes](examples/field_evaluation_demo/README.md) before adapting the workflow to real measurements. The field-evaluation command uses measured per-head `flow_lpm` values in the layout CSV; if any are blank, pass `--flow-lpm` as a fallback.
+
+### Build a shareable field-evaluation report
+
+After running `campos-field-evaluate`, create HTML and Markdown summaries from its metrics JSON:
+
+```bash
+campos-field-report --input-json out/field-evaluation-demo/field_evaluation_metrics.json
+```
+
+The report includes overall and zone-stratified errors, input hashes, geometry/zone-label warnings, and model limitations. It does not issue a pass/fail certification.
 
 ### Import a measured site polygon and existing sprinkler positions
 
