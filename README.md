@@ -30,9 +30,11 @@ It is not an autonomous irrigation controller, a certified engineering design to
 
 See [the project charter](docs/PROJECT_CHARTER.md) for the intended scope, evidence standards, and development priorities. For a practical measurement plan, required field records, and the distinction between calibration and independent evaluation, see the [real-site validation protocol](docs/REAL_SITE_VALIDATION_PROTOCOL.md).
 
-Before any model comparison, run the field-observation data-quality checker on a completed catch-can CSV:
+Copy the empty [field observation template](data/templates/field_catch_can_template.csv), fill one row per can per run, and keep the raw copy unchanged. Before any model comparison, run the field-observation data-quality checker on the completed CSV:
 
 ```bash
+cp data/templates/field_catch_can_template.csv data/field_catch_can_observations.csv
+# Edit data/field_catch_can_observations.csv, then run:
 python scripts/check_field_observations.py \
   --input data/field_catch_can_observations.csv \
   --outdir out/field-data-qc
