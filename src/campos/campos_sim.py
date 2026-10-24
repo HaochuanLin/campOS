@@ -823,6 +823,16 @@ def plot_pareto(results, fn, cfg):
     fig.savefig(fn, dpi=110)
     plt.close(fig)
 
+def unique_json_object(pairs):
+    """Reject duplicate keys in configuration JSON instead of silently overriding them."""
+    result = {}
+    for key, value in pairs:
+        if key in result:
+            raise ValueError(f"duplicate JSON key in --config: {key!r}")
+        result[key] = value
+    return result
+
+
 # -------------------------------------------------------------------- main
 ALL_MODES = ["movable", "fixed", "pareto-fixed", "pareto-movable"]
 
@@ -876,8 +886,11 @@ def main(argv=None):
     if config_hint.config:
         try:
             config_path = FilePath(config_hint.config)
-            config_data = json.loads(config_path.read_text(encoding="utf-8"))
-        except (OSError, json.JSONDecodeError) as exc:
+            config_data = json.loads(
+                config_path.read_text(encoding="utf-8"),
+                object_pairs_hook=unique_json_object,
+            )
+        except (OSError, ValueError, json.JSONDecodeError) as exc:
             ap.error(f"cannot read --config JSON: {exc}")
         if not isinstance(config_data, dict):
             ap.error("--config must contain a JSON object")
