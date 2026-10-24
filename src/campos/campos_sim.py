@@ -209,7 +209,7 @@ def polygons_overlap(poly_a, poly_b):
     a = np.asarray(poly_a, dtype=float)
     b = np.asarray(poly_b, dtype=float)
     path_a, path_b = Path(a), Path(b)
-    if np.any(path_a.contains_points(b)) or np.any(path_b.contains_points(a)):
+    if np.any(path_a.contains_points(b, radius=-1e-8)) or np.any(path_b.contains_points(a, radius=-1e-8)):
         return True
     for i in range(len(a)):
         a0, a1 = a[i], a[(i + 1) % len(a)]
