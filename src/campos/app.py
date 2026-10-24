@@ -55,6 +55,13 @@ hr { border-color:#dce7df; }
 
 st.markdown('<div class="section-label">01 / Configure your run</div>', unsafe_allow_html=True)
 st.caption("A decision-support prototype. Built-in scenarios are synthetic; field accuracy and water savings are not yet established.")
+st.markdown("""
+<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:12px;margin:1.1rem 0 1.5rem">
+  <div class="info-card"><div style="font-size:1.35rem;margin-bottom:.5rem">⌁</div><h3>Compare layouts</h3><p>Explore fixed-head retrofits and movable-head alternatives on reproducible test sites.</p></div>
+  <div class="info-card"><div style="font-size:1.35rem;margin-bottom:.5rem">◈</div><h3>Protect hardscape</h3><p>Use Pareto modes with a road or sidewalk boundary to inspect overspray-versus-coverage trade-offs.</p></div>
+  <div class="info-card"><div style="font-size:1.35rem;margin-bottom:.5rem">✓</div><h3>Check against evidence</h3><p>When measurements are available, evaluate catch-can holdout errors before trusting predictions.</p></div>
+</div>
+""", unsafe_allow_html=True)
 
 with st.sidebar:
     st.header("Run setup")
