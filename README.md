@@ -8,6 +8,28 @@
 
 > **Important:** campOS is not field-validated. Lawn geometry is synthetic, sprinkler physics and economic inputs include placeholders, and outputs must not be treated as installation instructions or guaranteed water savings.
 
+## Project concept
+
+campOS is an **open, reproducible decision-support prototype for comparing sprinkler-layout options on irregular lawns**. It is designed to make a design question inspectable: given a lawn boundary and an existing or proposed sprinkler layout, how do alternative configurations trade water applied outside the lawn against the modelled risk of insufficient coverage inside it?
+
+It is not an autonomous irrigation controller, a certified engineering design tool, or a water-savings calculator. Its purpose at this stage is to compare candidate layouts under explicit assumptions, expose the trade-offs behind each result, and provide a disciplined path from synthetic experiments to measurement-based evaluation.
+
+### The workflow
+
+1. **Describe the site:** use a synthetic test shape or import a measured lawn boundary and existing head coordinates.
+2. **Establish a baseline:** record the input geometry, layout, model assumptions, grid resolution, and random seed.
+3. **Explore alternatives:** compare fixed-position retrofit and movable-head search; use Pareto modes when overspray and interior deficit must be considered together.
+4. **Inspect evidence:** review the metrics, plots, raw CSVs, run metadata, and matched-scenario reports—not a single headline score alone.
+5. **Validate before relying on it:** calibrate inputs with documented sprinkler data and evaluate predictions against independent observations before making real-site or savings claims.
+
+### What the current prototype can and cannot support
+
+- **Can support now:** reproducible synthetic comparisons, exploratory layout search, sensitivity checks, input provenance, and transparent reporting of model-defined metrics.
+- **Can support with appropriate user data:** geometry-specific comparisons and model calibration workflows, provided the supplied data are documented and their limits are respected.
+- **Cannot yet support:** validated installation recommendations, guaranteed water savings, payback estimates, or claims of field accuracy. The built-in lawn shapes are synthetic; wind, drift, evaporation, pressure losses, soil response, and other site effects are not fully modelled.
+
+See [the project charter](docs/PROJECT_CHARTER.md) for the intended scope, evidence standards, and development priorities.
+
 campOS compares four search modes for rotary-sprinkler layouts:
 
 - **Movable-head optimization:** sprinkler positions, throw radii, and sector angles may change.
@@ -289,14 +311,17 @@ results/                      Curated results only; no generated files committed
 
 ## Roadmap
 
-- [ ] Publish reviewed CSV outputs, run metadata, and figures for selected synthetic cases.
-- [ ] Add input validation and support for imported lawn polygons.
-- [ ] Replace placeholder sprinkler profiles with manufacturer catch-can/precipitation data.
-- [x] Add a reproducible sensitivity sweep for random seeds, grid resolution, and radial-shape assumptions (synthetic numerical robustness only).
-- [ ] Add uncertainty analysis for wind, pressure, and measured input parameters.
-- [ ] Validate against measured sites using a documented protocol and appropriate permission.
-- [x] Add matched synthetic benchmark cases and regression tests for the optimization and report workflows.
-- [x] Generate a self-contained HTML report and Markdown summary from simulation outputs.
+The roadmap prioritizes evidence and decision quality over feature count.
+
+- [x] Make the legacy objective and its limitations explicit; keep it as a reproducible baseline.
+- [x] Add matched synthetic comparisons, configurable Pareto trade-offs, and sensitivity checks.
+- [x] Support custom polygon/layout inputs, configuration provenance, and shareable reports.
+- [x] Add radial-profile preparation and an observation-error evaluator with explicit calibration/holdout separation.
+- [x] Add geometry-topology checks and numerical regression tests for radial-profile normalization.
+- [ ] Publish a small, reviewed set of reproducible synthetic case studies with raw outputs, metadata, and a clear interpretation of each metric.
+- [ ] Audit and document the physical chain from pressure and nozzle performance to flow, throw, radial distribution, and applied depth; add conservation and dimensional-consistency tests.
+- [ ] Establish a documented validation protocol with predeclared acceptance criteria and truly independent holdout observations.
+- [ ] Only after adequate measured data exist, quantify uncertainty and evaluate real-site performance; keep economic analysis disabled until water-volume and cost inputs are defensible.
 
 ## Citation
 
