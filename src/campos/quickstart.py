@@ -101,7 +101,7 @@ def build_index(outdir: Path, manifest: dict) -> Path:
     comparison_rows = []
     for mode, filename in (("fixed", "results_fixed.csv"), ("movable", "results_movable.csv")):
         path = outdir / filename
-        if path.is_file():
+        if path.is_file() and (artifact_names is None or filename in artifact_names):
             with path.open(newline="", encoding="utf-8-sig") as f:
                 comparison_rows.extend((mode, row) for row in csv.DictReader(f))
     if len({mode for mode, _ in comparison_rows}) == 2:
