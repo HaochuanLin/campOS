@@ -83,6 +83,19 @@ The displayed trade-off is guarded against silent regressions: a selected Pareto
 
 **Objective boundary and optional protected-surface mask:** by default, Pareto f1 counts all modelled water outside the lawn polygon; it does not distinguish roads/sidewalks from garden beds or drains. For a measured custom site, pass `--protected-surface-csv` with a separate surveyed road/sidewalk polygon CSV (`x_m,y_m` columns, metres) to make f1 count modelled water on that polygon. CSV output reports outside-lawn water and protected-surface water separately. The protected polygon may share a boundary with the lawn but must not overlap its interior. The mask uses cell-centre inclusion at the configured grid resolution, so inspect grid-resolution sensitivity. This is a geometry-specific simulated proxy—not observed spray drift, runoff, or field validation.
 
+Before interpreting a protected-surface objective, quantify geometric rasterization error across grid sizes:
+
+```bash
+python scripts/check_protected_surface_resolution.py \
+  --polygon-csv data/site_polygon.csv \
+  --protected-surface-csv data/sidewalk_polygon.csv \
+  --cell-sizes 2,1,0.5,0.25 \
+  --max-relative-error 0.05 \
+  --out out/protected-surface-resolution.csv
+```
+
+This diagnostic checks the rasterized polygon area only; it does not establish convergence of simulated water distribution or field performance. See [custom-site and resolution-check documentation](docs/CUSTOM_SITE_INPUTS.md).
+
 ### Run the included field-evaluation example
 
 ```bash
