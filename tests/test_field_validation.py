@@ -228,6 +228,8 @@ def test_field_report_displays_optional_acceptance_assessment(tmp_path):
                          "mae_mm": 0.2, "rmse_mm": 0.25, "max_absolute_error_mm": 0.3},
         }},
         "metrics_by_zone": {},
+        "zone_geometry_mismatch_count": 1,
+        "zone_geometry_mismatch_can_ids": ["can|<script>alert(1)</script>"],
         "limitations": [],
         "acceptance_thresholds_json_sha256": "abc123",
         "acceptance_assessment": {
@@ -245,6 +247,8 @@ def test_field_report_displays_optional_acceptance_assessment(tmp_path):
     assert "User-defined limits only." in html_report
     assert "abc123" in markdown
     assert "abc123" in html_report
+    assert "<script>alert(1)</script>" not in markdown
+    assert "can\\|&lt;script&gt;alert(1)&lt;/script&gt;" in markdown
 
 
 
