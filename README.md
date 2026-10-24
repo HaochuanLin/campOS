@@ -460,3 +460,15 @@ For a predeclared acceptance rule that fails the command if AI holdout RMSE is m
 The GP uses only calibration rows to fit the spatial residual field and its kernel hyperparameters. It requires at least 8 calibration points, 3 holdout points at unique coordinates, and 5 unique calibration coordinates; calibration and holdout site/run pairs must be disjoint, preventing run-level leakage; repeated coordinates across separate runs are allowed. Outputs include corrected predictions, a model-based uncertainty estimate, holdout RMSE/MAE/bias, empirical holdout coverage and mean width of the nominal 95% intervals, and a side-by-side comparison against the uncorrected physical model. Small holdout sets make coverage estimates highly uncertain.
 
 **Important:** this is an experiment, not proof that AI improves prediction. The holdout results are for evaluation; do not repeatedly change the kernel or settings based on the same holdout set. Nearby catch cans can be spatially correlated, and a GP trained at one site may not generalize to another run, weather condition, sprinkler model, or pressure. Keep the physical model as the transparent baseline and require a separately collected external validation dataset before using AI-corrected results for real installation decisions. AI correction does not establish road wetting reduction or water savings.
+
+
+## Verify generated artifacts
+
+The quickstart manifest records the Python/runtime environment and SHA-256 digests for generated CSV, image, and run-metadata files. After running `campos-start`, verify that those files have not changed:
+
+```bash
+campos-start --outdir out/campos-quickstart
+campos-verify-artifacts --manifest out/campos-quickstart/quickstart_manifest.json
+```
+
+The verifier checks file presence, byte size, and SHA-256 digest; it exits non-zero if any artifact is missing or changed. This improves run integrity and reproducibility, but does not establish model accuracy or field validation. See [artifact integrity documentation](docs/ARTIFACT_INTEGRITY.md).
