@@ -336,22 +336,27 @@ def main() -> int:
         writer.writeheader()
         writer.writerows(predictions)
 
+    zone_mismatch_count = sum(bool(row["zone_geometry_mismatch"]) for row in predictions)
+    acceptance_failed = acceptance_assessment is not None and acceptance_assessment["status"] == "fail"
+    zone_gate_failed = args.fail_on_zone_geometry_mismatch and zone_mismatch_count > 0
     report = {
         "schema_version": 1,
         "status": (
-            "acceptance_thresholds_failed"
-            if acceptance_assessment is not None and acceptance_assessment["status"] == "fail"
+            "multiple_acceptance_gates_failed"
+            if acceptance_failed and zone_gate_failed
+            else "acceptance_thresholds_failed"
+            if acceptance_failed
             else "zone_geometry_gate_failed"
-            if args.fail_on_zone_geometry_mismatch and any(row["zone_geometry_mismatch"] for row in predictions)
+            if zone_gate_failed
             else "acceptance_thresholds_passed"
             if acceptance_assessment is not None
             else "paired_spatial_predictions_and_descriptive_errors_generated"
         ),
         "zone_geometry_gate": {
             "enabled": args.fail_on_zone_geometry_mismatch,
-            "mismatch_count": sum(bool(row["zone_geometry_mismatch"]) for row in predictions),
+            "mismatch_count": zone_mismatch_count,
             "passed": (
-                not any(row["zone_geometry_mismatch"] for row in predictions)
+                zone_mismatch_count == 0
                 if args.fail_on_zone_geometry_mismatch else None
             ),
         },
@@ -405,18 +410,16 @@ def main() -> int:
         "holdout_mae_mm": metrics["metrics"]["holdout"]["mae_mm"],
         "holdout_rmse_mm": metrics["metrics"]["holdout"]["rmse_mm"],
         "warning": (
-            "pre-registered acceptance thresholds failed; inspect the written metrics and predictions"
-            if acceptance_assessment is not None and acceptance_assessment["status"] == "fail"
+            "pre-registered thresholds and the strict geometry gate failed; inspect the written metrics and predictions"
+            if acceptance_failed and zone_gate_failed
+            else "pre-registered acceptance thresholds failed; inspect the written metrics and predictions"
+            if acceptance_failed
             else "zone/polygon labels conflict and the strict geometry gate failed; inspect the written metrics and predictions"
-            if args.fail_on_zone_geometry_mismatch and any(row["zone_geometry_mismatch"] for row in predictions)
+            if zone_gate_failed
             else "descriptive evaluation only; thresholds are user-defined and do not certify physical validity"
         ),
     }, indent=2))
     # Preserve outputs for audit, but make a failed pre-registered gate fail CI/shell automation.
-    acceptance_failed = acceptance_assessment is not None and acceptance_assessment["status"] == "fail"
-    zone_gate_failed = args.fail_on_zone_geometry_mismatch and any(
-        row["zone_geometry_mismatch"] for row in predictions
-    )
     return 2 if acceptance_failed or zone_gate_failed else 0
 
 
