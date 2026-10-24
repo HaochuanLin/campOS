@@ -1030,6 +1030,7 @@ def test_protected_surface_too_narrow_for_grid_fails_fast():
 def test_protected_surface_resolution_checker_reports_converging_area_error(tmp_path):
     lawn_csv = tmp_path / "lawn.csv"
     protected_csv = tmp_path / "sidewalk.csv"
+    heads_csv = tmp_path / "heads.csv"
     output_csv = tmp_path / "resolution.csv"
     lawn_csv.write_text(
         "x_m,y_m\n0,0\n40,0\n40,25\n0,25\n", encoding="utf-8"
@@ -1038,11 +1039,16 @@ def test_protected_surface_resolution_checker_reports_converging_area_error(tmp_
         "x_m,y_m\n-4.25,0.3\n-4.25,24.7\n-1.65,24.7\n-1.65,0.3\n",
         encoding="utf-8",
     )
+    heads_csv.write_text(
+        "x_m,y_m,radius_m,start_angle_deg,arc_width_deg\n2,12.5,8,0,360\n",
+        encoding="utf-8",
+    )
     completed = subprocess.run(
         [
             sys.executable, str(ROOT / "scripts" / "check_protected_surface_resolution.py"),
             "--polygon-csv", str(lawn_csv),
             "--protected-surface-csv", str(protected_csv),
+            "--heads-csv", str(heads_csv),
             "--cell-sizes", "2,1,0.5,0.25",
             "--max-relative-error", "0.05",
             "--out", str(output_csv),
@@ -1056,6 +1062,9 @@ def test_protected_surface_resolution_checker_reports_converging_area_error(tmp_
     assert float(rows[0]["relative_area_error_pct"]) > float(rows[-1]["relative_area_error_pct"])
     assert float(rows[-1]["relative_area_error_pct"]) <= 5.0
     assert all(int(row["grid_cells_in_protected_surface"]) > 0 for row in rows)
+    shares = [float(row["protected_water_pct_of_total_water"]) for row in rows]
+    assert all(0.0 < share < 100.0 for share in shares)
+    assert all(float(row["total_water_integral_m2_relative_depth"]) > 0 for row in rows)
 
 
 def test_protected_surface_polygon_csv_loader_accepts_valid_polygon(tmp_path):
