@@ -1,3 +1,4 @@
+import hashlib
 import importlib.util
 from pathlib import Path
 
@@ -93,3 +94,19 @@ def test_quickstart_report_never_links_symlinked_artifacts(tmp_path):
     html = report.read_text(encoding="utf-8")
     assert "linked.csv" not in html
     assert "private fixture" not in html
+
+
+
+def test_artifact_checksums_include_only_regular_generated_files(tmp_path):
+    (tmp_path / "results.csv").write_bytes(b"site,score\nA,1\n")
+    (tmp_path / "index.html").write_text("report", encoding="utf-8")
+    (tmp_path / "quickstart_manifest.json").write_text("{}", encoding="utf-8")
+    outside = tmp_path.parent / "outside-checksum.csv"
+    outside.write_bytes(b"outside")
+    (tmp_path / "linked.csv").symlink_to(outside)
+
+    checksums = quickstart.artifact_checksums(tmp_path)
+
+    assert list(checksums) == ["results.csv"]
+    assert checksums["results.csv"]["size_bytes"] == len(b"site,score\nA,1\n")
+    assert checksums["results.csv"]["sha256"] == hashlib.sha256(b"site,score\nA,1\n").hexdigest()
