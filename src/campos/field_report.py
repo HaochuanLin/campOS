@@ -10,10 +10,13 @@ from pathlib import Path
 
 def md_escape(value: object) -> str:
     """Escape untrusted values before placing them in Markdown prose or tables."""
-    return (
-        str(value).replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
-        .replace("|", "\\|").replace("\r", " ").replace("\n", " ")
-    )
+    text = str(value).replace("\r", " ").replace("\n", " ")
+    text = text.replace("\\", "\\\\")
+    for source, replacement in (("&", "&amp;"), ("<", "&lt;"), (">", "&gt;")):
+        text = text.replace(source, replacement)
+    for character in ("|", "`", "*", "_", "[", "]", "!", "#", "~", "(", ")"):
+        text = text.replace(character, "\\" + character)
+    return text
 
 
 def fmt(value):
