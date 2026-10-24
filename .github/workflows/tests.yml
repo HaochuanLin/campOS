@@ -100,7 +100,7 @@ jobs:
         if: matrix.python-version == '3.10'
         run: |
           python scripts/compare_optimization_modes.py --quick --sites E \
-            --cu-drop-budget 0.12 --max-overspray-increase 0.05 \
+            --cu-drop-budget 0.03 --max-overspray-increase 0.08 \
             --outdir out/optimization-benchmark-tolerant
           python -c "import csv; p='out/optimization-benchmark-tolerant/benchmark_summary.csv'; rows=list(csv.DictReader(open(p, newline='', encoding='utf-8-sig'))); chosen=[r for r in rows if r['mode'].startswith('pareto-')]; assert len(chosen)==2; assert all(r['selected_tradeoff']=='YES' for r in chosen); assert all(float(r['max_overspray_increase'])==0.05 for r in chosen)"
       - name: Upload explicit Pareto trade-off results
