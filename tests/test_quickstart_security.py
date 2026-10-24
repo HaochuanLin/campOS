@@ -24,7 +24,15 @@ def test_quickstart_report_escapes_artifact_names_and_csv_cells(tmp_path):
         encoding="utf-8",
     )
 
-    report = quickstart.build_index(outdir, {"mode": "synthetic"})
+    report = quickstart.build_index(
+        outdir,
+        {
+            "finished_at_utc": "2026-10-24T00:00:00+00:00",
+            "mode": "synthetic",
+            "sites": ["A"],
+            "quick": True,
+        },
+    )
 
     html = report.read_text(encoding="utf-8")
     assert '<img src=x onerror="alert(1)">.csv' not in html
