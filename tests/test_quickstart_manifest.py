@@ -18,6 +18,9 @@ def test_artifact_checksums_are_stable_and_exclude_self_referential_files(tmp_pa
     csv_file.write_bytes(b"site,score\nA,0.5\n")
     (tmp_path / "index.html").write_text("report", encoding="utf-8")
     (tmp_path / "quickstart_manifest.json").write_text("{}", encoding="utf-8")
+    outside = tmp_path.parent / "outside.txt"
+    outside.write_text("external", encoding="utf-8")
+    (tmp_path / "linked.txt").symlink_to(outside)
 
     first = quickstart.artifact_checksums(tmp_path)
     second = quickstart.artifact_checksums(tmp_path)
