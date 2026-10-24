@@ -25,11 +25,17 @@ jobs:
           python - <<'PY'
           from streamlit.testing.v1 import AppTest
 
-          app = AppTest.from_file("streamlit_app.py", default_timeout=30).run()
+          app = AppTest.from_file("streamlit_app.py", default_timeout=120).run()
           assert not app.exception, "\\n".join(str(item) for item in app.exception)
           assert any(button.label == "Run simulation" for button in app.button), "Run simulation button is missing"
           assert any(item.label == "Use surveyed site CSVs" for item in app.checkbox), "Surveyed-site mode toggle is missing"
-          print("Streamlit AppTest passed: app rendered and primary controls are present.")
+
+          run_button = next(button for button in app.button if button.label == "Run simulation")
+          run_button.click().run()
+          assert not app.exception, "\\n".join(str(item) for item in app.exception)
+          downloads = app.get("download_button")
+          assert any(item.label == "Download complete run bundle (.zip)" for item in downloads), "Complete-run ZIP download is missing after simulation"
+          print("Streamlit AppTest passed: app rendered, synthetic simulation ran, and ZIP download appeared.")
           PY
       - name: Start Streamlit and verify HTTP health
         run: |
