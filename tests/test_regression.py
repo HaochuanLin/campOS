@@ -131,6 +131,29 @@ def test_ai_residual_correction_rejects_kernel_initial_values_outside_bounds(tmp
         assert "theta" not in completed.stdout.lower()
 
 
+def test_optimizer_resolution_rejects_nonfinite_threshold_and_negative_seed(tmp_path):
+    cases = [
+        (["--max-position-rms", "nan"], "--max-position-rms must be finite and non-negative"),
+        (["--max-position-rms", "inf"], "--max-position-rms must be finite and non-negative"),
+        (["--seed", "-1"], "--seed must be non-negative"),
+    ]
+    for extra_args, expected_message in cases:
+        completed = subprocess.run(
+            [
+                sys.executable, str(ROOT / "scripts" / "check_optimizer_resolution.py"),
+                "--polygon-csv", str(tmp_path / "missing-polygon.csv"),
+                "--heads-csv", str(tmp_path / "missing-heads.csv"),
+                "--protected-surface-csv", str(tmp_path / "missing-protected.csv"),
+                *extra_args,
+            ],
+            cwd=ROOT, text=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
+            check=False,
+        )
+        assert completed.returncode != 0
+        assert expected_message in completed.stdout
+        assert "Traceback" not in completed.stdout
+
+
 def test_catch_can_validation_keeps_holdout_out_of_scale_fit(tmp_path):
     lawn_csv = tmp_path / "lawn.csv"
     heads_csv = tmp_path / "heads.csv"
