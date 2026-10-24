@@ -224,16 +224,34 @@ def polygons_overlap(poly_a, poly_b):
         return True
     if any(strictly_inside(point, b, path_b) for point in a):
         return True
+    def signed_area(polygon):
+        x, y = polygon.T
+        return 0.5 * float(np.sum(x * np.roll(y, -1) - np.roll(x, -1) * y))
+
+    winding_a = 1.0 if signed_area(a) > 0 else -1.0
+    winding_b = 1.0 if signed_area(b) > 0 else -1.0
+    eps = 1e-9
     for i in range(len(a)):
         a0, a1 = a[i], a[(i + 1) % len(a)]
+        ea = a1 - a0
         for j in range(len(b)):
             b0, b1 = b[j], b[(j + 1) % len(b)]
-            # Only proper crossings imply interior overlap; collinear/touching
-            # boundaries are valid for an adjacent sidewalk/lawn.
+            eb = b1 - b0
             o1, o2 = _orientation(a0, a1, b0), _orientation(a0, a1, b1)
             o3, o4 = _orientation(b0, b1, a0), _orientation(b0, b1, a1)
             if o1 * o2 < 0 and o3 * o4 < 0:
                 return True
+            # Collinear edges with positive-length overlap need special care:
+            # identical/partly coincident polygons can have no proper crossings
+            # and all vertices on boundaries. If their interiors lie on the
+            # same side of the shared edge, the polygons overlap in area.
+            if o1 == o2 == o3 == o4 == 0:
+                axis = int(np.argmax(np.abs(ea)))
+                overlap = min(max(a0[axis], a1[axis]), max(b0[axis], b1[axis])) - max(
+                    min(a0[axis], a1[axis]), min(b0[axis], b1[axis])
+                )
+                if overlap > eps and np.dot(ea * winding_a, eb * winding_b) > 0:
+                    return True
     return False
 
 
