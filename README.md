@@ -40,7 +40,7 @@ python scripts/check_field_observations.py \
   --outdir out/field-data-qc
 ```
 
-It checks required columns, unique can IDs per site/run, numeric values, units, and basic flags; if depth is blank, it derives depth in mm from collected volume and opening area. It writes a normalized CSV and JSON quality summary. This is **data QC only**—it does not compare observations with model predictions or count as field validation.
+It checks required columns, unique can IDs per site/run, numeric values, units, and basic flags; if depth is blank, it derives depth in mm from collected volume and opening area. It writes a normalized CSV and JSON quality summary. This is **data QC only**—it does not compare observations with model predictions or count as field validation. For already-paired measured/predicted depths, `scripts/evaluate_observation_errors.py` computes descriptive calibration/holdout error metrics; see the [real-site validation protocol](docs/REAL_SITE_VALIDATION_PROTOCOL.md) for its required input and important limitations. It does not generate spatial predictions from the simulator.
 
 ## Quick start
 
