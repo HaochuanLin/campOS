@@ -820,8 +820,8 @@ def test_field_observation_qc_derives_depth_and_marks_scope(tmp_path):
     source = tmp_path / "observations.csv"
     source.write_text(
         "site_id,run_id,can_id,x_m,y_m,zone,collection_duration_s,"
-        "collected_volume_ml,measured_depth_mm,container_opening_area_cm2,validity_flag\\n"
-        "site-1,run-1,can-1,1,2,inside,600,50,,10,valid\\n",
+        "collected_volume_ml,measured_depth_mm,container_opening_area_cm2,validity_flag\n"
+        "site-1,run-1,can-1,1,2,inside,600,50,,10,valid\n",
         encoding="utf-8",
     )
     outdir = tmp_path / "qc"
@@ -839,7 +839,7 @@ def test_field_observation_qc_derives_depth_and_marks_scope(tmp_path):
         capture_output=True,
         timeout=30,
     )
-    assert completed.returncode == 0, completed.stdout + "\\n" + completed.stderr
+    assert completed.returncode == 0, completed.stdout + "\n" + completed.stderr
     normalized = list(csv.DictReader((outdir / "field_observation_qc.csv").open(encoding="utf-8")))
     assert len(normalized) == 1
     assert np.isclose(float(normalized[0]["measured_depth_mm_normalized"]), 50.0)
@@ -850,10 +850,10 @@ def test_field_observation_qc_derives_depth_and_marks_scope(tmp_path):
 
 def test_field_observation_qc_rejects_duplicate_can_ids_within_run(tmp_path):
     source = tmp_path / "duplicate.csv"
-    row = "site-1,run-1,can-1,1,2,inside,600,50,,10,valid\\n"
+    row = "site-1,run-1,can-1,1,2,inside,600,50,,10,valid\n"
     source.write_text(
         "site_id,run_id,can_id,x_m,y_m,zone,collection_duration_s,"
-        "collected_volume_ml,measured_depth_mm,container_opening_area_cm2,validity_flag\\n"
+        "collected_volume_ml,measured_depth_mm,container_opening_area_cm2,validity_flag\n"
         + row + row,
         encoding="utf-8",
     )
