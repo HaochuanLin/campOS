@@ -30,58 +30,6 @@ It is not an autonomous irrigation controller, a certified engineering design to
 
 See [the project charter](docs/PROJECT_CHARTER.md) for the intended scope, evidence standards, and development priorities.
 
-campOS compares four search modes for rotary-sprinkler layouts:
-
-- **Movable-head optimization:** sprinkler positions, throw radii, and sector angles may change.
-- **Fixed-position retrofit optimization:** sprinkler coordinates remain unchanged; only radii and sector angles may change.
-- **Pareto search:** explores the trade-off between overspray and interior water deficit, with a dry-area constraint.
-
-### Use a measured sprinkler radial profile
-
-If you have catch-can measurements for the actual nozzle and operating pressure, provide a CSV with `radius_fraction,relative_rate` columns and run:
-
-```bash
-# With measured catch-can data
-python campos_sim.py --mode movable --quick --sites A --profile-csv data/catch_can_profile.csv --outdir out/profile-run
-
-# Without measurements: compare alternative assumed radial shapes
-python campos_sim.py --mode movable --quick --sites A --radial-slope -0.5 --outdir out/sensitivity-center-heavy
-python campos_sim.py --mode movable --quick --sites A --radial-slope 0 --outdir out/sensitivity-uniform
-python campos_sim.py --mode movable --quick --sites A --radial-slope 1 --outdir out/sensitivity-edge-heavy
-```
-
-For raw catch-can observations, use `scripts/prepare_radial_profile.py` to convert repeated depth readings into the loader's profile format. The measurement checklist, required raw CSV columns, endpoint assumptions, and validation limits are documented in [the radial-profile protocol](docs/RADIAL_PROFILE_PROTOCOL.md). The checked-in [CSV template](data/templates/catch_can_observations_template.csv) is intentionally empty and is not a dataset.
-
-The profile is area-normalized and changes the radial distribution shape. It does **not** supply absolute flow or validate the model by itself. If you have no catch-can data, use the default uniform-depth null model and compare sensitivity scenarios with `--radial-slope` (valid values are greater than -1):
-
-### Optional measured pressure-performance curve
-
-For a specific sprinkler, provide a measured table with `pressure_kpa,flow_lpm,throw_m` and choose a pressure within the table's measured range:
-
-```bash
-python campos_sim.py --mode fixed --quick --sites A --profile-csv data/catch_can_profile.csv --performance-csv data/performance.csv --pressure-kpa 250 --outdir out/calibrated
-```
-
-This is an invocation example, not a recommended pressure setting. The performance table must come from the actual sprinkler/nozzle or a documented test. When active, the model uses interpolated flow and throw and locks throw radius during optimization. The absolute field is an estimated precipitation rate in mm/h under uniform-sector assumptions, not field validation.
-
-### Public sprinkler-physics benchmark
-
-I added a reproducible check against published Rain Bird 5000 Series standard-angle nozzle data:
-
-```bash
-python scripts/benchmark_sprinkler_curve.py
-```
-
-The six-point CSV includes pressure, flow, throw radius, and manufacturer-published square/triangular precipitation rates. The benchmark compares those rates with a flow / grid-cell-area calculation using the chart's half-circle operating assumption. A 1 mm/h tolerance accounts for integer rounding. This is a public manufacturer-chart consistency check, **not independent field validation** and not a measurement of the local radial spray pattern. Source and transcription details are in [data/benchmarks/README.md](data/benchmarks/README.md).
-
-The same file is a runnable example of the pressure-performance option at 200–450 kPa:
-
-```bash
-python campos_sim.py --mode fixed --quick --sites A --performance-csv data/benchmarks/rainbird_5000_standard_1_5.csv --pressure-kpa 300 --outdir out/rainbird-example
-```
-
-Without a measured catch-can profile for this exact nozzle/pressure, the radial field remains a placeholder; do not interpret this example as a field-validated layout.
-
 ## Quick start
 
 Requires Python 3.10 or newer.
@@ -143,12 +91,68 @@ python campos_sim.py --mode all --outdir out/full
 Use `--seed` to set the random seed and `--cell-size` to change the spatial grid resolution (in metres), for example:
 
 ```bash
-python campos_sim.py --mode movable --quick --sites A --seed 19 --cell-size 1.0 --outdir out/coarse-grid\n\n# Compare grid resolutions for one synthetic site\npython scripts/grid_sensitivity.py --site 'A Rectangle' --cell-sizes 2,1,0.5 --out out/grid_sensitivity.csv
+python campos_sim.py --mode movable --quick --sites A --seed 19 --cell-size 1.0 --outdir out/coarse-grid\n\n# Compare grid resolutions for one synthetic site\n```bash
+python scripts/grid_sensitivity.py --site 'A Rectangle' --cell-sizes 2,1,0.5 --out out/grid_sensitivity.csv
+```
 ```
 
 The seed and cell size are recorded in `run_metadata.json`. Smaller cells increase spatial resolution and runtime; results from different cell sizes should be treated as a sensitivity comparison, not directly interchangeable measurements. Invalid site IDs and non-positive or non-finite cell sizes are rejected with a clear CLI error.
 
 `--quick` reduces optimization iterations for smoke testing. It is not a substitute for a full run. Generated output is ignored by Git by default; publish results only after reviewing the CSVs, metadata, and figures.
+
+## Model inputs and physics references
+
+campOS compares four search modes for rotary-sprinkler layouts:
+
+- **Movable-head optimization:** sprinkler positions, throw radii, and sector angles may change.
+- **Fixed-position retrofit optimization:** sprinkler coordinates remain unchanged; only radii and sector angles may change.
+- **Pareto search:** explores the trade-off between overspray and interior water deficit, with a dry-area constraint.
+
+### Use a measured sprinkler radial profile
+
+If you have catch-can measurements for the actual nozzle and operating pressure, provide a CSV with `radius_fraction,relative_rate` columns and run:
+
+```bash
+# With measured catch-can data
+python campos_sim.py --mode movable --quick --sites A --profile-csv data/catch_can_profile.csv --outdir out/profile-run
+
+# Without measurements: compare alternative assumed radial shapes
+python campos_sim.py --mode movable --quick --sites A --radial-slope -0.5 --outdir out/sensitivity-center-heavy
+python campos_sim.py --mode movable --quick --sites A --radial-slope 0 --outdir out/sensitivity-uniform
+python campos_sim.py --mode movable --quick --sites A --radial-slope 1 --outdir out/sensitivity-edge-heavy
+```
+
+For raw catch-can observations, use `scripts/prepare_radial_profile.py` to convert repeated depth readings into the loader's profile format. The measurement checklist, required raw CSV columns, endpoint assumptions, and validation limits are documented in [the radial-profile protocol](docs/RADIAL_PROFILE_PROTOCOL.md). The checked-in [CSV template](data/templates/catch_can_observations_template.csv) is intentionally empty and is not a dataset.
+
+The profile is area-normalized and changes the radial distribution shape. It does **not** supply absolute flow or validate the model by itself. If you have no catch-can data, use the default uniform-depth null model and compare sensitivity scenarios with `--radial-slope` (valid values are greater than -1):
+
+### Optional measured pressure-performance curve
+
+For a specific sprinkler, provide a measured table with `pressure_kpa,flow_lpm,throw_m` and choose a pressure within the table's measured range:
+
+```bash
+python campos_sim.py --mode fixed --quick --sites A --profile-csv data/catch_can_profile.csv --performance-csv data/performance.csv --pressure-kpa 250 --outdir out/calibrated
+```
+
+This is an invocation example, not a recommended pressure setting. The performance table must come from the actual sprinkler/nozzle or a documented test. When active, the model uses interpolated flow and throw and locks throw radius during optimization. The absolute field is an estimated precipitation rate in mm/h under uniform-sector assumptions, not field validation.
+
+### Public sprinkler-physics benchmark
+
+I added a reproducible check against published Rain Bird 5000 Series standard-angle nozzle data:
+
+```bash
+python scripts/benchmark_sprinkler_curve.py
+```
+
+The six-point CSV includes pressure, flow, throw radius, and manufacturer-published square/triangular precipitation rates. The benchmark compares those rates with a flow / grid-cell-area calculation using the chart's half-circle operating assumption. A 1 mm/h tolerance accounts for integer rounding. This is a public manufacturer-chart consistency check, **not independent field validation** and not a measurement of the local radial spray pattern. Source and transcription details are in [data/benchmarks/README.md](data/benchmarks/README.md).
+
+The same file is a runnable example of the pressure-performance option at 200–450 kPa:
+
+```bash
+python campos_sim.py --mode fixed --quick --sites A --performance-csv data/benchmarks/rainbird_5000_standard_1_5.csv --pressure-kpa 300 --outdir out/rainbird-example
+```
+
+Without a measured catch-can profile for this exact nozzle/pressure, the radial field remains a placeholder; do not interpret this example as a field-validated layout.
 
 ## Optimization modes
 
@@ -251,27 +255,9 @@ The standard-grid baseline and the full-circle reference are different compariso
 
 See [the model definition and limitations](docs/MODEL.md) for formulas and assumptions.
 
-## Preliminary figures from the project brief
+## Historical figures and reproducibility
 
-The following values were supplied in the project brief, but the original result CSVs and run configuration were not available for independent verification in this repository. They are **unverified synthetic-model outputs using placeholder assumptions**, not field measurements.
-
-| Mode | Synthetic shape | AR-based metric reported in the original brief |
-|---|---|---:|
-| Fixed position | Kidney | 35.3% |
-| Fixed position | L-shape | 25.5% |
-| Movable | Kidney | 38.0% |
-| Movable | L-shape | 24.0% |
-
-The historical payback figures are intentionally omitted: the previous implementation derived water volume from a dimensionless AR difference, which is dimensionally invalid. The current code leaves annual water savings, annual cost savings, and payback blank until a calibrated water-volume model and verified economic inputs exist.
-
-Reported comparison against the **full-circle reference only**:
-
-| Synthetic shape | Overspray | Interior deficit |
-|---|---:|---:|
-| Kidney | 21% → 14% | 6.8% → 0.9% |
-| Roadside strip | 54% → 11.6% | 6.6% → 1.1% |
-
-No result figures are published yet because the source result files were not included. Do not treat the numbers above as reproduced results until the corresponding CSVs, run metadata, and plots are published and checked.
+Numbers quoted in earlier project materials are not presented here as current results because the corresponding raw result CSVs, configuration, and run metadata were not available for independent reproduction. Current claims should be based on committed or linked artifacts that can be rerun and inspected.
 
 ## Assumptions and limitations
 
