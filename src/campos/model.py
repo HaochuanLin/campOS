@@ -27,6 +27,10 @@ def site_wedge():
 def site_strip():
     return np.array([[0, 0], [60, 0], [60, 7], [35, 9.5], [0, 6]], float)
 
+# Guard against accidental OOM when users request an excessively fine grid.
+# Each grid cell participates in several full-size arrays during optimization.
+MAX_GRID_CELLS = 2_000_000
+
 SITES = {
     "A Rectangle": site_rect,
     "B L-shape": site_lshape,
@@ -199,14 +203,27 @@ class Site:
         self.path = Path(poly)
         self.protected_poly = cfg.get("protected_polygon")
         self.protected_path = Path(self.protected_poly) if self.protected_poly is not None else None
-        c = cfg["cell"]
-        m = cfg["margin"]
+        c = float(cfg["cell"])
+        m = float(cfg["margin"])
+        if not np.isfinite(c) or c <= 0:
+            raise ValueError("grid cell size must be finite and greater than zero")
+        if not np.isfinite(m) or m < 0:
+            raise ValueError("grid margin must be finite and non-negative")
         bounds = [np.asarray(poly, dtype=float)]
         if self.protected_poly is not None:
             bounds.append(np.asarray(self.protected_poly, dtype=float))
         all_points = np.vstack(bounds)
         x0, y0 = all_points.min(axis=0) - m
         x1, y1 = all_points.max(axis=0) + m
+        nx = max(1, int(np.ceil((x1 - x0) / c)))
+        ny = max(1, int(np.ceil((y1 - y0) / c)))
+        estimated_cells = nx * ny
+        if estimated_cells > MAX_GRID_CELLS:
+            raise ValueError(
+                f"requested grid is about {nx:,} x {ny:,} = {estimated_cells:,} cells, "
+                f"exceeding the safety limit of {MAX_GRID_CELLS:,}; increase cell size "
+                "or reduce the simulated geometry extent"
+            )
         xs = np.arange(x0, x1, c) + c / 2
         ys = np.arange(y0, y1, c) + c / 2
         self.X, self.Y = np.meshgrid(xs, ys)
