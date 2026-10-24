@@ -8,6 +8,19 @@
 
 > **Important:** campOS is not field-validated. Lawn geometry is synthetic, sprinkler physics and economic inputs include placeholders, and outputs must not be treated as installation instructions or guaranteed water savings.
 
+## Run the web app
+
+The Streamlit interface is included in this repository. To run it locally from the repository root:
+
+```bash
+python -m pip install -r requirements.txt
+streamlit run streamlit_app.py
+```
+
+To publish a hosted demo on **Streamlit Community Cloud**, you need to sign in to Streamlit and authorize access to this GitHub repository. Create a new app and select repository `HaochuanLin/campOS`, branch `objective-audit-step-1` while this work remains in the open pull request (or select the default branch after the changes are merged), and main file path `streamlit_app.py`. Streamlit installs dependencies from `requirements.txt`. You do not need to create a separate app file or copy the code manually. I can prepare the repository, but I cannot authorize your account or publish the app inside your Streamlit account from this GitHub session.
+
+The hosted demo is a shared web application with temporary runtime storage; download outputs you need to keep. Do not upload private site surveys or sensitive location data to a public demo. The app remains a research prototype and its outputs are not field-validated.
+
 ## Project concept
 
 campOS is an **open, reproducible decision-support prototype for comparing sprinkler-layout options on irregular lawns**. It is designed to make a design question inspectable: given a lawn boundary and an existing or proposed sprinkler layout, how do alternative configurations trade water applied outside the lawn against the modelled risk of insufficient coverage inside it?
