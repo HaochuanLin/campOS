@@ -24,6 +24,7 @@ campos-field-evaluate = "campos.field_validation:main"
 campos-observation-qc = "campos.field_observations:main"
 campos-field-report = "campos.field_report:main"
 campos-start = "campos.quickstart:main"
+campos-verify-artifacts = "campos.artifact_verification:main"
 
 [tool.setuptools]
 package-dir = {"" = "src"}
