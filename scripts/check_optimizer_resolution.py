@@ -11,6 +11,8 @@ import csv
 import sys
 from pathlib import Path
 
+import numpy as np
+
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "src"))
 from campos import campos_sim as sim  # noqa: E402
@@ -36,15 +38,15 @@ def circular_delta_deg(a, b):
 
 def compare_layouts(layout, reference):
     if layout.shape != reference.shape:
-        return {"head_count_match": False, "position_rms_m": "", "radius_mae_m": "",
-                "start_angle_mae_deg": "", "arc_width_mae_deg": ""}
+        return {"head_count_match": False, "position_rms_from_finest_m": "", "radius_mae_from_finest_m": "",
+                "start_angle_mae_from_finest_deg": "", "arc_width_mae_from_finest_deg": ""}
     delta_xy = layout[:, :2] - reference[:, :2]
     return {
         "head_count_match": True,
-        "position_rms_m": f"{(float((delta_xy ** 2).sum(axis=1).mean()) ** 0.5):.6f}",
-        "radius_mae_m": f"{float(abs(layout[:, 2] - reference[:, 2]).mean()):.6f}",
-        "start_angle_mae_deg": f"{float(sum(circular_delta_deg(a, b) for a, b in zip(layout[:, 3], reference[:, 3])) / len(layout)):.6f}",
-        "arc_width_mae_deg": f"{float(abs(layout[:, 4] - reference[:, 4]).mean()):.6f}",
+        "position_rms_from_finest_m": f"{(float((delta_xy ** 2).sum(axis=1).mean()) ** 0.5):.6f}",
+        "radius_mae_from_finest_m": f"{float(abs(layout[:, 2] - reference[:, 2]).mean()):.6f}",
+        "start_angle_mae_from_finest_deg": f"{float(sum(circular_delta_deg(a, b) for a, b in zip(layout[:, 3], reference[:, 3])) / len(layout)):.6f}",
+        "arc_width_mae_from_finest_deg": f"{float(abs(layout[:, 4] - reference[:, 4]).mean()):.6f}",
     }
 
 
@@ -126,9 +128,8 @@ def main(argv=None):
             indexed = sorted(enumerate(candidates),
                              key=lambda item: sim.bi_eval(site, site.total(item[1]), refs, cfg)[0])
             if len(indexed) > cfg["pareto_max_points"]:
-                picks = set(__import__("numpy").unique(
-                    __import__("numpy").round(__import__("numpy").linspace(
-                        0, len(indexed) - 1, cfg["pareto_max_points"])).astype(int)).tolist())
+                picks = set(np.unique(np.round(np.linspace(
+                    0, len(indexed) - 1, cfg["pareto_max_points"])).astype(int)).tolist())
                 indexed = [item for i, item in enumerate(indexed) if i in picks]
             evaluated = [(sim.bi_report(site, layout, refs, cfg), layout) for _, layout in indexed]
             evaluated.sort(key=lambda item: item[0]["f1"])
@@ -152,7 +153,7 @@ def main(argv=None):
                 "selected_protected_water_share_pct": "" if selected_report is None else f"{100*selected_report['protected_surface_water'] / max(selected_report['water_rel'], 1e-12):.6f}",
                 "layout_reference_cell_m": "", "position_rms_from_finest_m": "",
                 "radius_mae_from_finest_m": "", "start_angle_mae_from_finest_deg": "",
-                "arc_width_mae_from_finest_deg": "", "error": "",
+                "arc_width_mae_from_finest_deg": "", "head_count_match": "", "error": "",
             })
         except ValueError as exc:
             results.append({
@@ -162,7 +163,7 @@ def main(argv=None):
                 "selected_CU": "", "selected_dry_area_pct": "", "selected_protected_water_share_pct": "",
                 "layout_reference_cell_m": "", "position_rms_from_finest_m": "",
                 "radius_mae_from_finest_m": "", "start_angle_mae_from_finest_deg": "",
-                "arc_width_mae_from_finest_deg": "", "error": str(exc),
+                "arc_width_mae_from_finest_deg": "", "head_count_match": "", "error": str(exc),
             })
 
     valid = [r for r in results if r["feasible_selection"]]
@@ -184,7 +185,7 @@ def main(argv=None):
 
     output = Path(args.out)
     output.parent.mkdir(parents=True, exist_ok=True)
-    columns = list(results[0].keys())
+    columns = list(dict.fromkeys(key for row in results for key in row))
     with output.open("w", newline="", encoding="utf-8-sig") as fh:
         writer = csv.DictWriter(fh, fieldnames=columns)
         writer.writeheader()
