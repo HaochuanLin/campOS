@@ -49,7 +49,7 @@ jobs:
             --outdir out/field-evaluation-smoke
           test -s out/field-evaluation-smoke/paired_predictions.csv
           test -s out/field-evaluation-smoke/field_evaluation_metrics.json
-          python -c "import json; p=json.load(open('out/field-evaluation-smoke/field_evaluation_metrics.json')); assert p['acceptance_assessment'] is not None; assert len(p['acceptance_assessment']['checks']) == 3"
+          python -c "import json,re; p=json.load(open('out/field-evaluation-smoke/field_evaluation_metrics.json')); assert p['acceptance_assessment'] is not None; assert len(p['acceptance_assessment']['checks']) == 3; assert re.fullmatch(r'[0-9a-f]{64}', p['acceptance_thresholds_json_sha256'])"
           campos-field-report --input-json out/field-evaluation-smoke/field_evaluation_metrics.json
           test -s out/field-evaluation-smoke/field_evaluation_report.html
           test -s out/field-evaluation-smoke/field_evaluation_report.md
