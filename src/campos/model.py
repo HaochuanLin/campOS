@@ -216,6 +216,11 @@ class Site:
             self.protected_path.contains_points(pts).reshape(self.X.shape) & ~self.mask
             if self.protected_path is not None else np.zeros_like(self.mask, dtype=bool)
         )
+        if self.protected_path is not None and not np.any(self.protected_mask):
+            raise ValueError(
+                "protected-surface polygon contains no grid-cell centres at the configured "
+                f"cell size ({c:g} m); reduce --cell-size or correct the surveyed polygon"
+            )
         self.idx = np.flatnonzero(self.mask.ravel())
         self.idx_protected = np.flatnonzero(self.protected_mask.ravel())
         self.extent = (x0, x1, y0, y1)
