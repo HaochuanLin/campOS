@@ -411,3 +411,26 @@ python scripts/validate_catch_can_data.py \
 ~~~
 
 The script requires at least three calibration and two independent holdout observations, fits a single scale factor using calibration rows only, and reports holdout RMSE, MAE, bias, and R² where defined. Add a flow_lpm column to the sprinkler CSV for individual measured flows, or use --flow-lpm for a common measured flow. Without measured flow, the unscaled field is relative rather than absolute precipitation. Do not tune against holdout rows or treat a fitted scale factor as proof of generalization. See [custom-site validation guidance](docs/CUSTOM_SITE_INPUTS.md).
+
+
+## Experimental AI-assisted residual correction
+
+campOS now includes an **optional Gaussian-process (GP) residual correction experiment**. It learns a smooth spatial correction from the difference between measured catch-can depth and the physical model's prediction. This is a small, interpretable ML component—not a large language model, autonomous controller, or learned sprinkler-physics simulator.
+
+Install the optional dependency and run the physical-model evaluation first:
+
+~~~bash
+python -m pip install -e ".[ai]"
+campos-field-evaluate \
+  --polygon-csv data/site_polygon.csv \
+  --heads-csv data/sprinkler_layout.csv \
+  --observations data/field_catch_can_observations.csv \
+  --outdir out/field-evaluation
+python scripts/ai_residual_correction.py \
+  --predictions-csv out/field-evaluation/paired_predictions.csv \
+  --outdir out/ai-residual-correction
+~~~
+
+The GP uses only calibration rows to fit the spatial residual field and its kernel hyperparameters. It requires at least 8 calibration points, 3 independent holdout points, and 5 unique calibration coordinates. Outputs include corrected predictions, a model-based uncertainty estimate, and a side-by-side holdout comparison against the uncorrected physical model.
+
+**Important:** this is an experiment, not proof that AI improves prediction. The holdout results are for evaluation; do not repeatedly change the kernel or settings based on the same holdout set. Nearby catch cans can be spatially correlated, and a GP trained at one site may not generalize to another run, weather condition, sprinkler model, or pressure. Keep the physical model as the transparent baseline and require a separately collected external validation dataset before using AI-corrected results for real installation decisions. AI correction does not establish road wetting reduction or water savings.
