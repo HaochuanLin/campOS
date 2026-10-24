@@ -286,8 +286,21 @@ if run:
                 st.code(str(exc))
                 st.stop()
             if completed.returncode:
-                st.error("The simulation failed. No successful result is being shown.")
-                st.code((completed.stderr or completed.stdout)[-12000:])
+                st.error(
+                    f"The simulation process exited with code {completed.returncode}. "
+                    "No successful result is being shown."
+                )
+                diagnostic = "\\n".join(
+                    part.strip()
+                    for part in (completed.stderr, completed.stdout)
+                    if part and part.strip()
+                )
+                st.code(diagnostic[-12000:] if diagnostic else (
+                    "The simulation process returned no diagnostic output. "
+                    "Check the deployment logs and dependency installation."
+                ))
+                with st.expander("Show command used for this run"):
+                    st.code(" ".join(str(part) for part in invocation))
                 st.stop()
 
             field_eval_ok = None
