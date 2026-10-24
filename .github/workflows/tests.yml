@@ -90,7 +90,9 @@ jobs:
         run: python scripts/parameter_sensitivity.py --quick --sites A --seeds 7 19 --cell-sizes 1.0 --slopes -0.5 0 1 --outdir out/parameter-sensitivity
       - name: Run matched optimization benchmark smoke test
         if: matrix.python-version == '3.10'
-        run: python scripts/compare_optimization_modes.py --quick --sites E --outdir out/optimization-benchmark
+        run: |
+          python scripts/compare_optimization_modes.py --quick --sites E --outdir out/optimization-benchmark
+          python -c "import csv; p='out/optimization-benchmark/benchmark_summary.csv'; rows=list(csv.DictReader(open(p, newline='', encoding='utf-8-sig'))); chosen=[r for r in rows if r['mode'].startswith('pareto-')]; assert len(chosen)==2; assert all(r['selected_tradeoff'] != 'YES' for r in chosen); assert all(r['selection_failure_reasons'] for r in chosen); assert all(sum(int(r[k]) for k in ('guardrail_cu_rejected_candidates','guardrail_overspray_rejected_candidates','guardrail_interior_deficit_rejected_candidates','guardrail_dry_area_rejected_candidates')) > 0 for r in chosen)"
       - name: Upload optimization benchmark results
         if: always() && matrix.python-version == '3.10'
         uses: actions/upload-artifact@v7
@@ -105,7 +107,7 @@ jobs:
           python scripts/compare_optimization_modes.py --quick --sites E \
             --cu-drop-budget 0.03 --max-overspray-increase 0.08 \
             --outdir out/optimization-benchmark-tolerant
-          python -c "import csv; p='out/optimization-benchmark-tolerant/benchmark_summary.csv'; rows=list(csv.DictReader(open(p, newline='', encoding='utf-8-sig'))); chosen=[r for r in rows if r['mode'].startswith('pareto-')]; assert len(chosen)==2; assert all(r['selected_tradeoff']=='YES' for r in chosen); assert all(float(r['max_overspray_increase'])==0.08 for r in chosen)"
+          python -c "import csv; p='out/optimization-benchmark-tolerant/benchmark_summary.csv'; rows=list(csv.DictReader(open(p, newline='', encoding='utf-8-sig'))); chosen=[r for r in rows if r['mode'].startswith('pareto-')]; assert len(chosen)==2; assert all(r['selected_tradeoff']=='YES' for r in chosen); assert all(float(r['max_overspray_increase'])==0.08 for r in chosen); assert all(r['selection_failure_reasons']=='' for r in chosen)"
       - name: Upload explicit Pareto trade-off results
         if: always() && matrix.python-version == '3.10'
         uses: actions/upload-artifact@v7
