@@ -59,6 +59,7 @@ def build_index(outdir: Path, manifest: dict) -> Path:
     files = sorted(
         p for p in outdir.iterdir()
         if p.is_file()
+        and not p.is_symlink()
         and p.name not in {"index.html", "quickstart_manifest.json"}
         and (artifact_names is None or p.name in artifact_names)
     )
@@ -73,7 +74,10 @@ def build_index(outdir: Path, manifest: dict) -> Path:
 
     metric_table = ""
     results_path = outdir / "results_movable.csv"
-    if results_path.is_file() and (artifact_names is None or "results_movable.csv" in artifact_names):
+    if (
+        results_path.is_file() and not results_path.is_symlink()
+        and (artifact_names is None or "results_movable.csv" in artifact_names)
+    ):
         with results_path.open(newline="", encoding="utf-8-sig") as f:
             rows = list(csv.DictReader(f))
         preferred = [
@@ -101,7 +105,7 @@ def build_index(outdir: Path, manifest: dict) -> Path:
     comparison_rows = []
     for mode, filename in (("fixed", "results_fixed.csv"), ("movable", "results_movable.csv")):
         path = outdir / filename
-        if path.is_file() and (artifact_names is None or filename in artifact_names):
+        if path.is_file() and not path.is_symlink() and (artifact_names is None or filename in artifact_names):
             with path.open(newline="", encoding="utf-8-sig") as f:
                 comparison_rows.extend((mode, row) for row in csv.DictReader(f))
     if len({mode for mode, _ in comparison_rows}) == 2:
