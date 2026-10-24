@@ -35,7 +35,7 @@ Copy the empty [field observation template](data/templates/field_catch_can_templ
 ```bash
 cp data/templates/field_catch_can_template.csv data/field_catch_can_observations.csv
 # Edit data/field_catch_can_observations.csv, then run:
-python scripts/check_field_observations.py \
+campos-observation-qc \
   --input data/field_catch_can_observations.csv \
   --outdir out/field-data-qc
 ```
@@ -52,6 +52,7 @@ cd campOS
 python -m pip install -e ".[dev]"
 campos-sim --help
 campos-field-evaluate --help
+campos-observation-qc --help
 python -m pytest -q
 ```
 
