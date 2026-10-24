@@ -69,6 +69,7 @@ def build_report(metrics_path: Path) -> tuple[str, str]:
         f"- Valid observations: {report.get('n_valid_observations', 'n/a')}",
         f"- Per-head flow rates (L/min): {json.dumps(report.get('flow_lpm_per_head', []))}",
         f"- Input SHA-256 hashes: {json.dumps(report.get('input_sha256', {}), sort_keys=True)}",
+        f"- Software metadata: {json.dumps(report.get('software', {}), sort_keys=True)}",
         f"- Radial-profile SHA-256: {report.get('radial_profile_csv_sha256') or 'not supplied'}",
         "",
         "## Geometry / zone-label checks",
@@ -119,6 +120,13 @@ def build_report(metrics_path: Path) -> tuple[str, str]:
             f"<td>{esc(fmt(holdout.get('mae_mm')))}</td>",
             f"<td>{esc(fmt(holdout.get('rmse_mm')))}</td>",
         ]) + "</tr>")
+    software = report.get("software", {})
+    software_html = "".join(
+        f"<li>{esc(key)}: <code>{esc(value)}</code></li>"
+        for key, value in software.items() if key != "source_sha256"
+    )
+    for key, value in software.get("source_sha256", {}).items():
+        software_html += f"<li>{esc(key)} SHA-256: <code>{esc(value)}</code></li>"
     limitations_html = "".join(f"<li>{esc(item)}</li>" for item in limitations)
     hashes_html = "".join(
         f"<li>{esc(key)}: <code>{esc(value)}</code></li>"
@@ -141,7 +149,7 @@ table{{border-collapse:collapse;width:100%;margin:1rem 0;font-variant-numeric:ta
 <h2>Results by catch-can zone</h2>
 <table><thead><tr><th>Zone</th><th>n</th><th>Holdout n</th><th>Holdout bias (mm)</th><th>Holdout MAE (mm)</th><th>Holdout RMSE (mm)</th></tr></thead><tbody>{''.join(zone_rows)}</tbody></table>
 <h2>Input provenance</h2>
-<ul><li>Sprinkler heads: {esc(report.get('n_sprinkler_heads', 'n/a'))}</li><li>Valid observations: {esc(report.get('n_valid_observations', 'n/a'))}</li><li>Per-head flow rates (L/min): <code>{esc(json.dumps(report.get('flow_lpm_per_head', [])))}</code></li><li>Input hashes:</li>{hashes_html}</ul>
+<ul><li>Sprinkler heads: {esc(report.get('n_sprinkler_heads', 'n/a'))}</li><li>Valid observations: {esc(report.get('n_valid_observations', 'n/a'))}</li><li>Per-head flow rates (L/min): <code>{esc(json.dumps(report.get('flow_lpm_per_head', [])))}</code></li><li>Input hashes:</li>{hashes_html}{software_html}</ul>
 <h2>Geometry / zone-label checks</h2>
 <p>Zone/polygon mismatches: {esc(report.get('zone_geometry_mismatch_count', 0))}; affected catch-can IDs: {esc(', '.join(mismatches) if mismatches else 'none')}.</p>
 <h2>Limitations</h2><ul>{limitations_html}</ul>
