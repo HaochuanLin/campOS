@@ -205,15 +205,21 @@ def load_polygon_csv(path):
 
 
 def polygons_overlap(poly_a, poly_b):
-    """Conservative polygon-overlap check, including boundary crossings."""
+    """Return True for positive-area overlap; shared boundaries are allowed."""
     a = np.asarray(poly_a, dtype=float)
     b = np.asarray(poly_b, dtype=float)
     path_a, path_b = Path(a), Path(b)
     if np.any(path_a.contains_points(b)) or np.any(path_b.contains_points(a)):
         return True
     for i in range(len(a)):
+        a0, a1 = a[i], a[(i + 1) % len(a)]
         for j in range(len(b)):
-            if _segments_intersect(a[i], a[(i + 1) % len(a)], b[j], b[(j + 1) % len(b)]):
+            b0, b1 = b[j], b[(j + 1) % len(b)]
+            # Only proper crossings imply interior overlap; collinear/touching
+            # boundaries are valid for an adjacent sidewalk/lawn.
+            o1, o2 = _orientation(a0, a1, b0), _orientation(a0, a1, b1)
+            o3, o4 = _orientation(b0, b1, a0), _orientation(b0, b1, a1)
+            if o1 * o2 < 0 and o3 * o4 < 0:
                 return True
     return False
 
