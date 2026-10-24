@@ -4,7 +4,7 @@ This document describes the current implementation in `src/campos/campos_sim.py`
 
 ## Geometry and discretization
 
-The five built-in lawn outlines are synthetic polygons. The surrounding simulation domain is rasterized to cell-center points at the configured `cell` resolution. A point-in-polygon mask separates lawn cells from surrounding cells. Reported lawn area is the number of masked cells multiplied by the cell area, so it is a grid-based approximation of polygon area.
+The five built-in lawn outlines are synthetic polygons. The surrounding simulation domain is rasterized to cell-center points at the configured `cell` resolution. A point-in-polygon mask separates lawn cells from surrounding cells. Reported lawn area is the number of masked cells multiplied by the cell area, so it is a grid-based approximation of polygon area. The model rejects invalid cell sizes/margins and estimates grid dimensions before allocating arrays; grids above 2,000,000 cells are rejected to reduce accidental memory exhaustion. Increase the cell size or reduce the simulated extent when this guard triggers. This safety limit is not an accuracy threshold.
 
 Raster area is an approximation and can vary with `cell`. To quantify this, run `python scripts/grid_sensitivity.py --site 'C Kidney' --cell-sizes 2,1,0.5 --out out/grid_sensitivity.csv`. The script reports polygon area, raster area error, baseline head count, AR, overspray, CU, and dry-area fraction for each resolution. Because the baseline search is repeated at each resolution, metric changes reflect both raster sampling and possible layout changes; this is a diagnostic, not physical validation.
 
