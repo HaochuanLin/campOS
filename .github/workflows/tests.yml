@@ -34,13 +34,22 @@ jobs:
       - name: Run field-evaluation CLI smoke test
         if: matrix.python-version == '3.10'
         run: |
+          cat > out-acceptance-thresholds.json <<'JSON'
+          {
+            "max_holdout_mae_mm": 1000,
+            "max_holdout_rmse_mm": 1000,
+            "max_absolute_bias_mm": 1000
+          }
+          JSON
           campos-field-evaluate \
             --polygon-csv examples/field_evaluation_demo/site_polygon.csv \
             --heads-csv examples/field_evaluation_demo/sprinkler_layout.csv \
             --observations examples/field_evaluation_demo/catch_can_observations.csv \
+            --acceptance-thresholds-json out-acceptance-thresholds.json \
             --outdir out/field-evaluation-smoke
           test -s out/field-evaluation-smoke/paired_predictions.csv
           test -s out/field-evaluation-smoke/field_evaluation_metrics.json
+          python -c "import json; p=json.load(open('out/field-evaluation-smoke/field_evaluation_metrics.json')); assert p['acceptance_assessment'] is not None; assert len(p['acceptance_assessment']['checks']) == 3"
           campos-field-report --input-json out/field-evaluation-smoke/field_evaluation_metrics.json
           test -s out/field-evaluation-smoke/field_evaluation_report.html
           test -s out/field-evaluation-smoke/field_evaluation_report.md
