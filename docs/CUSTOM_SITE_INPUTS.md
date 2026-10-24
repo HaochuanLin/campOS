@@ -96,3 +96,34 @@ python scripts/check_optimizer_resolution.py \
 ```
 
 Unlike the fixed-layout diagnostic above, this tool reruns the Pareto search at each resolution using the same initial layout, seed, and search settings. It reports whether a guardrail-feasible point exists at each grid, selected f1/f2/CU/dry-area metrics, and selected head-parameter differences from the finest-grid solution. `--mode fixed` keeps coordinates unchanged; `--mode movable` permits relocation. Optional thresholds are user-chosen numerical tolerances, not universal engineering standards. A grid with no feasible selected point is a failure for thresholded checks, not evidence that the grid is safe. This remains a simulation sensitivity check, not field validation or proof of water savings.
+
+
+## Validate against catch-can measurements
+
+Use measured lawn vertices, sprinkler positions/throw/sector angles, and catch-can depths from one controlled watering run. The observations file must include an explicit split column so calibration points are not reused as independent holdout points:
+
+~~~csv
+observation_id,x_m,y_m,observed_depth_mm,split
+P01,4.0,3.0,5.2,calibration
+P02,6.0,3.0,4.8,calibration
+P03,8.0,3.0,3.9,calibration
+P04,5.0,6.0,4.6,holdout
+P05,7.0,6.0,3.7,holdout
+~~~
+
+Run the pointwise validation:
+
+~~~bash
+python scripts/validate_catch_can_data.py \
+  --polygon-csv data/site_polygon.csv \
+  --heads-csv data/sprinkler_layout.csv \
+  --observations-csv data/catch_can_observations.csv \
+  --profile-csv data/measured_radial_profile.csv \
+  --duration-minutes 20 \
+  --out out/catch-can-predictions.csv \
+  --summary-json out/catch-can-validation-summary.json
+~~~
+
+The profile CSV is optional. Its radius_fraction,relative_rate data describe the measured radial distribution and are area-normalized; by themselves they do not establish absolute precipitation. Without --flow-lpm, the tool predicts a relative field and fits one non-negative scale factor using calibration rows only. With measured per-head flow supplied through --flow-lpm, the raw field is expressed as depth over the specified collection duration before the same calibration correction is reported. Review both the raw physical-input prediction and the scale-corrected holdout error; a large correction factor is a warning that the absolute model inputs may be miscalibrated.
+
+Predictions are evaluated at the exact observation coordinates, not interpolated from the simulation grid. The summary reports calibration and independent holdout RMSE, MAE, bias, and R² when defined. Keep holdout locations out of all parameter selection and model tuning. Use repeated watering runs and separate validation days before claiming generalization. This is a pointwise model check; it does not by itself validate wind/drift, pressure variation, runoff, road wetting, or water savings.
