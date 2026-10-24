@@ -158,3 +158,19 @@ python scripts/evaluate_observation_errors.py \
 A defensible report identifies the site, sprinkler/nozzle, pressure range, weather and measurement procedure; distinguishes calibration from held-out evaluation; shows raw data and errors; and states limitations. It should not generalize from one lawn to all sites.
 
 Until the model has a documented observation-to-prediction comparison workflow and independent held-out results, describe these steps as **preparation for field validation**, not completed validation.
+
+
+## Optional AI residual correction experiment
+
+Only after generating the physical-model paired_predictions.csv, an optional Gaussian-process correction can model the spatial pattern of calibration residuals:
+
+~~~bash
+python -m pip install -e ".[ai]"
+python scripts/ai_residual_correction.py \
+  --predictions-csv out/field-evaluation/paired_predictions.csv \
+  --outdir out/ai-residual-correction
+~~~
+
+The tool requires at least eight calibration observations, three holdout observations, and five distinct calibration coordinates. It trains on measured_mm minus predicted_mm from calibration rows only; holdout observations are never used for model fitting or kernel selection. It reports uncorrected and corrected holdout errors and a model-based uncertainty estimate.
+
+Treat this as a competing model, not an automatic upgrade. Pre-register the evaluation criteria, inspect residuals and uncertainty, and evaluate on a separate run/day/site before deciding whether the correction is useful. Do not repeatedly tune the model against one holdout set. This spatial correction cannot infer unmeasured wind, pressure, nozzle wear, or hydraulics, and it does not establish water savings.
