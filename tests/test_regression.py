@@ -989,6 +989,8 @@ def test_protected_surface_polygon_is_disjoint_and_objective_is_surface_specific
     lawn = sim.site_rect()
     protected = np.array([[-4.0, 0.0], [-4.0, 25.0], [-2.0, 25.0], [-2.0, 0.0]])
     assert not sim.polygons_overlap(lawn, protected)
+    adjacent = np.array([[40.0, 0.0], [40.0, 25.0], [43.0, 25.0], [43.0, 0.0]])
+    assert not sim.polygons_overlap(lawn, adjacent)
     overlapping = np.array([[-1.0, 0.0], [-1.0, 5.0], [2.0, 5.0], [2.0, 0.0]])
     assert sim.polygons_overlap(lawn, overlapping)
 
