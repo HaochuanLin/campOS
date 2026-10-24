@@ -9,7 +9,8 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "src"))
 
 from campos.field_validation import (  # noqa: E402
-    assess_holdout, load_heads, load_observations, validate_acceptance_thresholds,
+    assess_holdout, load_heads, load_observations, main as field_validation_main,
+    validate_acceptance_thresholds,
 )
 from campos.field_observations import validate_file  # noqa: E402
 from campos.field_report import build_report  # noqa: E402
@@ -264,3 +265,53 @@ def test_qc_rejects_invalid_measurement_values(tmp_path, field, value, message):
 
     with pytest.raises(ValueError, match=message):
         validate_file(input_path, tmp_path / "normalized.csv", tmp_path / "summary.json")
+
+
+
+def test_cli_returns_nonzero_when_pre_registered_holdout_gate_fails(tmp_path, monkeypatch):
+    polygon_path = write_csv(
+        tmp_path / "polygon.csv",
+        ["x_m", "y_m"],
+        [
+            {"x_m": "0", "y_m": "0"},
+            {"x_m": "10", "y_m": "0"},
+            {"x_m": "10", "y_m": "10"},
+            {"x_m": "0", "y_m": "10"},
+        ],
+    )
+    heads_path = write_csv(
+        tmp_path / "heads.csv",
+        HEAD_COLUMNS + ["flow_lpm"],
+        [{
+            "x_m": "5", "y_m": "5", "radius_m": "8",
+            "start_angle_deg": "0", "arc_width_deg": "360", "flow_lpm": "10",
+        }],
+    )
+    observations_path = write_csv(
+        tmp_path / "observations.csv",
+        OBS_COLUMNS,
+        [
+            observation("can-cal", "run-cal", "calibration", measured_depth_mm="0"),
+            observation("can-h1", "run-h1", "holdout", measured_depth_mm="0"),
+            observation("can-h2", "run-h2", "holdout", measured_depth_mm="0"),
+        ],
+    )
+    thresholds_path = tmp_path / "thresholds.json"
+    thresholds_path.write_text(json.dumps({"max_holdout_mae_mm": 0.0}), encoding="utf-8")
+    outdir = tmp_path / "evaluation"
+    monkeypatch.setattr(sys, "argv", [
+        "campos-field-evaluate",
+        "--polygon-csv", str(polygon_path),
+        "--heads-csv", str(heads_path),
+        "--observations", str(observations_path),
+        "--acceptance-thresholds-json", str(thresholds_path),
+        "--outdir", str(outdir),
+    ])
+
+    exit_code = field_validation_main()
+
+    assert exit_code == 2
+    report = json.loads((outdir / "field_evaluation_metrics.json").read_text(encoding="utf-8"))
+    assert report["status"] == "acceptance_thresholds_failed"
+    assert report["acceptance_assessment"]["status"] == "fail"
+    assert (outdir / "paired_predictions.csv").is_file()
