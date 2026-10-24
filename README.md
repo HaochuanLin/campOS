@@ -410,4 +410,4 @@ python scripts/validate_catch_can_data.py \
   --summary-json out/catch-can-validation-summary.json
 ~~~
 
-The script fits a single scale factor using calibration rows only and reports independent holdout RMSE, MAE, bias, and R² where defined. Without measured flow, the unscaled field is relative rather than absolute precipitation. Do not tune against holdout rows or treat a fitted scale factor as proof of generalization. See [custom-site validation guidance](docs/CUSTOM_SITE_INPUTS.md).
+The script requires at least three calibration and two independent holdout observations, fits a single scale factor using calibration rows only, and reports holdout RMSE, MAE, bias, and R² where defined. Add a flow_lpm column to the sprinkler CSV for individual measured flows, or use --flow-lpm for a common measured flow. Without measured flow, the unscaled field is relative rather than absolute precipitation. Do not tune against holdout rows or treat a fitted scale factor as proof of generalization. See [custom-site validation guidance](docs/CUSTOM_SITE_INPUTS.md).
