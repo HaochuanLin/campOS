@@ -19,16 +19,45 @@ st.title("campOS · Irrigation layout explorer")
 st.caption("A local decision-support prototype. The starter scenarios are synthetic, not field-validated.")
 
 with st.sidebar:
-    st.header("Demo setup")
+    st.header("Run setup")
+    custom_site = st.checkbox(
+        "Use surveyed site CSVs",
+        value=False,
+        help="Upload a lawn polygon and existing sprinkler layout in metre-based coordinates.",
+    )
+    mode_options = (
+        ["fixed", "movable", "pareto-fixed", "pareto-movable"]
+        if custom_site else
+        ["compare", "fixed", "movable", "pareto-fixed", "pareto-movable"]
+    )
     mode = st.selectbox(
         "Optimization mode",
-        ["compare", "fixed", "movable", "pareto-fixed", "pareto-movable"],
+        mode_options,
         index=0,
-        help="Compare runs fixed-position and movable-head modes using the same synthetic site.",
+        help="Custom-site mode uses one explicit optimization mode; synthetic compare runs fixed and movable scenarios.",
     )
-    sites = st.multiselect("Synthetic sites", ["A", "B", "C", "D", "E"], default=["A"])
+    sites = []
+    polygon_upload = heads_upload = protected_upload = None
+    if custom_site:
+        polygon_upload = st.file_uploader("Lawn polygon CSV (x_m,y_m)", type=["csv"], key="lawn-polygon")
+        heads_upload = st.file_uploader(
+            "Sprinkler layout CSV (x_m,y_m,radius_m,start_angle_deg,arc_width_deg)",
+            type=["csv"],
+            key="sprinkler-layout",
+        )
+        protected_upload = st.file_uploader(
+            "Protected road/sidewalk polygon CSV (optional)",
+            type=["csv"],
+            key="protected-surface",
+        )
+        st.caption("Use the CSV templates in data/templates/. Coordinates and radii are in metres.")
+    else:
+        sites = st.multiselect("Synthetic sites", ["A", "B", "C", "D", "E"], default=["A"])
+    seed = st.number_input("Random seed", min_value=0, max_value=2147483647, value=7, step=1)
+    cell_size = st.number_input("Grid cell size (m)", min_value=0.1, max_value=5.0, value=0.5, step=0.1)
     full = st.checkbox("Run a longer search", value=False, help="May take substantially longer.")
-    run = st.button("Run simulation", type="primary", disabled=not sites, use_container_width=True)
+    ready = bool(polygon_upload and heads_upload) if custom_site else bool(sites)
+    run = st.button("Run simulation", type="primary", disabled=not ready, use_container_width=True)
 
 st.warning(
     "This demo needs no real data, but it does not fabricate field measurements. "
@@ -38,12 +67,42 @@ st.warning(
 if run:
     with st.spinner("Running campOS simulation and building the report…"):
         with tempfile.TemporaryDirectory(prefix="campos-ui-") as temporary:
-            outdir = Path(temporary) / "results"
-            command = shutil.which("campos-start")
-            invocation = [command] if command else [sys.executable, "-m", "campos.quickstart"]
-            invocation += ["--mode", mode, "--sites", *sites, "--outdir", str(outdir)]
-            if full:
-                invocation.append("--full")
+            workdir = Path(temporary)
+            outdir = workdir / "results"
+            outdir.mkdir(parents=True, exist_ok=True)
+            if custom_site:
+                polygon_path = workdir / "site_polygon.csv"
+                heads_path = workdir / "sprinkler_layout.csv"
+                polygon_path.write_bytes(polygon_upload.getvalue())
+                heads_path.write_bytes(heads_upload.getvalue())
+                command = shutil.which("campos-sim")
+                invocation = [command] if command else [sys.executable, "-m", "campos.campos_sim"]
+                invocation += [
+                    "--mode", mode,
+                    "--polygon-csv", str(polygon_path),
+                    "--heads-csv", str(heads_path),
+                    "--seed", str(int(seed)),
+                    "--cell-size", str(float(cell_size)),
+                    "--outdir", str(outdir),
+                ]
+                if protected_upload is not None:
+                    protected_path = workdir / "protected_surface.csv"
+                    protected_path.write_bytes(protected_upload.getvalue())
+                    invocation += ["--protected-surface-csv", str(protected_path)]
+                if not full:
+                    invocation.append("--quick")
+                result_sites = ["custom surveyed site"]
+            else:
+                command = shutil.which("campos-start")
+                invocation = [command] if command else [sys.executable, "-m", "campos.quickstart"]
+                invocation += [
+                    "--mode", mode, "--sites", *sites,
+                    "--seed", str(int(seed)), "--cell-size", str(float(cell_size)),
+                    "--outdir", str(outdir),
+                ]
+                if full:
+                    invocation.append("--full")
+                result_sites = list(sites)
             try:
                 completed = subprocess.run(
                     invocation, check=False, capture_output=True, text=True, timeout=900
@@ -71,7 +130,10 @@ if run:
                 "artifacts": artifacts,
                 "tables": tables,
                 "mode": mode,
-                "sites": sites,
+                "sites": result_sites,
+                "custom_site": custom_site,
+                "seed": int(seed),
+                "cell_size_m": float(cell_size),
                 "command": invocation,
                 "stdout": completed.stdout[-6000:],
             }
@@ -79,7 +141,12 @@ if run:
 result = st.session_state.get("campos_run")
 if result:
     st.subheader("Results")
-    st.write(f"**Mode:** {result['mode']} · **Sites:** {', '.join(result['sites'])}")
+    st.write(
+        f"**Mode:** {result['mode']} · **Sites:** {', '.join(result['sites'])} · "
+        f"**Seed:** {result['seed']} · **Grid:** {result['cell_size_m']:g} m"
+    )
+    if result["custom_site"]:
+        st.info("Custom geometry and layout were supplied by you. This simulation still requires independent field validation before real-world use.")
     if "results_fixed.csv" in result["artifacts"] and "results_movable.csv" in result["artifacts"]:
         left, right = st.columns(2)
         for column, title, filename in (
