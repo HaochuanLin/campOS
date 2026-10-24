@@ -182,6 +182,12 @@ def main(argv: list[str] | None = None) -> int:
 
     outdir = Path(args.outdir).expanduser().resolve()
     outdir.mkdir(parents=True, exist_ok=True)
+    # Remove the previous success markers before starting a new run. If a
+    # subprocess fails, an old report must not masquerade as this run's result.
+    for summary_name in ("index.html", "quickstart_manifest.json"):
+        summary_path = outdir / summary_name
+        if summary_path.is_file() or summary_path.is_symlink():
+            summary_path.unlink()
     command = shutil.which("campos-sim")
     base_command = [command] if command else [sys.executable, "-m", "campos.campos_sim"]
     modes = ["fixed", "movable"] if args.mode == "compare" else [args.mode]
