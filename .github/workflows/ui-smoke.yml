@@ -27,6 +27,9 @@ jobs:
           campos-start --help
           campos-sim --help
           campos-field-evaluate --help
+          campos-observation-qc --help
+          campos-field-report --help
+          campos-verify-artifacts --help
       - name: Run regression test suite
         run: python -m pytest -q
       - name: Compile the UI module
