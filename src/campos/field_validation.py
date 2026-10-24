@@ -222,6 +222,8 @@ def validate_acceptance_thresholds(
         raise ValueError("unknown acceptance threshold(s): " + ", ".join(sorted(unknown)))
     normalized: dict[str, float] = {}
     for key, raw_value in thresholds.items():
+        if isinstance(raw_value, bool):
+            raise ValueError(f"{key} must be a finite non-negative number, not a boolean")
         try:
             value = float(raw_value)
         except (TypeError, ValueError) as exc:
