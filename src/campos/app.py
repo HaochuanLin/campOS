@@ -319,14 +319,16 @@ if run:
                     except (UnicodeDecodeError, csv.Error):
                         continue
             field_metrics = {}
+            field_evaluation_report = {}
             metrics_payload = artifacts.get("field_evaluation_metrics.json")
             if metrics_payload:
                 try:
-                    evaluation_report = json.loads(metrics_payload.decode("utf-8"))
+                    field_evaluation_report = json.loads(metrics_payload.decode("utf-8"))
                     field_metrics = (
-                        evaluation_report.get("metrics", {}).get("metrics", {}).get("holdout") or {}
+                        field_evaluation_report.get("metrics", {}).get("metrics", {}).get("holdout") or {}
                     )
                 except (UnicodeDecodeError, json.JSONDecodeError, AttributeError):
+                    field_evaluation_report = {}
                     field_metrics = {}
             ai_summary = {}
             ai_payload = artifacts.get("ai_residual_correction_summary.json")
@@ -339,6 +341,7 @@ if run:
                 "artifacts": artifacts,
                 "tables": tables,
                 "field_metrics": field_metrics,
+                "field_evaluation_report": field_evaluation_report,
                 "ai_summary": ai_summary,
                 "ai_eval_ok": ai_eval_ok,
                 "ai_eval_message": ai_eval_message,
@@ -372,6 +375,19 @@ if result:
         if result.get("field_eval_log"):
             with st.expander("Field-evaluation diagnostics"):
                 st.code(result["field_eval_log"])
+    if result.get("field_evaluation_report"):
+        evaluation_report = result["field_evaluation_report"]
+        zone_gate = evaluation_report.get("zone_geometry_gate") or {}
+        mismatch_count = int(evaluation_report.get("zone_geometry_mismatch_count", 0) or 0)
+        gate_passed = zone_gate.get("passed")
+        gate_status = "Passed" if gate_passed is True else "Failed" if gate_passed is False else "Not enabled"
+        st.subheader("Observation geometry checks")
+        geometry_columns = st.columns(2)
+        geometry_columns[0].metric("Zone/polygon mismatches", str(mismatch_count))
+        geometry_columns[1].metric("Strict geometry gate", gate_status)
+        mismatch_ids = evaluation_report.get("zone_geometry_mismatch_can_ids") or []
+        if mismatch_ids:
+            st.warning("Review zone labels for: " + ", ".join(str(item) for item in mismatch_ids))
     if result.get("field_metrics"):
         metrics = result["field_metrics"]
         st.subheader("Catch-can holdout diagnostics")
