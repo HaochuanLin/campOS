@@ -30,7 +30,7 @@ def test_polygon_loader_accepts_optional_closing_vertex(tmp_path):
 def test_polygon_loader_rejects_self_intersection(tmp_path):
     polygon = write_polygon(
         tmp_path / "bowtie.csv",
-        [(0, 0), (4, 4), (0, 4), (4, 0)],
+        [(0, 0), (4, 4), (0, 3), (3, 0)],
     )
     with pytest.raises(ValueError, match="self-intersecting"):
         load_polygon_csv(polygon)
