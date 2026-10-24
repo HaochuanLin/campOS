@@ -83,9 +83,10 @@ This runs quick fixed-position and movable-head synthetic scenarios on site A us
 campos-start --mode compare --sites A C --outdir out/compare-demo
 campos-start --mode pareto-fixed --sites C --outdir out/pareto-demo
 campos-start --mode fixed --sites A C --outdir out/fixed-demo
+campos-start --mode compare --sites A --seed 19 --cell-size 0.25 --outdir out/reproducible-demo
 ```
 
-Add `--full` to omit the quick smoke-test settings; longer searches may take substantially more time. The default `compare` mode runs both fixed and movable layouts. A single mode can be selected explicitly. The command does not need field observations or training data, and it does not silently fabricate them: it uses built-in synthetic geometry and labels the report accordingly.
+The seed and grid resolution are forwarded to both compared scenarios and recorded in `quickstart_manifest.json`. Add `--full` to omit the quick smoke-test settings; longer searches may take substantially more time. The default `compare` mode runs both fixed and movable layouts. A single mode can be selected explicitly. The command does not need field observations or training data, and it does not silently fabricate them: it uses built-in synthetic geometry and labels the report accordingly.
 
 This is a software demo, not a real-site design. It cannot establish field accuracy, actual road wetting, or water savings.
 
