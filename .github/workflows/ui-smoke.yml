@@ -42,7 +42,7 @@ jobs:
 
           custom_site_toggle = next(item for item in app.checkbox if item.label == "Use surveyed site CSVs")
           custom_site_toggle.check().run()
-          assert not app.exception, "\\n".join(str(item) for item in app.exception)
+          assert not app.exception, "\n".join(str(item) for item in app.exception)
           starter_downloads = app.get("download_button")
           assert any(item.label == "Download all starter templates (.zip)" for item in starter_downloads), "Starter-template ZIP is missing in surveyed-site mode"
           print("Streamlit AppTest passed: synthetic run, result ZIP, and surveyed-site starter-template ZIP are available.")
