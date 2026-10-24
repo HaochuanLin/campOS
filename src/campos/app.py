@@ -39,6 +39,7 @@ with st.sidebar:
     sites = []
     polygon_upload = heads_upload = protected_upload = observations_upload = None
     fallback_flow_lpm = 0.0
+    ai_correction = False
     if custom_site:
         polygon_upload = st.file_uploader("Lawn polygon CSV (x_m,y_m)", type=["csv"], key="lawn-polygon")
         heads_upload = st.file_uploader(
@@ -56,6 +57,13 @@ with st.sidebar:
             min_value=0.0, max_value=100.0, value=0.0, step=0.1,
             help="Only used when a head has no flow_lpm value in the layout CSV.",
         )
+        if observations_upload is not None:
+            ai_correction = st.checkbox(
+                "Experimental AI residual correction",
+                value=False,
+                help="Requires the optional AI dependency (pip install -e \".[ai]\"). "
+                     "Uses calibration rows for fitting and reports holdout errors; it is not a validated controller.",
+            )
         if mode.startswith("pareto-"):
             protected_upload = st.file_uploader(
                 "Protected road/sidewalk polygon CSV (optional)",
@@ -187,6 +195,45 @@ if run:
                     field_eval_message = "Field evaluation could not be launched. The optimization outputs are still available."
                     field_eval_log = str(exc)
 
+            ai_eval_ok = None
+            ai_eval_message = None
+            ai_eval_log = ""
+            if custom_site and ai_correction:
+                if not field_eval_ok:
+                    ai_eval_ok = False
+                    ai_eval_message = "AI correction requires a successful catch-can evaluation first."
+                else:
+                    ai_script = Path(__file__).resolve().parents[2] / "scripts" / "ai_residual_correction.py"
+                    ai_outdir = workdir / "ai-correction"
+                    ai_invocation = [
+                        sys.executable, str(ai_script),
+                        "--predictions-csv", str(outdir / "paired_predictions.csv"),
+                        "--outdir", str(ai_outdir),
+                    ]
+                    try:
+                        ai_completed = subprocess.run(
+                            ai_invocation, check=False, capture_output=True, text=True, timeout=300
+                        )
+                        ai_eval_ok = ai_completed.returncode == 0
+                        ai_eval_log = (ai_completed.stdout + "\n" + ai_completed.stderr)[-12000:]
+                        if ai_outdir.is_dir():
+                            for ai_path in ai_outdir.iterdir():
+                                if ai_path.is_file():
+                                    shutil.copy2(ai_path, outdir / ai_path.name)
+                        ai_eval_message = (
+                            "Experimental GP residual correction completed. Review the holdout comparison; this does not establish generalization."
+                            if ai_eval_ok else
+                            "AI correction did not complete. The physical-model and field-evaluation outputs remain available."
+                        )
+                    except subprocess.TimeoutExpired:
+                        ai_eval_ok = False
+                        ai_eval_message = "AI correction timed out. Other outputs remain available."
+                        ai_eval_log = "The AI residual-correction command exceeded the 5-minute timeout."
+                    except OSError as exc:
+                        ai_eval_ok = False
+                        ai_eval_message = "AI correction could not be launched. Other outputs remain available."
+                        ai_eval_log = str(exc)
+
             artifacts = {}
             for path in sorted(outdir.iterdir()):
                 if path.is_file():
@@ -208,10 +255,21 @@ if run:
                     )
                 except (UnicodeDecodeError, json.JSONDecodeError, AttributeError):
                     field_metrics = {}
+            ai_summary = {}
+            ai_payload = artifacts.get("ai_residual_correction_summary.json")
+            if ai_payload:
+                try:
+                    ai_summary = json.loads(ai_payload.decode("utf-8"))
+                except (UnicodeDecodeError, json.JSONDecodeError):
+                    ai_summary = {}
             st.session_state["campos_run"] = {
                 "artifacts": artifacts,
                 "tables": tables,
                 "field_metrics": field_metrics,
+                "ai_summary": ai_summary,
+                "ai_eval_ok": ai_eval_ok,
+                "ai_eval_message": ai_eval_message,
+                "ai_eval_log": ai_eval_log,
                 "mode": mode,
                 "sites": result_sites,
                 "custom_site": custom_site,
@@ -254,6 +312,27 @@ if result:
             f"{metrics['bias_mm_predicted_minus_measured']:.3f}"
             if metrics.get("bias_mm_predicted_minus_measured") is not None else "—",
         )
+    if result.get("ai_eval_message"):
+        if result.get("ai_eval_ok"):
+            st.info(result["ai_eval_message"])
+        else:
+            st.warning(result["ai_eval_message"])
+        if result.get("ai_eval_log"):
+            with st.expander("AI correction diagnostics"):
+                st.code(result["ai_eval_log"])
+    if result.get("ai_summary"):
+        summary = result["ai_summary"]
+        baseline = summary.get("holdout_baseline_metrics", {})
+        corrected = summary.get("holdout_ai_corrected_metrics", {})
+        st.subheader("Experimental AI residual-correction comparison")
+        st.caption("The GP is fitted on calibration rows only. Holdout metrics are for evaluation and must not be used repeatedly to tune the model.")
+        ai_columns = st.columns(4)
+        ai_columns[0].metric("Physical RMSE (mm)", f"{baseline['rmse_mm']:.3f}" if baseline.get("rmse_mm") is not None else "—")
+        ai_columns[1].metric("AI-corrected RMSE (mm)", f"{corrected['rmse_mm']:.3f}" if corrected.get("rmse_mm") is not None else "—")
+        delta = summary.get("holdout_rmse_change_mm_corrected_minus_baseline")
+        ai_columns[2].metric("RMSE change (mm)", f"{delta:+.3f}" if isinstance(delta, (int, float)) else "—")
+        coverage = summary.get("holdout_ai_95pct_interval_empirical_coverage")
+        ai_columns[3].metric("Nominal 95% interval coverage", f"{100 * coverage:.1f}%" if isinstance(coverage, (int, float)) else "—")
     if "results_fixed.csv" in result["artifacts"] and "results_movable.csv" in result["artifacts"]:
         left, right = st.columns(2)
         for column, title, filename in (
