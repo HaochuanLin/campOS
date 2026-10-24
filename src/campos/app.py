@@ -42,6 +42,7 @@ with st.sidebar:
     fallback_flow_lpm = 0.0
     pressure_kpa = 0.0
     ai_correction = False
+    strict_zone_gate = False
     if custom_site:
         polygon_upload = st.file_uploader("Lawn polygon CSV (x_m,y_m)", type=["csv"], key="lawn-polygon")
         heads_upload = st.file_uploader(
@@ -76,6 +77,11 @@ with st.sidebar:
             help="Only used when a head has no flow_lpm value in the layout CSV.",
         )
         if observations_upload is not None:
+            strict_zone_gate = st.checkbox(
+                "Fail on zone/polygon label mismatch",
+                value=False,
+                help="Fail the evaluation command if a catch-can labelled inside/outside contradicts the uploaded lawn polygon. Boundary observations should be labelled boundary.",
+            )
             ai_correction = st.checkbox(
                 "Experimental AI residual correction",
                 value=False,
@@ -210,6 +216,8 @@ if run:
                 ]
                 if fallback_flow_lpm > 0:
                     eval_invocation += ["--flow-lpm", str(float(fallback_flow_lpm))]
+                if strict_zone_gate:
+                    eval_invocation.append("--fail-on-zone-geometry-mismatch")
                 if profile_path is not None:
                     eval_invocation += ["--profile-csv", str(profile_path)]
                 try:
@@ -218,11 +226,26 @@ if run:
                     )
                     field_eval_ok = evaluated.returncode == 0
                     field_eval_log = (evaluated.stdout + "\n" + evaluated.stderr)[-12000:]
-                    field_eval_message = (
-                        "Pointwise field-evaluation artifacts were generated. Review holdout errors; this is not a certification."
-                        if field_eval_ok else
-                        "Field evaluation did not complete. The optimization outputs are still available; inspect the diagnostic log."
-                    )
+                    if field_eval_ok:
+                        field_eval_message = (
+                            "Pointwise field-evaluation artifacts were generated. Review holdout errors; this is not a certification."
+                        )
+                    else:
+                        evaluation_report_path = outdir / "field_evaluation_metrics.json"
+                        failed_gate_statuses = {"acceptance_thresholds_failed", "zone_geometry_gate_failed"}
+                        try:
+                            evaluation_report = json.loads(evaluation_report_path.read_text(encoding="utf-8"))
+                        except (OSError, UnicodeError, json.JSONDecodeError):
+                            evaluation_report = {}
+                        if evaluation_report.get("status") in failed_gate_statuses:
+                            field_eval_message = (
+                                "Field-evaluation artifacts were generated, but a configured acceptance gate failed. "
+                                "Review the saved metrics and predictions; AI correction is intentionally blocked."
+                            )
+                        else:
+                            field_eval_message = (
+                                "Field evaluation did not complete. The optimization outputs are still available; inspect the diagnostic log."
+                            )
                 except subprocess.TimeoutExpired:
                     field_eval_ok = False
                     field_eval_message = "Field evaluation timed out. The optimization outputs are still available."
