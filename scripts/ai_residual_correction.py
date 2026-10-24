@@ -29,7 +29,7 @@ except ImportError as exc:  # pragma: no cover - environment-dependent
 
 
 def load_predictions(path: Path) -> list[dict[str, object]]:
-    required = {"site_id", "run_id", "x_m", "y_m", "measured_mm", "predicted_mm", "split"}
+    required = {"site_id", "run_id", "can_id", "x_m", "y_m", "measured_mm", "predicted_mm", "split"}
     with path.open(newline="", encoding="utf-8-sig") as handle:
         reader = csv.DictReader(handle)
         if reader.fieldnames is None or not required.issubset(reader.fieldnames):
@@ -39,6 +39,7 @@ def load_predictions(path: Path) -> list[dict[str, object]]:
             )
         rows = list(reader)
     parsed = []
+    seen_observations = set()
     for line, row in enumerate(rows, start=2):
         try:
             x, y = float(row["x_m"]), float(row["y_m"])
@@ -47,8 +48,15 @@ def load_predictions(path: Path) -> list[dict[str, object]]:
             raise ValueError(f"row {line}: coordinates and depths must be numeric") from exc
         site_id = str(row.get("site_id", "")).strip()
         run_id = str(row.get("run_id", "")).strip()
-        if not site_id or not run_id:
-            raise ValueError(f"row {line}: site_id and run_id must be non-empty")
+        can_id = str(row.get("can_id", "")).strip()
+        if not site_id or not run_id or not can_id:
+            raise ValueError(f"row {line}: site_id, run_id, and can_id must be non-empty")
+        observation_key = (site_id, run_id, can_id)
+        if observation_key in seen_observations:
+            raise ValueError(
+                f"row {line}: duplicate site_id/run_id/can_id {observation_key!r}"
+            )
+        seen_observations.add(observation_key)
         split = row["split"].strip().lower()
         if not all(math.isfinite(v) for v in (x, y, measured, predicted)):
             raise ValueError(f"row {line}: all numeric values must be finite")
@@ -58,7 +66,7 @@ def load_predictions(path: Path) -> list[dict[str, object]]:
             raise ValueError(f"row {line}: split must be calibration or holdout")
         parsed.append({
             **row,
-            "site_id": site_id, "run_id": run_id,
+            "site_id": site_id, "run_id": run_id, "can_id": can_id,
             "x_m": x, "y_m": y,
             "measured_mm": measured, "predicted_mm": predicted, "split": split,
         })
