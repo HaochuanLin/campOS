@@ -52,6 +52,19 @@ cd campOS
 python -m pip install -e ".[dev]"
 campos-sim --help
 campos-field-evaluate --help
+
+Run the included synthetic field-evaluation example end to end:
+
+```bash
+campos-field-evaluate \
+  --polygon-csv examples/field_evaluation_demo/site_polygon.csv \
+  --heads-csv examples/field_evaluation_demo/sprinkler_layout.csv \
+  --observations examples/field_evaluation_demo/catch_can_observations.csv \
+  --flow-lpm 1.0 \
+  --outdir out/field-evaluation-demo
+```
+
+This example is **software smoke-test data only**, not field evidence. See [the example notes](examples/field_evaluation_demo/README.md) before adapting the workflow to real measurements.
 python campos_sim.py --help
 python -m pytest -q
 ```
