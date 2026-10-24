@@ -20,6 +20,17 @@ jobs:
         run: python -m pip install -e ".[ui,ai]"
       - name: Compile the UI module
         run: python -m py_compile src/campos/app.py streamlit_app.py
+      - name: Exercise the app script with Streamlit AppTest
+        run: |
+          python - <<'PY'
+          from streamlit.testing.v1 import AppTest
+
+          app = AppTest.from_file("streamlit_app.py", default_timeout=30).run()
+          assert not app.exception, "\\n".join(str(item) for item in app.exception)
+          assert any(button.label == "Run simulation" for button in app.button), "Run simulation button is missing"
+          assert any(item.label == "Use surveyed site CSVs" for item in app.checkbox), "Surveyed-site mode toggle is missing"
+          print("Streamlit AppTest passed: app rendered and primary controls are present.")
+          PY
       - name: Start Streamlit and verify HTTP health
         run: |
           set -euo pipefail
