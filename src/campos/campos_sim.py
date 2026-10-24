@@ -693,8 +693,12 @@ def write_comparison_csv(by_mode, fn):
 def write_pareto_csv(results, fn, cfg):
     with open(fn, "w", newline="", encoding="utf-8-sig") as fh:
         w = csv.writer(fh)
+        f1_column = ("protected_surface_water_pct_of_baseline_total_water_f1"
+                     if any(result["site"].protected_path is not None for result in results)
+                     else "outside_lawn_water_pct_of_baseline_total_water_f1")
         w.writerow(["mode", "site", "point_type", "point_index", "selected_tradeoff",
-                    "overspray_pct_of_baseline_total_water_f1", "interior_deficit_pct_f2",
+                    f1_column, "outside_lawn_water_pct_of_baseline_total_water",
+                    "protected_surface_water_pct_of_baseline_total_water", "interior_deficit_pct_f2",
                     f"dry_area_pct_constraint_le_{cfg['dry_frac_limit'] * 100:.0f}",
                     "CU", "AR_legacy", "overspray_pct_of_own_water", "total_water_relative_to_baseline",
                     "guardrail_cu_pass", "guardrail_overspray_pass",
@@ -710,7 +714,8 @@ def write_pareto_csv(results, fn, cfg):
                 ) if is_candidate else {}
                 failed = [name for name, passed in checks.items() if not passed]
                 w.writerow([r["mode"]["csv"], r["name"], kind, i, selected,
-                            f"{p['f1']*100:.2f}", f"{p['f2']*100:.2f}", f"{p['dry']*100:.2f}",
+                            f"{p['f1']*100:.2f}", f"{p.get('outside_lawn_water', 0.0)*100:.2f}",
+                            f"{p.get('protected_surface_water', 0.0)*100:.2f}", f"{p['f2']*100:.2f}", f"{p['dry']*100:.2f}",
                             f"{p['CU']:.3f}", f"{p['AR']:.3f}", f"{p['over_own']*100:.2f}",
                             f"{p['water_rel']:.3f}",
                             checks.get("cu", ""), checks.get("overspray", ""),
