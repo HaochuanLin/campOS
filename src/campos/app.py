@@ -61,7 +61,7 @@ with st.sidebar:
             ai_correction = st.checkbox(
                 "Experimental AI residual correction",
                 value=False,
-                help="Requires the optional AI dependency (pip install -e \".[ai]\"). "
+                help="Requires the optional AI dependency (pip install -e \".[ui,ai]\"). "
                      "Uses calibration rows for fitting and reports holdout errors; it is not a validated controller.",
             )
         if mode.startswith("pareto-"):
