@@ -496,14 +496,29 @@ def pareto_search(site, heads0, cfg, fixed_xy, seed, ref, warm=None):
     return arch.h
 
 
-def select_tradeoff(front, budget):
-    """Index of the 'accept a slight uniformity loss for less overspray'
-    point: the lowest-overspray Pareto point whose CU is within `budget` of
-    the most uniform point on the front.  (All front points already satisfy
-    the dry-fraction constraint.)"""
-    cu_best = max(p["CU"] for p in front)
-    ok = [i for i, p in enumerate(front) if p["CU"] >= cu_best - budget]
-    return min(ok, key=lambda i: front[i]["f1"])
+def select_tradeoff(front, budget, baseline=None):
+    """Select a low-overspray point without silently regressing the baseline.
+
+    When a baseline report is supplied, candidates must (1) stay within the
+    absolute CU-loss budget relative to the baseline and (2) not exceed the
+    baseline's overspray ratio. If no candidate satisfies both conditions,
+    return None rather than presenting a worse-overspray point as the chosen
+    solution. Without a baseline, retain the legacy front-relative behavior
+    for callers that explicitly request it.
+    """
+    if not front:
+        return None
+    if baseline is None:
+        cu_best = max(p["CU"] for p in front)
+        ok = [i for i, p in enumerate(front) if p["CU"] >= cu_best - budget]
+    else:
+        cu_floor = baseline["CU"] - budget
+        overspray_ceiling = baseline["f1"] + 1e-12
+        ok = [
+            i for i, p in enumerate(front)
+            if p["CU"] >= cu_floor and p["f1"] <= overspray_ceiling
+        ]
+    return min(ok, key=lambda i: front[i]["f1"]) if ok else None
 
 
 def run_pareto(name, poly, cfg, fixed_xy, refs=None):
@@ -529,8 +544,9 @@ def run_pareto(name, poly, cfg, fixed_xy, refs=None):
         order = [order[j] for j in pick]
     front = [bi_report(site, cand[i], ref, cfg) for i in order]
     front.sort(key=lambda p: p["f1"])
-    sel = select_tradeoff(front, cfg["cu_drop_budget"]) if front else None
-    refs_out = {"Baseline (standard grid)": bi_report(site, h0, ref, cfg),
+    baseline_report = bi_report(site, h0, ref, cfg)
+    sel = select_tradeoff(front, cfg["cu_drop_budget"], baseline=baseline_report)
+    refs_out = {"Baseline (standard grid)": baseline_report,
                 "Naive full-circle (reference only)": bi_report(site, naive_full_circle(h0), ref, cfg)}
     for label, heads in (refs or {}).items():
         refs_out[label] = bi_report(site, heads, ref, cfg)
@@ -937,7 +953,12 @@ def main(argv=None):
             "target_factor": cfg["target_factor"],
             "cu_drop_budget": cfg["cu_drop_budget"],
             "pareto_overspray_weights": list(cfg["pareto_weights"]),
-            "note": "weights guide stochastic search; selected trade-off is chosen by CU-drop budget and lowest f1, not a single weighted score",
+            "note": "weights guide stochastic search; selected trade-off must not increase baseline overspray and must keep CU within the configured absolute loss budget from baseline; if no Pareto point meets both, no trade-off is selected",
+            "selection_guardrails": {
+                "max_overspray_increase_vs_baseline": 0.0,
+                "minimum_CU": "baseline_CU - cu_drop_budget",
+                "fallback": "no selection when no feasible Pareto point meets both guardrails",
+            },
         },
         "radial_distribution": {
             "model": "measured_profile" if profile_sha256 else "normalized_linear_sensitivity_family",
