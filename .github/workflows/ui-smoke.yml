@@ -20,6 +20,13 @@ jobs:
           cache-dependency-path: pyproject.toml
       - name: Install UI dependencies
         run: python -m pip install -e ".[ui,ai,dev]"
+      - name: Check installed dependency consistency
+        run: python -m pip check
+      - name: Verify installed CLI entry points
+        run: |
+          campos-start --help
+          campos-sim --help
+          campos-field-evaluate --help
       - name: Run regression test suite
         run: python -m pytest -q
       - name: Compile the UI module
