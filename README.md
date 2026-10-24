@@ -24,6 +24,8 @@ The hosted demo is a shared web application with temporary runtime storage; down
 
 The dedicated **UI smoke** workflow checks the Streamlit app render, a synthetic simulation run, both result/template ZIP download controls, required starter-template files, and the local Streamlit health endpoint. You can inspect the run history in [GitHub Actions](https://github.com/HaochuanLin/campOS/actions/workflows/ui-smoke.yml); the workflow also supports manual runs. A green CI run verifies the tested code path, not the availability or field accuracy of the hosted demo.
 
+Use the [Phase 1 acceptance checklist](docs/PHASE1_ACCEPTANCE.md) to distinguish automated CI evidence from checks that require the deployed browser app. Phase 1 stays open until both are verified.
+
 ## Project concept
 
 campOS is an **open, reproducible decision-support prototype for comparing sprinkler-layout options on irregular lawns**. It is designed to make a design question inspectable: given a lawn boundary and an existing or proposed sprinkler layout, how do alternative configurations trade water applied outside the lawn against the modelled risk of insufficient coverage inside it?
