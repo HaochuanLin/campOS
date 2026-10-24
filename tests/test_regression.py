@@ -59,6 +59,48 @@ def test_catch_can_validation_keeps_holdout_out_of_scale_fit(tmp_path):
     assert all(float(row["predicted_depth_mm_after_calibration"]) >= 0 for row in rows)
 
 
+def test_catch_can_validation_accepts_per_head_flow_and_boundary_heads(tmp_path):
+    lawn_csv = tmp_path / "lawn.csv"
+    heads_csv = tmp_path / "heads-with-flow.csv"
+    observations_csv = tmp_path / "catch-cans.csv"
+    summary_json = tmp_path / "summary.json"
+    lawn_csv.write_text(
+        "x_m,y_m\n0,0\n10,0\n10,10\n0,10\n", encoding="utf-8"
+    )
+    # A real head may be installed just outside the lawn boundary.
+    heads_csv.write_text(
+        "x_m,y_m,radius_m,start_angle_deg,arc_width_deg,flow_lpm\n"
+        "-1,5,8,0,360,10\n",
+        encoding="utf-8",
+    )
+    observations_csv.write_text(
+        "observation_id,x_m,y_m,observed_depth_mm,split\n"
+        "c1,1,5,1.0,calibration\n"
+        "c2,2,5,2.0,calibration\n"
+        "c3,3,5,3.0,calibration\n"
+        "h1,4,5,4.0,holdout\n"
+        "h2,5,5,5.0,holdout\n",
+        encoding="utf-8",
+    )
+    completed = subprocess.run(
+        [
+            sys.executable, str(ROOT / "scripts" / "validate_catch_can_data.py"),
+            "--polygon-csv", str(lawn_csv),
+            "--heads-csv", str(heads_csv),
+            "--observations-csv", str(observations_csv),
+            "--duration-minutes", "10",
+            "--summary-json", str(summary_json),
+        ],
+        cwd=ROOT, text=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, check=False,
+    )
+    assert completed.returncode == 0, completed.stdout
+    summary = json.loads(summary_json.read_text(encoding="utf-8"))
+    assert summary["per_head_flow_column_used"] is True
+    assert summary["raw_physical_input_holdout_metrics"]["n"] == 2
+    assert summary["raw_physical_input_holdout_metrics"]["rmse_mm"] > 0
+    assert summary["raw_prediction_unit"] == "mm_depth_for_duration"
+
+
 def test_fixed_position_optimizer_preserves_xy_coordinates():
     cfg = dict(sim.CFG)
     cfg["sa_iters"] = 8  # Test-only reduction; production defaults remain unchanged.
