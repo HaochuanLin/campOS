@@ -1013,7 +1013,7 @@ def test_protected_surface_polygon_is_disjoint_and_objective_is_surface_specific
 
 def test_protected_surface_polygon_csv_loader_accepts_valid_polygon(tmp_path):
     path = tmp_path / "sidewalk.csv"
-    path.write_text("x_m,y_m\n-4,0\n-4,25\n-2,25\n-2,0\n", encoding="utf-8")
+    path.write_text("x_m,y_m\n-4,0\n-4,25\n-2,25\n-2,0", encoding="utf-8")
     points = sim.load_polygon_csv(path)
     np.testing.assert_allclose(points, [[-4, 0], [-4, 25], [-2, 25], [-2, 0]])
 
