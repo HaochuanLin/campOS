@@ -21,6 +21,8 @@ Check **Use surveyed site CSVs** and upload two CSV files:
 
 - Lawn polygon: `x_m,y_m` columns, at least three distinct vertices, coordinates in metres. An optional repeated closing vertex is accepted.
 - Sprinkler layout: `x_m,y_m,radius_m,start_angle_deg,arc_width_deg` columns. Head coordinates must lie inside the polygon; radius must be within the optimizer's configured bounds; arc width must be in (0, 360].
+- Optional radial profile: `radius_fraction,relative_rate` columns. Use a measured profile prepared from catch-can data; the downloaded template is empty and is not a measured profile.
+- Optional pressure-performance curve: `pressure_kpa,flow_lpm,throw_m` columns plus the operating pressure entered in the UI. The operating pressure must lie within the supplied curve range; no extrapolation is performed. This curve affects the simulation, while catch-can evaluation still requires measured per-head flow in the layout CSV or the explicit fallback flow.
 
 The UI offers downloads of example polygon, sprinkler-layout, and protected-surface CSVs, plus the empty catch-can observation template. Their coordinates are illustrative; replace them with surveyed measurements and do not use example rows as real site data. You may optionally upload a catch-can observation CSV to run pointwise model evaluation after the layout simulation. If any sprinkler row lacks a measured `flow_lpm`, enter a documented measured fallback flow; leave the fallback at zero when every head has a measured flow.
 
