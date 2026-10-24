@@ -40,7 +40,7 @@ python scripts/check_field_observations.py \
   --outdir out/field-data-qc
 ```
 
-It checks required columns, unique can IDs per site/run, numeric values, units, and basic flags; if depth is blank, it derives depth in mm from collected volume and opening area. It writes a normalized CSV and JSON quality summary. This is **data QC only**—it does not compare observations with model predictions or count as field validation. For an end-to-end comparison, `scripts/predict_catch_can_depths.py` evaluates the sprinkler field at exact catch-can coordinates using a supplied polygon, sprinkler layout, measured flow per head, and filled observations CSV. It writes paired predictions and calibration/holdout metrics; see the [real-site validation protocol](docs/REAL_SITE_VALIDATION_PROTOCOL.md) for the command, required inputs, and limits. The standalone `scripts/evaluate_observation_errors.py` remains available for scoring already-paired values.
+It checks required columns, unique can IDs per site/run, numeric values, units, and basic flags; if depth is blank, it derives depth in mm from collected volume and opening area. It writes a normalized CSV and JSON quality summary. This is **data QC only**—it does not compare observations with model predictions or count as field validation. For an end-to-end comparison, `scripts/predict_catch_can_depths.py` evaluates the sprinkler field at exact catch-can coordinates using a supplied polygon, sprinkler layout, measured flow per head, and filled observations CSV. It writes paired predictions and calibration/holdout metrics; see the [real-site validation protocol](docs/REAL_SITE_VALIDATION_PROTOCOL.md) for the command, required inputs, and limits. After installing the package, the same workflow is available as `campos-field-evaluate` without invoking the script path. The standalone `scripts/evaluate_observation_errors.py` remains available for scoring already-paired values.
 
 ## Quick start
 
@@ -50,6 +50,8 @@ Requires Python 3.10 or newer.
 git clone https://github.com/HaochuanLin/campOS.git
 cd campOS
 python -m pip install -e ".[dev]"
+campos-sim --help
+campos-field-evaluate --help
 python campos_sim.py --help
 python -m pytest -q
 ```
