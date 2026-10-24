@@ -54,16 +54,28 @@ campos-sim --help
 campos-field-evaluate --help
 campos-observation-qc --help
 campos-field-report --help
+campos-start --help
 python -m pytest -q
 ```
 
-### Run a short synthetic simulation
+### One-command start (no real data required)
+
+After installation, run:
 
 ```bash
-python campos_sim.py --mode movable --quick --sites A --outdir out/demo
+campos-start
 ```
 
-This is a software smoke test, not a real-site design. The command writes CSV summaries, PNG plots, and `run_metadata.json` to `out/demo/`.
+This runs a quick synthetic demonstration on site A and writes a browsable `index.html`, model output CSVs/plots, `run_metadata.json`, and `quickstart_manifest.json` under `out/campos-quickstart/`. Open the generated `index.html` in a browser to review the outputs and limitations. You can choose a different mode, site, or output directory:
+
+```bash
+campos-start --mode pareto-fixed --sites C --outdir out/pareto-demo
+campos-start --mode fixed --sites A C --outdir out/fixed-demo
+```
+
+Add `--full` to omit the quick smoke-test settings; longer searches may take substantially more time. The command does not need field observations or training data, and it does not silently fabricate them: it uses built-in synthetic geometry and labels the report accordingly.
+
+This is a software demo, not a real-site design. It cannot establish field accuracy, actual road wetting, or water savings.
 
 ### Compare overspray against interior coverage
 
