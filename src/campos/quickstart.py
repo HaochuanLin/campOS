@@ -7,6 +7,7 @@ from datetime import datetime, timezone
 import hashlib
 import html
 import json
+import math
 from pathlib import Path
 import platform
 import shutil
@@ -156,6 +157,10 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--cell-size", type=float, default=0.5, help="simulation grid resolution in metres (default: 0.5)")
     parser.add_argument("--full", action="store_true", help="Run without the quick smoke-test settings")
     args = parser.parse_args(argv)
+    if args.seed < 0:
+        parser.error("--seed must be a non-negative integer")
+    if not math.isfinite(args.cell_size) or args.cell_size <= 0:
+        parser.error("--cell-size must be finite and greater than zero")
 
     outdir = Path(args.outdir).expanduser().resolve()
     outdir.mkdir(parents=True, exist_ok=True)
