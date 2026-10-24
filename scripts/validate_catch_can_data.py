@@ -30,6 +30,7 @@ def read_heads(path):
         reader = csv.DictReader(fh)
         if reader.fieldnames is None or not required.issubset(reader.fieldnames):
             raise ValueError("heads CSV must contain x_m,y_m,radius_m,start_angle_deg,arc_width_deg columns")
+        has_per_head_flow = "flow_lpm" in reader.fieldnames
         rows = list(reader)
     if not rows:
         raise ValueError("heads CSV must contain at least one sprinkler")
@@ -37,6 +38,7 @@ def read_heads(path):
         heads = np.asarray([[float(row[key]) for key in (
             "x_m", "y_m", "radius_m", "start_angle_deg", "arc_width_deg"
         )] for row in rows], dtype=float)
+        head_flows = np.asarray([float(row["flow_lpm"]) for row in rows], dtype=float) if has_per_head_flow else None
     except (TypeError, ValueError) as exc:
         raise ValueError("sprinkler layout values must be numeric") from exc
     if not np.all(np.isfinite(heads)):
@@ -45,11 +47,13 @@ def read_heads(path):
         raise ValueError("sprinkler radius_m values must be positive")
     if np.any(heads[:, 4] <= 0) or np.any(heads[:, 4] > 360):
         raise ValueError("arc_width_deg values must be in (0, 360]")
+    if head_flows is not None and (not np.all(np.isfinite(head_flows)) or np.any(head_flows <= 0)):
+        raise ValueError("per-head flow_lpm values must be finite and positive")
     heads[:, 3] %= 360.0
     # Unlike optimizer-input validation, measured heads may legitimately sit
     # outside the lawn boundary, so do not enforce optimizer radius bounds or
     # lawn containment here.
-    return heads
+    return heads, head_flows
 
 
 def read_observations(path):
@@ -104,7 +108,7 @@ def main(argv=None):
     parser.add_argument("--observations-csv", required=True, help="catch-can observations with explicit calibration/holdout split")
     parser.add_argument("--profile-csv", default=None, help="measured radial profile: radius_fraction,relative_rate")
     parser.add_argument("--radial-slope", type=float, default=sim.CFG["radial_slope"])
-    parser.add_argument("--flow-lpm", type=float, default=None, help="measured flow per sprinkler in L/min; if omitted, predictions are relative")
+    parser.add_argument("--flow-lpm", type=float, default=None, help="measured common flow per sprinkler in L/min; per-head flow_lpm column in heads CSV takes precedence")
     parser.add_argument("--duration-minutes", type=float, required=True, help="duration of catch-can collection in minutes")
     parser.add_argument("--cell-size", type=float, default=sim.CFG["cell"], help="recorded for provenance; point predictions are evaluated directly, not raster-interpolated")
     parser.add_argument("--out", default="out/catch-can-predictions.csv")
@@ -122,7 +126,7 @@ def main(argv=None):
 
     try:
         polygon = sim.load_polygon_csv(args.polygon_csv)
-        heads = read_heads(args.heads_csv)
+        heads, per_head_flows = read_heads(args.heads_csv)
         observations = read_observations(args.observations_csv)
         profile = load_radial_profile_csv(args.profile_csv) if args.profile_csv else None
     except (OSError, ValueError) as exc:
@@ -136,11 +140,15 @@ def main(argv=None):
         outside_ids = [observations[i]["observation_id"] for i, is_inside in enumerate(inside) if not is_inside]
         parser.error("all catch-can points must lie inside the surveyed lawn polygon; outside IDs: " + ",".join(outside_ids))
 
+    if per_head_flows is not None and args.flow_lpm is not None:
+        parser.error("provide either a flow_lpm column in heads CSV or --flow-lpm, not both")
+    has_absolute_flow = per_head_flows is not None or args.flow_lpm is not None
     # Evaluate each observation at its actual coordinates; avoid raster interpolation.
     raw = np.zeros(len(observations), dtype=float)
-    for head in heads:
-        raw += head_field(points[:, 0], points[:, 1], head, profile, args.flow_lpm, args.radial_slope)
-    if args.flow_lpm is not None:
+    for head_index, head in enumerate(heads):
+        flow = per_head_flows[head_index] if per_head_flows is not None else args.flow_lpm
+        raw += head_field(points[:, 0], points[:, 1], head, profile, flow, args.radial_slope)
+    if has_absolute_flow:
         raw *= args.duration_minutes / 60.0
 
     calibration_idx = np.asarray([i for i, row in enumerate(observations) if row["split"] == "calibration"], dtype=int)
@@ -165,7 +173,7 @@ def main(argv=None):
             writer.writerow({
                 **row,
                 "raw_model_value": f"{raw[i]:.8f}",
-                "raw_model_unit": "mm_depth_for_duration" if args.flow_lpm is not None else "relative_model_units",
+                "raw_model_unit": "mm_depth_for_duration" if has_absolute_flow else "relative_model_units",
                 "calibration_scale_factor": f"{scale:.8f}",
                 "predicted_depth_mm_after_calibration": f"{scaled[i]:.8f}",
                 "residual_mm_prediction_minus_observed": f"{scaled[i] - observed[i]:.8f}",
@@ -181,16 +189,17 @@ def main(argv=None):
         "cell_size_m_recorded_not_used_for_point_interpolation": args.cell_size,
         "sprinkler_count": int(len(heads)),
         "flow_lpm_per_head": args.flow_lpm,
-        "raw_prediction_unit": "mm_depth_for_duration" if args.flow_lpm is not None else "relative_model_units",
+        "per_head_flow_column_used": per_head_flows is not None,
+        "raw_prediction_unit": "mm_depth_for_duration" if has_absolute_flow else "relative_model_units",
         "calibration_scale_factor_fit_on_calibration_rows_only": scale,
         "split_policy": "explicit CSV split column; holdout rows never used to fit scale",
         "calibration_metrics_after_scale_fit": metrics(observed[calibration_idx], scaled[calibration_idx]),
         "holdout_metrics_after_scale_fit": metrics(observed[holdout_idx], scaled[holdout_idx]),
         "raw_physical_input_calibration_metrics": (
-            metrics(observed[calibration_idx], raw[calibration_idx]) if args.flow_lpm is not None else None
+            metrics(observed[calibration_idx], raw[calibration_idx]) if has_absolute_flow else None
         ),
         "raw_physical_input_holdout_metrics": (
-            metrics(observed[holdout_idx], raw[holdout_idx]) if args.flow_lpm is not None else None
+            metrics(observed[holdout_idx], raw[holdout_idx]) if has_absolute_flow else None
         ),
         "warning": "This validates pointwise agreement only for this observed run. A fitted scale factor does not calibrate wind, drift, pressure variation, or future operating conditions and does not establish water savings.",
     }
