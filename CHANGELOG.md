@@ -3,16 +3,17 @@
 ## [0.1.0] - Unreleased
 
 ### Added
-- English-only project README with quick-start commands, mode descriptions, metric definitions, assumptions, and limitations.
-- Model documentation covering the grid approximation, objective functions, and known omissions.
-- Installable package metadata and the `campos-sim` command-line entry point.
-- Per-run JSON metadata recording selected modes/sites, configuration, and software versions.
-- English CSV column names for single-objective, comparison, and Pareto outputs.
-- Regression tests for fixed-position invariance, cache correctness, dry-threshold behavior, Pareto archive behavior, metadata, and CLI output generation.
-- CI matrix for Python 3.10, 3.11, and 3.12.
+- CSV loaders for custom site polygons and imported baseline sprinkler layouts in local metric coordinates.
+- Real-site data contracts, catch-can validation protocols, model development roadmap, and input templates.
+- Baseline-relative Pareto guardrails for overspray, interior deficit, CU, and dry area, plus candidate rejection diagnostics.
+- Optional protected road/sidewalk polygon objectives and grid-resolution sensitivity checks.
+- Catch-can prediction and holdout evaluation, with optional Gaussian-process spatial residual correction.
+- One-command synthetic quickstart, local Streamlit UI, and artifact SHA-256 verification.
+- Regression tests for model invariants, geometry contracts, artifact integrity, and reproducible quickstart configuration.
+- CI workflows for the Python test matrix, artifact verification, and local UI startup.
 
 ### Clarifications
-- The default optimization parameters and random seed remain unchanged. The code changes in this iteration address cache correctness, metadata, and output labels rather than changing the optimization objective.
-- Result CSVs and figures from the original project brief were not present in the source attachment. No result images have been fabricated.
-- Site geometry and physical/economic inputs remain synthetic or placeholders; no field validation is claimed.
+- Synthetic geometry and model-defined metrics are not field validation or proof of water savings.
+- The default radial profile is a null-model assumption unless replaced by measured data.
+- Road/sidewalk water is a simulated geometric proxy; wind, drift, evaporation, pressure losses, and network hydraulics remain incompletely modelled.
 - Verify code ownership and third-party license compatibility before making a formal release.
