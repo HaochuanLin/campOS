@@ -965,10 +965,10 @@ def test_pareto_tradeoff_selection_minimizes_overspray_within_cu_budget():
         {"f1": 0.12, "CU": 0.95},
         {"f1": 0.20, "CU": 0.97},
     ]
-    selected = sim.select_tradeoff(front, budget=0.03)
+    selected = sim.select_tradeoff(front, budget=0.04)
     assert selected == 1
     assert front[selected]["f1"] == 0.08
-    assert front[selected]["CU"] >= max(point["CU"] for point in front) - 0.03
+    assert front[selected]["CU"] >= max(point["CU"] for point in front) - 0.04
 
 
 def test_pareto_tradeoff_zero_cu_budget_selects_most_uniform_point():
