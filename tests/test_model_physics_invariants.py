@@ -61,7 +61,7 @@ def test_site_rejects_excessive_grid_before_allocating_large_arrays():
 
 @pytest.mark.parametrize(
     "cell,margin",
-    [(0.0, 1.0), (-1.0, 1.0), (float("nan"), 1.0), (1.0, -1.0)],
+    [(0.0, 1.0), (-1.0, 1.0), (float("nan"), 1.0), (1.0, -1.0), (1e-320, 0.0)],
 )
 def test_site_rejects_invalid_grid_parameters(cell, margin):
     polygon = np.asarray([(0, 0), (4, 0), (4, 4), (0, 4)], dtype=float)
