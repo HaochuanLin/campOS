@@ -82,6 +82,28 @@ field-study/
     plots...
 ```
 
+## End-to-end point prediction and error evaluation
+
+For a surveyed site with an explicit sprinkler layout, a completed catch-can CSV, and a **measured flow rate per head at the documented operating condition**, run the integrated prediction workflow:
+
+```bash
+python scripts/predict_catch_can_depths.py \
+  --polygon-csv data/site_polygon.csv \
+  --heads-csv data/sprinkler_layout.csv \
+  --observations data/field_catch_can_observations.csv \
+  --flow-lpm 4.0 \
+  --outdir out/field-evaluation
+```
+
+Replace the example paths and flow with the actual measured inputs. The script evaluates the model at each exact catch-can coordinate (rather than silently matching a nearby raster cell), multiplies predicted precipitation rate by the recorded collection duration, and writes:
+
+- `paired_predictions.csv`: measured and predicted depth, residual, absolute error, location, zone, and split.
+- `field_evaluation_metrics.json`: input SHA-256 hashes, assumptions, calibration and holdout counts, and descriptive error metrics.
+
+The field CSV must include a `split` column set to `calibration` or `holdout`. All cans from a single `site_id,run_id` must remain in one split; the tool rejects mixed splits within a run. The default uniform radial profile is a null-model assumption. A measured relative radial profile can be supplied with `--profile-csv`, but it still requires measured flow for absolute depth prediction.
+
+**Scope:** all heads are assumed to have the same supplied flow. Predictions omit wind, drift, evaporation, pressure loss, and network hydraulics. The tool computes errors but does not declare a model valid or decide pass/fail. Set acceptance thresholds before looking at holdout errors, and do not calibrate using holdout observations.
+
 ## Paired error metrics for predictions already available
 
 campOS also includes `scripts/evaluate_observation_errors.py`. It computes descriptive bias, MAE, RMSE, maximum absolute error, and an optional R-squared-style comparison for paired depths supplied by the user. It requires a CSV with `measured_mm,predicted_mm,split`; `split` must be `calibration` or `holdout`, and at least two holdout rows are required by default.
