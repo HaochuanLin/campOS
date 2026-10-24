@@ -839,7 +839,7 @@ def main(argv=None):
     ap.add_argument("--cu-drop-budget", type=float, default=CFG["cu_drop_budget"],
                     help="maximum absolute CU loss from baseline CU for a selected Pareto point (0..1)")
     ap.add_argument("--max-overspray-increase", type=float, default=CFG["max_overspray_increase"],
-                    help="maximum allowed increase in Pareto f1 over baseline, as a fraction of baseline total water (0..1; default 0)")
+                    help="maximum allowed increase in the active Pareto f1 objective over baseline, as a fraction of baseline total water (0..1; default 0)")
     ap.add_argument("--pareto-weights", default=",".join(str(x) for x in CFG["pareto_weights"]),
                     help="comma-separated overspray weights in [0,1] for Pareto search, e.g. 0,0.25,0.5,0.75,1")
     # Load JSON defaults before the full parse so explicitly supplied CLI values win.
@@ -1068,6 +1068,7 @@ def main(argv=None):
             "note": "weights guide stochastic search, not a single weighted score; selected trade-off must respect baseline overspray tolerance, keep CU within the configured absolute loss budget, and not worsen interior deficit; if no Pareto point meets all guardrails, no trade-off is selected",
             "selection_guardrails": {
                 "max_overspray_increase_vs_baseline": cfg["max_overspray_increase"],
+                "max_active_f1_increase_vs_baseline": cfg["max_overspray_increase"],
                 "minimum_CU": "baseline_CU - cu_drop_budget",
                 "maximum_f2": "baseline_f2 (interior deficit must not worsen)",
                 "fallback": "no selection when no feasible Pareto point meets all guardrails",
