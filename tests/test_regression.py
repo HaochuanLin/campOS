@@ -167,7 +167,7 @@ def test_protected_surface_objective_uses_only_protected_polygon_water():
     # Other surrounding ground receives much more modelled water than the
     # sidewalk, so the two candidate objectives must remain distinguishable.
     field[~(site.mask | site.protected_mask)] = 5.0
-    reference = {"W0": float(field.sum())}
+    reference = {"W0": float(field.sum()), "T": 1.0}
 
     f1, _, _ = sim.bi_eval(site, field, reference, cfg)
     expected_protected_share = float(field[site.protected_mask].sum() / reference["W0"])
