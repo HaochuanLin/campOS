@@ -2,8 +2,9 @@
 """Predict catch-can depths at exact observation coordinates and score holdout data.
 
 This is a model-to-observation workflow, not a claim that the model is valid.
-All heads use the same supplied measured flow rate. Predictions assume the
-selected radial profile, steady operation, and no wind/drift/pressure loss.
+Measured flow can be supplied per head in the layout CSV, with a command-line
+fallback for heads without a value. Predictions assume the selected radial
+profile, steady operation, and no wind/drift/pressure loss.
 """
 from __future__ import annotations
 
@@ -46,7 +47,7 @@ def finite_float(value: str, name: str, line: int) -> float:
     return result
 
 
-def load_heads(path: Path) -> np.ndarray:
+def load_heads(path: Path) -> tuple[np.ndarray, list[float | None]]:
     with path.open(newline="", encoding="utf-8-sig") as handle:
         reader = csv.DictReader(handle)
         if reader.fieldnames is None or not set(HEAD_COLUMNS).issubset(reader.fieldnames):
@@ -65,7 +66,14 @@ def load_heads(path: Path) -> np.ndarray:
     if np.any(heads[:, 4] <= 0) or np.any(heads[:, 4] > 360):
         raise ValueError("arc_width_deg must be in (0, 360]")
     heads[:, 3] %= 360.0
-    return heads
+    flows: list[float | None] = []
+    for line, row in enumerate(rows, start=2):
+        raw_flow = str(row.get("flow_lpm", "")).strip()
+        flow = None if not raw_flow else finite_float(raw_flow, "flow_lpm", line)
+        if flow is not None and flow <= 0:
+            raise ValueError(f"row {line}: flow_lpm must be > 0 when supplied")
+        flows.append(flow)
+    return heads, flows
 
 
 def load_observations(path: Path) -> list[dict[str, object]]:
@@ -145,12 +153,20 @@ def predict(
     polygon: np.ndarray,
     heads: np.ndarray,
     observations: list[dict[str, object]],
-    flow_lpm: float,
+    flow_lpm: float | None,
+    head_flows: list[float | None],
     radial_slope: float,
     radial_profile: np.ndarray | None,
 ) -> list[dict[str, object]]:
-    if not math.isfinite(flow_lpm) or flow_lpm <= 0:
-        raise ValueError("flow_lpm must be finite and > 0; use a measured operating flow")
+    if flow_lpm is not None and (not math.isfinite(flow_lpm) or flow_lpm <= 0):
+        raise ValueError("flow_lpm must be finite and > 0 when supplied")
+    effective_flows = [measured if measured is not None else flow_lpm for measured in head_flows]
+    if any(value is None for value in effective_flows):
+        raise ValueError(
+            "every head needs a positive measured flow_lpm in heads CSV or the --flow-lpm fallback"
+        )
+    if any(not math.isfinite(float(value)) or float(value) <= 0 for value in effective_flows):
+        raise ValueError("each per-head flow must be finite and > 0")
     if not math.isfinite(radial_slope) or radial_slope <= -1:
         raise ValueError("radial_slope must be finite and > -1")
     from matplotlib.path import Path as PolygonPath
@@ -159,10 +175,10 @@ def predict(
     for obs in observations:
         x, y = float(obs["x_m"]), float(obs["y_m"])
         predicted_rate = 0.0
-        for head in heads:
+        for head, head_flow in zip(heads, effective_flows):
             predicted_rate += float(head_field(
                 np.asarray([[x]]), np.asarray([[y]]), head,
-                radial_profile=radial_profile, flow_lpm=flow_lpm,
+                radial_profile=radial_profile, flow_lpm=float(head_flow),
                 radial_slope=radial_slope,
             )[0, 0])
         predicted_depth = predicted_rate * float(obs["duration_s"]) / 3600.0
@@ -185,8 +201,8 @@ def main() -> None:
     parser.add_argument("--polygon-csv", required=True, type=Path, help="surveyed polygon x_m,y_m")
     parser.add_argument("--heads-csv", required=True, type=Path, help="actual sprinkler layout CSV")
     parser.add_argument("--observations", required=True, type=Path, help="filled field catch-can CSV")
-    parser.add_argument("--flow-lpm", required=True, type=float,
-                        help="measured flow per head at the documented operating condition")
+    parser.add_argument("--flow-lpm", type=float, default=None,
+                        help="fallback measured flow per head; overridden by heads CSV flow_lpm values")
     parser.add_argument("--radial-slope", type=float, default=0.0,
                         help="illustrative radial profile parameter; default 0 is uniform")
     parser.add_argument("--profile-csv", type=Path, default=None,
@@ -196,10 +212,10 @@ def main() -> None:
 
     try:
         polygon = load_polygon_csv(args.polygon_csv)
-        heads = load_heads(args.heads_csv)
+        heads, head_flows = load_heads(args.heads_csv)
         observations = load_observations(args.observations)
         profile = load_radial_profile_csv(args.profile_csv) if args.profile_csv else None
-        predictions = predict(polygon, heads, observations, args.flow_lpm, args.radial_slope, profile)
+        predictions = predict(polygon, heads, observations, args.flow_lpm, head_flows, args.radial_slope, profile)
         metric_input = [
             {"measured_mm": row["measured_mm"], "predicted_mm": row["predicted_mm"], "split": row["split"]}
             for row in predictions
@@ -221,7 +237,8 @@ def main() -> None:
         "scope": "model-to-catch-can comparison at exact supplied coordinates",
         "n_sprinkler_heads": int(len(heads)),
         "n_valid_observations": len(predictions),
-        "flow_lpm_per_head": args.flow_lpm,
+        "flow_lpm_per_head": [measured if measured is not None else args.flow_lpm for measured in head_flows],
+        "flow_source": "per-head heads CSV values with CLI fallback where blank",
         "radial_slope": args.radial_slope if profile is None else None,
         "radial_profile_csv_sha256": sha256(args.profile_csv) if args.profile_csv else None,
         "input_sha256": {
@@ -231,7 +248,7 @@ def main() -> None:
         },
         "metrics": metrics,
         "limitations": [
-            "Flow is assumed identical for all heads and must be measured at the documented operating condition.",
+            "Each head uses its supplied flow_lpm, or the CLI fallback if the per-head value is blank; flows must be measured at documented operating conditions.",
             "Predictions assume steady operation and omit wind, drift, evaporation, pressure loss, and network hydraulics.",
             "The default uniform radial profile is a null-model assumption, not calibrated sprinkler physics.",
             "Holdout independence depends on the field-study design; this tool enforces run-level split consistency but cannot prove independence.",
