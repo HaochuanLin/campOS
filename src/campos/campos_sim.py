@@ -516,7 +516,9 @@ def select_tradeoff(front, budget, baseline=None, max_overspray_increase=0.0):
         overspray_ceiling = baseline["f1"] + max(0.0, max_overspray_increase) + 1e-12
         ok = [
             i for i, p in enumerate(front)
-            if p["CU"] >= cu_floor and p["f1"] <= overspray_ceiling
+            if p["CU"] >= cu_floor
+            and p["f1"] <= overspray_ceiling
+            and p["f2"] <= baseline["f2"] + 1e-12
         ]
     return min(ok, key=lambda i: front[i]["f1"]) if ok else None
 
@@ -968,7 +970,8 @@ def main(argv=None):
             "selection_guardrails": {
                 "max_overspray_increase_vs_baseline": cfg["max_overspray_increase"],
                 "minimum_CU": "baseline_CU - cu_drop_budget",
-                "fallback": "no selection when no feasible Pareto point meets both guardrails",
+                "maximum_f2": "baseline_f2 (interior deficit must not worsen)",
+                "fallback": "no selection when no feasible Pareto point meets all guardrails",
             },
         },
         "radial_distribution": {
