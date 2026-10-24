@@ -73,6 +73,10 @@ def validate_file(input_path: Path, output_csv: Path, output_json: Path) -> dict
         volume = number(row.get("collected_volume_ml", ""), "collected_volume_ml", row_number)
         depth = number(row.get("measured_depth_mm", ""), "measured_depth_mm", row_number)
         area = number(row.get("container_opening_area_cm2", ""), "container_opening_area_cm2", row_number)
+        pressure = number(row.get("pressure_kpa", ""), "pressure_kpa", row_number)
+        wind_speed = number(row.get("wind_speed_m_s", ""), "wind_speed_m_s", row_number)
+        wind_direction = number(row.get("wind_direction_deg", ""), "wind_direction_deg", row_number)
+        air_temperature = number(row.get("air_temperature_c", ""), "air_temperature_c", row_number)
         if duration <= 0:
             raise ValueError(f"row {row_number}: collection_duration_s must be > 0")
         if volume is not None and volume < 0:
@@ -81,6 +85,12 @@ def validate_file(input_path: Path, output_csv: Path, output_json: Path) -> dict
             raise ValueError(f"row {row_number}: measured_depth_mm must be >= 0")
         if area is not None and area <= 0:
             raise ValueError(f"row {row_number}: container_opening_area_cm2 must be > 0")
+        if pressure is not None and pressure <= 0:
+            raise ValueError(f"row {row_number}: pressure_kpa must be > 0 when supplied")
+        if wind_speed is not None and wind_speed < 0:
+            raise ValueError(f"row {row_number}: wind_speed_m_s must be >= 0")
+        if wind_direction is not None and not 0 <= wind_direction <= 360:
+            raise ValueError(f"row {row_number}: wind_direction_deg must be between 0 and 360")
         if depth is None:
             if volume is None or area is None:
                 raise ValueError(
@@ -121,6 +131,10 @@ def validate_file(input_path: Path, output_csv: Path, output_json: Path) -> dict
             "collected_volume_ml": "" if volume is None else volume,
             "measured_depth_mm_normalized": depth,
             "container_opening_area_cm2": "" if area is None else area,
+            "pressure_kpa": "" if pressure is None else pressure,
+            "wind_speed_m_s": "" if wind_speed is None else wind_speed,
+            "wind_direction_deg": "" if wind_direction is None else wind_direction,
+            "air_temperature_c": "" if air_temperature is None else air_temperature,
             "validity_flag": flag,
             "split": split,
             "exclusion_reason": (row.get("exclusion_reason") or "").strip(),
