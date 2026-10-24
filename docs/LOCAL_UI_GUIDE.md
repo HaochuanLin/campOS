@@ -22,7 +22,7 @@ Check **Use surveyed site CSVs** and upload two CSV files:
 - Lawn polygon: `x_m,y_m` columns, at least three distinct vertices, coordinates in metres. An optional repeated closing vertex is accepted.
 - Sprinkler layout: `x_m,y_m,radius_m,start_angle_deg,arc_width_deg` columns. Head coordinates must lie inside the polygon; radius must be within the optimizer's configured bounds; arc width must be in (0, 360].
 
-The UI offers downloads of example polygon, sprinkler-layout, and protected-surface CSVs. Their coordinates are illustrative; replace them with surveyed measurements and do not use example rows as real site data.
+The UI offers downloads of example polygon, sprinkler-layout, and protected-surface CSVs. Their coordinates are illustrative; replace them with surveyed measurements and do not use example rows as real site data. You may optionally upload a catch-can observation CSV to run pointwise model evaluation after the layout simulation. If any sprinkler row lacks a measured `flow_lpm`, enter a documented measured fallback flow; leave the fallback at zero when every head has a measured flow.
 
 Choose a single mode in surveyed-site mode. The app runs the custom geometry and layout using the selected seed and grid resolution. In Pareto modes, you may also upload a separate road/sidewalk polygon. It must not overlap the lawn interior; sharing a boundary is allowed. The protected-surface objective is only active in Pareto modes.
 
@@ -34,4 +34,4 @@ A successful run only means the simulation completed. It does not prove that the
 
 ## Field measurements
 
-The UI does not fabricate catch-can observations or treat synthetic example rows as field data. To compare predictions with measurements, use the field-evaluation workflow documented in [the real-site validation protocol](REAL_SITE_VALIDATION_PROTOCOL.md). Preserve raw observations, split complete runs into calibration or holdout, pre-register acceptance thresholds, and do not tune on holdout data.
+The UI does not fabricate catch-can observations or treat synthetic example rows as field data. If you upload observations, it writes paired predictions and calibration/holdout metrics when the input contract is satisfied. If evaluation fails, the optimization outputs remain available and the UI shows diagnostics. To prepare valid observations, follow the field-evaluation workflow documented in [the real-site validation protocol](REAL_SITE_VALIDATION_PROTOCOL.md). Preserve raw observations, split complete runs into calibration or holdout, pre-register acceptance thresholds, and do not tune on holdout data.
