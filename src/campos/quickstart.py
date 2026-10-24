@@ -228,7 +228,7 @@ def main(argv: list[str] | None = None) -> int:
         "commands": invocations,
         "output_directory": str(outdir),
         "python_version": platform.python_version(),
-        "platform": platform.platform(),
+        "platform": f"{platform.system()} {platform.release()} {platform.machine()}".strip(),
         "artifact_checksums": artifact_checksums(outdir, include_names=generated_names),
         "limitations": LIMITATIONS,
         "status": "simulation_completed_not_field_validated",
