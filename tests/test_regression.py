@@ -107,6 +107,30 @@ def test_ai_residual_correction_rejects_run_split_leakage(tmp_path):
     assert "appears in both calibration and holdout" in completed.stdout
 
 
+def test_ai_residual_correction_rejects_kernel_initial_values_outside_bounds(tmp_path):
+    # Kernel initial values must be inside the explicit bounds used by
+    # scikit-learn's log-space optimizer; verify the CLI fails clearly.
+    cases = [
+        ("--length-scale-m", "0.1", "between 0.25 and 100 metres"),
+        ("--length-scale-m", "101", "between 0.25 and 100 metres"),
+        ("--noise-level-mm", "0.00001", "between 0.0001 and 100 mm^2"),
+        ("--noise-level-mm", "101", "between 0.0001 and 100 mm^2"),
+    ]
+    for option, value, expected_message in cases:
+        completed = subprocess.run(
+            [
+                sys.executable, str(ROOT / "scripts" / "ai_residual_correction.py"),
+                "--predictions-csv", str(tmp_path / "does-not-exist.csv"),
+                option, value,
+            ],
+            cwd=ROOT, text=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
+            check=False,
+        )
+        assert completed.returncode != 0
+        assert expected_message in completed.stdout
+        assert "theta" not in completed.stdout.lower()
+
+
 def test_catch_can_validation_keeps_holdout_out_of_scale_fit(tmp_path):
     lawn_csv = tmp_path / "lawn.csv"
     heads_csv = tmp_path / "heads.csv"
