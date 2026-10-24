@@ -14,9 +14,9 @@ jobs:
         python-version: ["3.10", "3.11", "3.12"]
     steps:
       - name: Check out repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
       - name: Set up Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v7
         with:
           python-version: ${{ matrix.python-version }}
           cache: pip
@@ -90,7 +90,7 @@ jobs:
         run: python scripts/compare_optimization_modes.py --quick --sites A --outdir out/optimization-benchmark
       - name: Upload optimization benchmark results
         if: always() && matrix.python-version == '3.10'
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: campos-optimization-benchmark
           path: out/optimization-benchmark/
@@ -98,7 +98,7 @@ jobs:
           retention-days: 14
       - name: Upload design report smoke artifact
         if: always() && matrix.python-version == '3.10'
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: campos-design-report-smoke
           path: out/report-smoke/
@@ -106,7 +106,7 @@ jobs:
           retention-days: 14
       - name: Upload matched design comparison
         if: always() && matrix.python-version == '3.10'
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: campos-design-comparison
           path: out/design-comparison/
@@ -114,7 +114,7 @@ jobs:
           retention-days: 14
       - name: Upload parameter sensitivity results
         if: always() && matrix.python-version == '3.10'
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: campos-parameter-sensitivity
           path: out/parameter-sensitivity/
