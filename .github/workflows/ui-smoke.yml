@@ -101,3 +101,16 @@ jobs:
           path: out-streamlit.log
           if-no-files-found: ignore
           retention-days: 7
+      - name: Publish workflow summary
+        if: always()
+        env:
+          JOB_STATUS: ${{ job.status }}
+        run: |
+          {
+            echo "## campOS UI smoke test"
+            echo
+            echo "- Job result: $JOB_STATUS"
+            echo "- Commit: $GITHUB_SHA"
+            echo "- Checks: pytest, Python compilation, Streamlit AppTest, HTTP health endpoint."
+            echo "- Surveyed-site mode checks the starter-template ZIP and all six source CSVs."
+          } >> "$GITHUB_STEP_SUMMARY"
