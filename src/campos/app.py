@@ -177,13 +177,6 @@ with st.sidebar:
                 help="A single ZIP with the example CSV files for site geometry, sprinklers, protected surfaces, and observations.",
             )
         for label, filename in template_files:
-            ("Download lawn polygon example", "site_polygon_template.csv"),
-            ("Download sprinkler layout example", "sprinkler_layout_template.csv"),
-            ("Download protected-surface example", "protected_surface_template.csv"),
-            ("Download catch-can observation template", "field_catch_can_template.csv"),
-            ("Download radial-profile template", "catch_can_profile_template.csv"),
-            ("Download pressure-performance template", "sprinkler_performance_template.csv"),
-        ):
             template_path = template_dir / filename
             if template_path.is_file():
                 st.download_button(
