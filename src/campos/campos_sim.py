@@ -715,7 +715,7 @@ def write_pareto_csv(results, fn, cfg):
         w = csv.writer(fh)
         f1_column = ("protected_surface_water_pct_of_baseline_total_water_f1"
                      if any(result["site"].protected_path is not None for result in results)
-                     else "outside_lawn_water_pct_of_baseline_total_water_f1")
+                     else "overspray_pct_of_baseline_total_water_f1")
         w.writerow(["mode", "site", "point_type", "point_index", "selected_tradeoff",
                     f1_column, "outside_lawn_water_pct_of_baseline_total_water",
                     "protected_surface_water_pct_of_baseline_total_water", "interior_deficit_pct_f2",
