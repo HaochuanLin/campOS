@@ -20,17 +20,36 @@ jobs:
         run: python -m pip install -e ".[ui,ai]"
       - name: Compile the UI module
         run: python -m py_compile src/campos/app.py streamlit_app.py
-      - name: Start the Streamlit app
+      - name: Start Streamlit and verify HTTP health
         run: |
-          set +e
-          timeout 25s streamlit run streamlit_app.py \
+          set -euo pipefail
+          streamlit run streamlit_app.py \
             --server.headless true --server.address 127.0.0.1 --server.port 8501 \
-            > out-streamlit.log 2>&1
-          status=$?
-          set -e
+            > out-streamlit.log 2>&1 &
+          app_pid=$!
+          cleanup() {
+            kill "$app_pid" 2>/dev/null || true
+            wait "$app_pid" 2>/dev/null || true
+          }
+          trap cleanup EXIT
+
+          healthy=0
+          for attempt in $(seq 1 30); do
+            if curl --fail --silent --show-error http://127.0.0.1:8501/_stcore/health > /tmp/campos-health.txt 2>/dev/null; then
+              healthy=1
+              break
+            fi
+            if ! kill -0 "$app_pid" 2>/dev/null; then
+              echo "Streamlit exited before becoming healthy."
+              cat out-streamlit.log
+              exit 1
+            fi
+            sleep 1
+          done
+
           cat out-streamlit.log
-          if [ "$status" -ne 124 ]; then
-            echo "Expected Streamlit to remain alive until the timeout; exit code was $status"
+          if [ "$healthy" -ne 1 ]; then
+            echo "Streamlit health endpoint did not return HTTP 200 within 30 seconds."
             exit 1
           fi
           grep -Eqi "You can now view your Streamlit app|Network URL|Local URL" out-streamlit.log
