@@ -91,14 +91,20 @@ def validate_file(input_path: Path, output_csv: Path, output_json: Path) -> dict
             raise ValueError(f"row {row_number}: wind_speed_m_s must be >= 0")
         if wind_direction is not None and not 0 <= wind_direction <= 360:
             raise ValueError(f"row {row_number}: wind_direction_deg must be between 0 and 360")
+        flag = (row.get("validity_flag") or "unknown").strip().lower()
+        if flag not in ALLOWED_FLAGS:
+            raise ValueError(f"row {row_number}: validity_flag must be one of {sorted(ALLOWED_FLAGS)}")
+
         if depth is None:
             if volume is None or area is None:
-                raise ValueError(
-                    f"row {row_number}: provide measured_depth_mm or both "
-                    "collected_volume_ml and container_opening_area_cm2"
-                )
-            # 1 ml / cm^2 equals 10 mm of water depth.
-            depth = volume / area * 10.0
+                if flag == "valid":
+                    raise ValueError(
+                        f"row {row_number}: provide measured_depth_mm or both "
+                        "collected_volume_ml and container_opening_area_cm2 for valid observations"
+                    )
+            else:
+                # 1 ml / cm^2 equals 10 mm of water depth.
+                depth = volume / area * 10.0
         elif volume is not None and area is not None:
             derived = volume / area * 10.0
             if not math.isclose(depth, derived, rel_tol=0.1, abs_tol=0.5):
@@ -118,9 +124,6 @@ def validate_file(input_path: Path, output_csv: Path, output_json: Path) -> dict
             raise ValueError(f"row {row_number}: run {run_key} mixes calibration and holdout")
         run_splits[run_key] = split
 
-        flag = (row.get("validity_flag") or "unknown").strip().lower()
-        if flag not in ALLOWED_FLAGS:
-            raise ValueError(f"row {row_number}: validity_flag must be one of {sorted(ALLOWED_FLAGS)}")
         if flag == "valid":
             valid_count += 1
         zone_counts[zone] += 1
