@@ -3,10 +3,12 @@ name: ui-smoke
 on:
   push:
   pull_request:
+  workflow_dispatch:
 
 jobs:
   streamlit-startup:
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     steps:
       - name: Check out repository
         uses: actions/checkout@v7
@@ -72,3 +74,11 @@ jobs:
             exit 1
           fi
           grep -Eqi "You can now view your Streamlit app|Network URL|Local URL" out-streamlit.log
+      - name: Upload Streamlit startup log on failure
+        if: failure() && always()
+        uses: actions/upload-artifact@v6
+        with:
+          name: campos-streamlit-startup-log
+          path: out-streamlit.log
+          if-no-files-found: ignore
+          retention-days: 7
