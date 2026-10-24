@@ -5,22 +5,23 @@ from campos.model import head_field, orifice_flow_lpm, spacing_precipitation_mm_
 
 
 def test_uniform_full_circle_flow_field_integrates_to_configured_flow():
-    # For a full circle, the model's mean depth times the disk area must equal
-    # 60 * Q litres/hour expressed as mm*m²/hour.
     flow_lpm = 12.0
     radius_m = 4.0
-    area_m2 = np.pi * radius_m**2
-    mean_rate_mm_h = 60.0 * flow_lpm / area_m2
-    assert mean_rate_mm_h * area_m2 == pytest.approx(60.0 * flow_lpm)
+    cell = 0.025
+    axis = np.arange(-radius_m, radius_m + cell / 2, cell)
+    x, y = np.meshgrid(axis, axis)
+    field = head_field(x, y, (0.0, 0.0, radius_m, 0.0, 360.0), flow_lpm=flow_lpm)
+    modelled_integral = float(field.sum()) * cell**2
+    expected_integral = 60.0 * flow_lpm
+    # Cell-centre rasterization approximates the circular boundary.
+    assert modelled_integral == pytest.approx(expected_integral, rel=0.015)
 
 
-def test_sector_flow_field_scales_with_operating_arc_fraction():
-    x = np.array([[0.0, 1.0, -1.0, 0.0]])
-    y = np.array([[1.0, 0.0, 0.0, -1.0]])
+def test_sector_field_includes_only_points_within_the_sector():
+    x = np.array([[1.0, 0.0, -1.0, 0.0]])
+    y = np.array([[1.0, 1.0, -1.0, -1.0]])
     head = (0.0, 0.0, 3.0, 0.0, 180.0)
     field = head_field(x, y, head, flow_lpm=6.0)
-    # Points on the first and second quadrants are inside this 180-degree
-    # sector; the opposite half-circle is outside it.
     assert np.all(field[0, :2] > 0)
     assert np.all(field[0, 2:] == 0)
 
