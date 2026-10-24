@@ -43,3 +43,13 @@ A successful run only means the simulation completed. It does not prove that the
 ## Field measurements
 
 The UI does not fabricate catch-can observations or treat synthetic example rows as field data. If you upload observations, it writes paired predictions and calibration/holdout metrics when the input contract is satisfied and surfaces holdout RMSE, MAE, bias, and sample count in the results view. If evaluation fails, the optimization outputs remain available and the UI shows diagnostics. To prepare valid observations, follow the field-evaluation workflow documented in [the real-site validation protocol](REAL_SITE_VALIDATION_PROTOCOL.md). Preserve raw observations, split complete runs into calibration or holdout, pre-register acceptance thresholds, and do not tune on holdout data. Before viewing holdout results, you may upload a pre-registered JSON threshold file; if any limit fails, the UI retains the metrics and predictions, shows a gate-failure warning, and blocks AI correction. The optional **Fail on zone/polygon label mismatch** control also makes inside/outside catch-can labels that contradict the uploaded lawn polygon a hard gate. Boundary cans should use the `boundary` zone label.
+
+## Troubleshooting a blank or non-interactive hosted page
+
+1. In Streamlit Community Cloud, verify repository `HaochuanLin/campOS`, branch `main`, and main file path `streamlit_app.py`.
+2. Open **Manage app → Logs** and look for the first Python traceback. Fix the first exception rather than guessing from the last line.
+3. Confirm the deployment is using the latest commit from `main`. Restart/reboot the app after a failed deployment or dependency installation.
+4. The entry point executes `src/campos/app.py` on each Streamlit rerun; this is required so widget interactions redraw the UI rather than relying on a cached Python module import.
+5. If the page loads but a simulation fails, read the displayed diagnostic output and download the available artifacts. A successful HTTP health response only proves the server responds; it does not prove the simulation or every browser interaction works.
+
+Do not share private catch-can observations, exact property coordinates, or other sensitive site data in a public demo or public issue.
