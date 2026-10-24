@@ -283,8 +283,11 @@ def main() -> None:
                         help="illustrative radial profile parameter; default 0 is uniform")
     parser.add_argument("--profile-csv", type=Path, default=None,
                         help="optional measured relative radial profile (takes precedence over slope)")
+    parser.add_argument("--acceptance-thresholds-json", type=Path, default=None,
+                        help="optional pre-registered JSON limits: max_holdout_mae_mm, max_holdout_rmse_mm, max_absolute_bias_mm")
     parser.add_argument("--outdir", type=Path, default=Path("out/field-evaluation"))
     args = parser.parse_args()
+    acceptance_assessment = None
 
     try:
         polygon = load_polygon_csv(args.polygon_csv)
@@ -310,7 +313,13 @@ def main() -> None:
                 "all": summarize(zone_rows) if zone_rows else None,
                 "holdout": summarize(zone_holdout) if zone_holdout else None,
             }
-    except (OSError, ValueError) as exc:
+        if args.acceptance_thresholds_json is not None:
+            raw_thresholds = json.loads(args.acceptance_thresholds_json.read_text(encoding="utf-8"))
+            if not isinstance(raw_thresholds, dict):
+                raise ValueError("acceptance thresholds JSON must be an object")
+            thresholds = validate_acceptance_thresholds(raw_thresholds)
+            acceptance_assessment = assess_holdout(metrics, thresholds)
+    except (OSError, ValueError, json.JSONDecodeError) as exc:
         parser.error(str(exc))
 
     args.outdir.mkdir(parents=True, exist_ok=True)
@@ -348,6 +357,11 @@ def main() -> None:
         },
         "metrics": metrics,
         "metrics_by_zone": metrics_by_zone,
+        "acceptance_thresholds_json_sha256": (
+            sha256(args.acceptance_thresholds_json)
+            if args.acceptance_thresholds_json is not None else None
+        ),
+        "acceptance_assessment": acceptance_assessment,
         "limitations": [
             "Each head uses its supplied flow_lpm, or the CLI fallback if the per-head value is blank; flows must be measured at documented operating conditions.",
             "Predictions assume steady operation and omit wind, drift, evaporation, pressure loss, and network hydraulics.",
