@@ -6,12 +6,11 @@ Install campOS, run the no-data-required demo, then verify its output files:
 
 ```bash
 python -m pip install -e .
-campos-start --outdir out/campos-quickstart
-python scripts/verify_run_artifacts.py \
-  --manifest out/campos-quickstart/quickstart_manifest.json
+campos-start --outdir out/campos-quickstart --seed 19 --cell-size 0.25
+campos-verify-artifacts --manifest out/campos-quickstart/quickstart_manifest.json
 ```
 
-The quickstart manifest records the Python version, platform, run mode, limitations, and each generated artifact's byte size and SHA-256 digest. The verifier checks that every listed artifact still exists and matches both recorded values. It exits with status 2 if a file is missing, has changed, or the manifest is malformed.
+The quickstart manifest records the Python version, platform, run mode, seed, grid resolution, limitations, and each generated artifact's byte size and SHA-256 digest. The verifier checks that every listed artifact still exists and matches both recorded values. It exits with status 2 if a file is missing, has changed, or the manifest is malformed.
 
 ## What this proves—and what it does not
 
