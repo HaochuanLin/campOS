@@ -5,7 +5,7 @@ from pathlib import Path
 
 
 ROOT = Path(__file__).resolve().parents[1]
-SCRIPT = ROOT / "scripts" / "verify_run_artifacts.py"
+SCRIPT = ROOT / "src" / "campos" / "artifact_verification.py"
 SPEC = importlib.util.spec_from_file_location("verify_run_artifacts", SCRIPT)
 assert SPEC is not None and SPEC.loader is not None
 verifier = importlib.util.module_from_spec(SPEC)
