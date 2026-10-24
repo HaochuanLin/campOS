@@ -1030,7 +1030,7 @@ def main(argv=None):
         },
         "selected_modes": modes,
         "selected_sites": list(sites.keys()),
-        "config": {k: v for k, v in cfg.items() if k not in {"radial_profile", "initial_heads"}},
+        "config": {k: v for k, v in cfg.items() if k not in {"radial_profile", "initial_heads", "protected_polygon"}},
         "site_input": {
             "polygon_csv": args.polygon_csv,
             "polygon_sha256": polygon_sha256,
