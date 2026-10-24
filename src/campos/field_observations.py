@@ -38,6 +38,16 @@ def number(value: str, field: str, row_number: int, *, required: bool = False) -
 
 
 def validate_file(input_path: Path, output_csv: Path, output_json: Path) -> dict:
+    # Never let a user accidentally replace the raw observation file with its
+    # normalized derivative, or point both generated artifacts at one path.
+    resolved_paths = {
+        input_path.expanduser().resolve(),
+        output_csv.expanduser().resolve(),
+        output_json.expanduser().resolve(),
+    }
+    if len(resolved_paths) != 3:
+        raise ValueError("raw input, normalized CSV, and summary JSON must use distinct paths")
+
     with input_path.open(newline="", encoding="utf-8-sig") as handle:
         reader = csv.DictReader(handle)
         headers = set(reader.fieldnames or [])
