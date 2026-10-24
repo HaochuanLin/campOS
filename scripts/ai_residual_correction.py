@@ -71,13 +71,17 @@ def load_predictions(path: Path) -> list[dict[str, object]]:
         raise ValueError("AI correction requires at least 5 unique calibration coordinates")
     if len(holdout_coords) < 3:
         raise ValueError("AI evaluation requires at least 3 unique holdout coordinates")
-    overlap = calibration_coords & holdout_coords
-    if overlap:
-        examples = sorted(overlap)[:3]
-        raise ValueError(
-            "calibration and holdout coordinates must be disjoint to prevent spatial leakage; "
-            f"overlapping coordinates include {examples}"
-        )
+    if not all(str(r.get("run_id", "")).strip() for r in parsed):
+        raise ValueError("input CSV must include a non-empty run_id for run-level split validation")
+    run_splits = {}
+    for row in parsed:
+        run_id = str(row["run_id"]).strip()
+        previous = run_splits.setdefault(run_id, row["split"])
+        if previous != row["split"]:
+            raise ValueError(
+                f"run_id {run_id!r} appears in both calibration and holdout; "
+                "keep each complete run in one split"
+            )
     return parsed
 
 
