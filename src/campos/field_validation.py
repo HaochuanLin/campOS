@@ -183,10 +183,14 @@ def predict(
             )[0, 0])
         predicted_depth = predicted_rate * float(obs["duration_s"]) / 3600.0
         measured = float(obs["measured_mm"])
+        inside_site = bool(inside.contains_point((x, y)))
+        zone = str(obs["zone"])
+        zone_mismatch = (zone == "inside" and not inside_site) or (zone == "outside" and inside_site)
         output.append({
             "site_id": obs["site_id"], "run_id": obs["run_id"], "can_id": obs["can_id"],
             "x_m": x, "y_m": y, "zone": obs["zone"],
-            "point_inside_polygon": bool(inside.contains_point((x, y))),
+            "point_inside_polygon": inside_site,
+            "zone_geometry_mismatch": zone_mismatch,
             "collection_duration_s": obs["duration_s"],
             "measured_mm": measured, "predicted_mm": predicted_depth,
             "residual_predicted_minus_measured_mm": predicted_depth - measured,
@@ -237,6 +241,8 @@ def main() -> None:
         "scope": "model-to-catch-can comparison at exact supplied coordinates",
         "n_sprinkler_heads": int(len(heads)),
         "n_valid_observations": len(predictions),
+        "zone_geometry_mismatch_count": sum(bool(row["zone_geometry_mismatch"]) for row in predictions),
+        "zone_geometry_mismatch_can_ids": [row["can_id"] for row in predictions if row["zone_geometry_mismatch"]],
         "flow_lpm_per_head": [measured if measured is not None else args.flow_lpm for measured in head_flows],
         "flow_source": "per-head heads CSV values with CLI fallback where blank",
         "radial_slope": args.radial_slope if profile is None else None,
