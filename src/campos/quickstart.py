@@ -107,8 +107,8 @@ def main(argv: list[str] | None = None) -> int:
     )
     parser.add_argument("--outdir", default="out/campos-quickstart", help="Output directory (default: out/campos-quickstart)")
     parser.add_argument(
-        "--mode", choices=("movable", "fixed", "pareto-movable", "pareto-fixed"),
-        default="movable", help="Optimization mode (default: movable)",
+        "--mode", choices=("compare", "movable", "fixed", "pareto-movable", "pareto-fixed"),
+        default="compare", help="Compare fixed and movable layouts (default: compare)",
     )
     parser.add_argument("--sites", nargs="+", choices=("A", "B", "C", "D", "E"), default=["A"])
     parser.add_argument("--full", action="store_true", help="Run without the quick smoke-test settings")
@@ -117,31 +117,34 @@ def main(argv: list[str] | None = None) -> int:
     outdir = Path(args.outdir).expanduser().resolve()
     outdir.mkdir(parents=True, exist_ok=True)
     command = shutil.which("campos-sim")
-    if command:
-        invocation = [command]
-    else:
-        invocation = [sys.executable, "-m", "campos.campos_sim"]
-    invocation += ["--mode", args.mode, "--sites", *args.sites, "--outdir", str(outdir)]
-    if not args.full:
-        invocation.append("--quick")
-
-    print("campOS quickstart: running a synthetic demonstration.", flush=True)
-    print("Command:", " ".join(invocation), flush=True)
+    base_command = [command] if command else [sys.executable, "-m", "campos.campos_sim"]
+    modes = ["fixed", "movable"] if args.mode == "compare" else [args.mode]
+    invocations = []
+    print("campOS quickstart: running synthetic demonstration(s).", flush=True)
     try:
-        subprocess.run(invocation, check=True)
+        for mode in modes:
+            invocation = base_command + ["--mode", mode, "--sites", *args.sites, "--outdir", str(outdir)]
+            if not args.full:
+                invocation.append("--quick")
+            invocations.append(invocation)
+            print("Command:", " ".join(invocation), flush=True)
+            subprocess.run(invocation, check=True)
+            metadata = outdir / "run_metadata.json"
+            if args.mode == "compare" and metadata.is_file():
+                (outdir / f"run_metadata_{mode}.json").write_text(metadata.read_text(encoding="utf-8"), encoding="utf-8")
     except (OSError, subprocess.CalledProcessError) as exc:
         print(f"campOS simulation failed: {exc}", file=sys.stderr)
         print("No success report was written. Check the error above and retry.", file=sys.stderr)
         return 2
-
     manifest = {
         "product": "campOS",
         "workflow": "quickstart-synthetic-demo",
         "finished_at_utc": datetime.now(timezone.utc).isoformat(),
         "mode": args.mode,
+        "runs": modes,
         "sites": args.sites,
         "quick": not args.full,
-        "command": invocation,
+        "commands": invocations,
         "output_directory": str(outdir),
         "limitations": LIMITATIONS,
         "status": "simulation_completed_not_field_validated",
