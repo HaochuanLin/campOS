@@ -12,7 +12,7 @@ def md_escape(value: object) -> str:
     """Escape untrusted values before placing them in Markdown prose or tables."""
     return (
         str(value).replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
-        .replace("|", "\\|").replace("\\r", " ").replace("\\n", " ")
+        .replace("|", "\\|").replace("\r", " ").replace("\n", " ")
     )
 
 
