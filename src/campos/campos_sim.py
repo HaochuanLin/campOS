@@ -952,7 +952,7 @@ def main(argv=None):
             "target_factor": cfg["target_factor"],
             "cu_drop_budget": cfg["cu_drop_budget"],
             "pareto_overspray_weights": list(cfg["pareto_weights"]),
-            "note": "weights guide stochastic search; selected trade-off must not increase baseline overspray and must keep CU within the configured absolute loss budget from baseline; if no Pareto point meets both, no trade-off is selected",
+            "note": "weights guide stochastic search, not a single weighted score; selected trade-off must not increase baseline overspray and must keep CU within the configured absolute loss budget from baseline; if no Pareto point meets both, no trade-off is selected",
             "selection_guardrails": {
                 "max_overspray_increase_vs_baseline": 0.0,
                 "minimum_CU": "baseline_CU - cu_drop_budget",
