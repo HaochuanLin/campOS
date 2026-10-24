@@ -137,6 +137,8 @@ code {{ overflow-wrap: anywhere; }}
 <p>One-command synthetic demo. Run finished at {html.escape(manifest["finished_at_utc"])}.</p>
 <p><strong>Mode:</strong> {html.escape(manifest["mode"])} ·
 <strong>Sites:</strong> {html.escape(", ".join(manifest["sites"]))} ·
+<strong>Seed:</strong> {html.escape(str(manifest.get("seed", "n/a")))} ·
+<strong>Grid:</strong> {html.escape(str(manifest.get("cell_size_m", "n/a")))} m ·
 <strong>Quick mode:</strong> {html.escape(str(manifest["quick"]))}</p>
 </header>
 <div class="notice"><strong>Important limitation:</strong> This is a software demo, not a field-validated irrigation design. Synthetic success does not establish real-world water savings or road-wetting reduction.</div>
