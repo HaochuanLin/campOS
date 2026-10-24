@@ -64,3 +64,29 @@ def test_artifact_verifier_reports_missing_artifact(tmp_path):
     verified, failures = verifier.verify_manifest(manifest)
     assert verified == []
     assert failures == ["missing.csv: artifact is missing"]
+
+
+def test_artifact_verifier_rejects_non_object_json_root(tmp_path):
+    manifest = tmp_path / "quickstart_manifest.json"
+    manifest.write_text("[]", encoding="utf-8")
+    verified, failures = verifier.verify_manifest(manifest)
+    assert verified == []
+    assert failures == ["manifest root must be a JSON object"]
+
+
+def test_artifact_verifier_rejects_symlinked_artifact(tmp_path):
+    outside = tmp_path.parent / "outside-artifact.txt"
+    outside.write_text("not part of the run directory", encoding="utf-8")
+    (tmp_path / "linked.txt").symlink_to(outside)
+    manifest = tmp_path / "quickstart_manifest.json"
+    manifest.write_text(json.dumps({
+        "artifact_checksums": {
+            "linked.txt": {
+                "size_bytes": outside.stat().st_size,
+                "sha256": hashlib.sha256(outside.read_bytes()).hexdigest(),
+            }
+        }
+    }), encoding="utf-8")
+    verified, failures = verifier.verify_manifest(manifest)
+    assert verified == []
+    assert failures == ["linked.txt: artifact must be a regular file beside the manifest"]
