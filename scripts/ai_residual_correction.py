@@ -35,7 +35,7 @@ def load_predictions(path: Path) -> list[dict[str, object]]:
         if reader.fieldnames is None or not required.issubset(reader.fieldnames):
             raise ValueError(
                 "input CSV must be campos-field-evaluate paired_predictions.csv "
-                "with x_m,y_m,measured_mm,predicted_mm,split columns"
+                "with site_id,run_id,can_id,x_m,y_m,measured_mm,predicted_mm,split columns"
             )
         rows = list(reader)
     parsed = []
@@ -57,7 +57,7 @@ def load_predictions(path: Path) -> list[dict[str, object]]:
                 f"row {line}: duplicate site_id/run_id/can_id {observation_key!r}"
             )
         seen_observations.add(observation_key)
-        split = row["split"].strip().lower()
+        split = str(row.get("split", "")).strip().lower()
         if not all(math.isfinite(v) for v in (x, y, measured, predicted)):
             raise ValueError(f"row {line}: all numeric values must be finite")
         if measured < 0 or predicted < 0:
