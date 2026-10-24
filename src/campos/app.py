@@ -71,6 +71,7 @@ with st.sidebar:
             ("Download lawn polygon example", "site_polygon_template.csv"),
             ("Download sprinkler layout example", "sprinkler_layout_template.csv"),
             ("Download protected-surface example", "protected_surface_template.csv"),
+            ("Download catch-can observation template", "field_catch_can_template.csv"),
         ):
             template_path = template_dir / filename
             if template_path.is_file():
