@@ -27,6 +27,8 @@ def verify_manifest(manifest_path: Path) -> tuple[list[str], list[str]]:
         manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
     except (OSError, json.JSONDecodeError) as exc:
         return [], [f"cannot read manifest: {exc}"]
+    if not isinstance(manifest, dict):
+        return [], ["manifest root must be a JSON object"]
     artifacts = manifest.get("artifact_checksums")
     if not isinstance(artifacts, dict):
         return [], ["manifest has no artifact_checksums object"]
@@ -34,7 +36,11 @@ def verify_manifest(manifest_path: Path) -> tuple[list[str], list[str]]:
     failures: list[str] = []
     root = manifest_path.resolve().parent
     for name, expected in sorted(artifacts.items()):
-        if not isinstance(name, str) or not name or Path(name).name != name:
+        if (
+            not isinstance(name, str) or not name
+            or name in {".", ".."} or "/" in name or "\\" in name
+            or Path(name).name != name
+        ):
             failures.append(f"unsafe artifact name: {name!r}")
             continue
         if not isinstance(expected, dict):
@@ -49,6 +55,9 @@ def verify_manifest(manifest_path: Path) -> tuple[list[str], list[str]]:
             failures.append(f"{name}: invalid size_bytes value in manifest")
             continue
         path = root / name
+        if path.is_symlink() or path.resolve().parent != root:
+            failures.append(f"{name}: artifact must be a regular file beside the manifest")
+            continue
         if not path.is_file():
             failures.append(f"{name}: artifact is missing")
             continue
