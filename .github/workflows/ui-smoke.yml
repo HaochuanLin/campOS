@@ -27,7 +27,20 @@ jobs:
       - name: Exercise the app script with Streamlit AppTest
         run: |
           python - <<'PY'
+          from pathlib import Path
           from streamlit.testing.v1 import AppTest
+
+          expected_templates = {
+              "site_polygon_template.csv",
+              "sprinkler_layout_template.csv",
+              "protected_surface_template.csv",
+              "field_catch_can_template.csv",
+              "catch_can_profile_template.csv",
+              "sprinkler_performance_template.csv",
+          }
+          template_dir = Path("data/templates")
+          missing_templates = sorted(name for name in expected_templates if not (template_dir / name).is_file())
+          assert not missing_templates, f"Starter templates missing from repository: {missing_templates}"
 
           app = AppTest.from_file("streamlit_app.py", default_timeout=120).run()
           assert not app.exception, "\n".join(str(item) for item in app.exception)
