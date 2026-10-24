@@ -21,7 +21,7 @@ jobs:
       - name: Verify installed verifier entry point
         run: campos-verify-artifacts --help
       - name: Generate synthetic quickstart artifacts
-        run: campos-start --outdir out/artifact-integrity-smoke
+        run: campos-start --outdir out/artifact-integrity-smoke --seed 19 --cell-size 0.25
       - name: Verify generated artifact hashes
         run: campos-verify-artifacts --manifest out/artifact-integrity-smoke/quickstart_manifest.json
       - name: Verify manifest has environment and checksum metadata
@@ -33,8 +33,8 @@ jobs:
           assert manifest["status"] == "simulation_completed_not_field_validated"
           assert manifest["python_version"]
           assert manifest["platform"]
-          assert manifest["seed"] == 7
-          assert manifest["cell_size_m"] == 0.5
+          assert manifest["seed"] == 19
+          assert manifest["cell_size_m"] == 0.25
           assert "results_fixed.csv" in manifest["artifact_checksums"]
           assert "results_movable.csv" in manifest["artifact_checksums"]
           assert all(len(item["sha256"]) == 64 for item in manifest["artifact_checksums"].values())
