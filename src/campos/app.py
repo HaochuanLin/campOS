@@ -93,6 +93,8 @@ st.warning(
 )
 
 if run:
+    # Avoid showing a previous run as if it were the result of this attempt.
+    st.session_state.pop("campos_run", None)
     with st.spinner("Running campOS simulation and building the report…"):
         with tempfile.TemporaryDirectory(prefix="campos-ui-") as temporary:
             workdir = Path(temporary)
