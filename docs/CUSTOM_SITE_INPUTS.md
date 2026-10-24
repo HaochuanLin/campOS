@@ -70,9 +70,10 @@ Run the area diagnostic before optimization to quantify how cell-centre rasteriz
 python scripts/check_protected_surface_resolution.py \
   --polygon-csv data/site_polygon.csv \
   --protected-surface-csv data/sidewalk_polygon.csv \
+  --heads-csv data/sprinkler_layout.csv \
   --cell-sizes 2,1,0.5,0.25 \
   --max-relative-error 0.05 \
   --out out/protected-surface-resolution.csv
 ```
 
-The optional error limit applies to the finest requested grid; the command exits non-zero if its rasterized protected area exceeds that relative error. Choose a tolerance appropriate to the site and decision, not merely one that makes the check pass. This diagnostic checks **area representation only**. It does not prove that the simulated water objective, spray drift, or real road wetting has converged; compare model outputs across resolutions and validate with field measurements.
+The optional error limit applies to the finest requested grid; the command exits non-zero if its rasterized protected area exceeds that relative error. Choose a tolerance appropriate to the site and decision, not merely one that makes the check pass. If `--heads-csv` is supplied, the script also applies the **same fixed sprinkler layout** at every grid size and reports integrated modelled water on the protected surface as a share of total modelled water. This isolates grid effects from optimizer/layout changes. The area-error threshold does not certify convergence of that water share, nor does this simulate drift or prove real road wetting; inspect the water-share variation across resolutions and validate with field measurements.
