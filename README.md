@@ -95,7 +95,7 @@ python scripts/check_protected_surface_resolution.py \
   --out out/protected-surface-resolution.csv
 ```
 
-The optional `--heads-csv` evaluates one unchanged sprinkler layout at each resolution and reports the modelled water share reaching the protected polygon. The area-error threshold applies only to polygon area; water-share variation still needs review and does not establish field performance. See [custom-site and resolution-check documentation](docs/CUSTOM_SITE_INPUTS.md).
+The optional `--heads-csv` evaluates one unchanged sprinkler layout at each resolution and reports the modelled water share reaching the protected polygon. `--max-water-share-spread 1.0` can optionally require that share to vary by no more than one percentage point across the tested grids. These are user-selected numerical tolerances, not engineering standards or proof of field performance. See [custom-site and resolution-check documentation](docs/CUSTOM_SITE_INPUTS.md).
 
 ### Run the included field-evaluation example
 
