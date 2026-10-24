@@ -139,6 +139,22 @@ def field_record(can_id: str, validity_flag: str) -> dict[str, str]:
     }
 
 
+def test_qc_refuses_to_overwrite_raw_input_or_alias_outputs(tmp_path):
+    input_path = write_csv(
+        tmp_path / "raw.csv",
+        list(field_record("can-1", "exclude").keys()),
+        [field_record("can-1", "exclude")],
+    )
+    original = input_path.read_bytes()
+    with pytest.raises(ValueError, match="must use distinct paths"):
+        validate_file(input_path, input_path, tmp_path / "summary.json")
+    assert input_path.read_bytes() == original
+
+    same_output = tmp_path / "same-output"
+    with pytest.raises(ValueError, match="must use distinct paths"):
+        validate_file(input_path, same_output, same_output)
+
+
 def test_qc_preserves_excluded_observation_without_measurement(tmp_path):
     input_path = write_csv(
         tmp_path / "raw.csv",
