@@ -985,6 +985,37 @@ def test_pareto_tradeoff_zero_cu_budget_selects_most_uniform_point():
 
 
 
+def test_protected_surface_polygon_is_disjoint_and_objective_is_surface_specific():
+    lawn = sim.site_rect()
+    protected = np.array([[-4.0, 0.0], [-4.0, 25.0], [-2.0, 25.0], [-2.0, 0.0]])
+    assert not sim.polygons_overlap(lawn, protected)
+    overlapping = np.array([[-1.0, 0.0], [-1.0, 5.0], [2.0, 5.0], [2.0, 0.0]])
+    assert sim.polygons_overlap(lawn, overlapping)
+
+    cfg = dict(sim.CFG, cell=1.0, margin=2.0, dry_thresh_frac=0.3,
+               protected_polygon=protected)
+    site = sim.Site(lawn, cfg)
+    field = np.zeros_like(site.X)
+    field.ravel()[site.idx] = 1.0
+    field[~site.mask] = 0.25
+    field[site.protected_mask] = 0.75
+    ref = {"W0": 100.0, "T": 1.0}
+    f1, f2, dry = sim.bi_eval(site, field, ref, cfg)
+    expected_protected_water = field[site.protected_mask].sum()
+    np.testing.assert_allclose(f1, expected_protected_water / ref["W0"])
+    assert f2 == 0.0
+    assert dry == 0.0
+    assert site.protected_mask.any()
+    assert not np.any(site.protected_mask & site.mask)
+
+
+def test_protected_surface_polygon_csv_loader_accepts_valid_polygon(tmp_path):
+    path = tmp_path / "sidewalk.csv"
+    path.write_text("x_m,y_m\\n-4,0\\n-4,25\\n-2,25\\n-2,0\\n", encoding="utf-8")
+    points = sim.load_polygon_csv(path)
+    np.testing.assert_allclose(points, [[-4, 0], [-4, 25], [-2, 25], [-2, 0]])
+
+
 def test_pareto_overspray_objective_counts_only_water_outside_lawn():
     cfg = dict(sim.CFG, cell=1.0, margin=2.0, dry_thresh_frac=0.3)
     site = sim.Site(sim.site_rect(), cfg)
