@@ -91,9 +91,13 @@ python campos_sim.py --mode all --outdir out/full
 Use `--seed` to set the random seed and `--cell-size` to change the spatial grid resolution (in metres), for example:
 
 ```bash
-python campos_sim.py --mode movable --quick --sites A --seed 19 --cell-size 1.0 --outdir out/coarse-grid\n\n# Compare grid resolutions for one synthetic site\n```bash
-python scripts/grid_sensitivity.py --site 'A Rectangle' --cell-sizes 2,1,0.5 --out out/grid_sensitivity.csv
+python campos_sim.py --mode movable --quick --sites A --seed 19 --cell-size 1.0 --outdir out/coarse-grid
 ```
+
+Compare grid resolutions for one synthetic site:
+
+```bash
+python scripts/grid_sensitivity.py --site 'A Rectangle' --cell-sizes 2,1,0.5 --out out/grid_sensitivity.csv
 ```
 
 The seed and cell size are recorded in `run_metadata.json`. Smaller cells increase spatial resolution and runtime; results from different cell sizes should be treated as a sensitivity comparison, not directly interchangeable measurements. Invalid site IDs and non-positive or non-finite cell sizes are rejected with a clear CLI error.
