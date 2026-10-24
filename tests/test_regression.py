@@ -978,3 +978,22 @@ def test_pareto_tradeoff_zero_cu_budget_selects_most_uniform_point():
         {"f1": 0.12, "CU": 0.95},
     ]
     assert sim.select_tradeoff(front, budget=0.0) == 2
+
+
+
+def test_pareto_overspray_objective_counts_only_water_outside_lawn():
+    cfg = dict(sim.CFG, cell=1.0, margin=2.0, dry_thresh_frac=0.3)
+    site = sim.Site(sim.site_rect(), cfg)
+    field = np.zeros_like(site.X)
+    field.ravel()[site.idx] = 1.0
+    field[~site.mask] = 0.25
+    reference_total_water = 100.0
+
+    f1, f2, dry = sim.bi_eval(
+        site, field, {"W0": reference_total_water, "T": 1.0}, cfg
+    )
+
+    expected_outside_water = np.count_nonzero(~site.mask) * 0.25
+    np.testing.assert_allclose(f1, expected_outside_water / reference_total_water)
+    assert f2 == 0.0
+    assert dry == 0.0
