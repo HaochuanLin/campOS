@@ -87,7 +87,7 @@ jobs:
         run: python scripts/parameter_sensitivity.py --quick --sites A --seeds 7 19 --cell-sizes 1.0 --slopes -0.5 0 1 --outdir out/parameter-sensitivity
       - name: Run matched optimization benchmark smoke test
         if: matrix.python-version == '3.10'
-        run: python scripts/compare_optimization_modes.py --quick --sites A --outdir out/optimization-benchmark
+        run: python scripts/compare_optimization_modes.py --quick --sites E --outdir out/optimization-benchmark
       - name: Upload optimization benchmark results
         if: always() && matrix.python-version == '3.10'
         uses: actions/upload-artifact@v7
