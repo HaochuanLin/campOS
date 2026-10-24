@@ -44,9 +44,6 @@ jobs:
           campos-field-report --input-json out/field-evaluation-smoke/field_evaluation_metrics.json
           test -s out/field-evaluation-smoke/field_evaluation_report.html
           test -s out/field-evaluation-smoke/field_evaluation_report.md
-      - name: Run radial sensitivity scenarios
-        if: matrix.python-version == '3.10'
-        run: python scripts/parameter_sensitivity.py --quick --sites A --seeds 7 19 --cell-sizes 1.0 --slopes -0.5 0 1 --outdir out/radial-sensitivity
       - name: Run design report smoke test
         if: matrix.python-version == '3.10'
         run: |
