@@ -50,6 +50,30 @@ def test_ai_residual_correction_trains_only_on_calibration_rows(tmp_path):
     assert all(float(row["ai_residual_std_mm"]) >= 0 for row in output_rows)
 
 
+def test_ai_residual_correction_rejects_spatial_leakage(tmp_path):
+    predictions = tmp_path / "overlapping_coordinates.csv"
+    rows = ["site_id,run_id,can_id,x_m,y_m,measured_mm,predicted_mm,split"]
+    for i in range(12):
+        x = float(i % 6) * 2.0
+        y = float(i // 6) * 4.0
+        split = "calibration" if i < 8 else "holdout"
+        # Force one holdout point to reuse a calibration coordinate.
+        if i == 8:
+            x, y = 0.0, 0.0
+        rows.append(f"site,run,can{i},{x},{y},5.0,5.0,{split}")
+    predictions.write_text("\n".join(rows) + "\n", encoding="utf-8")
+    completed = subprocess.run(
+        [
+            sys.executable, str(ROOT / "scripts" / "ai_residual_correction.py"),
+            "--predictions-csv", str(predictions),
+            "--outdir", str(tmp_path / "ai-output"),
+        ],
+        cwd=ROOT, text=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, check=False,
+    )
+    assert completed.returncode != 0
+    assert "coordinates must be disjoint to prevent spatial leakage" in completed.stdout
+
+
 def test_catch_can_validation_keeps_holdout_out_of_scale_fit(tmp_path):
     lawn_csv = tmp_path / "lawn.csv"
     heads_csv = tmp_path / "heads.csv"
