@@ -712,7 +712,7 @@ def plot_pareto(results, fn, cfg):
                 ax.scatter([p["f1"] * 100], [p[key] * mult], s=220, facecolors="none",
                            edgecolors="#ff7f0e", linewidths=2.2, zorder=5,
                            label=(f"selected: overspray increase <= {cfg['max_overspray_increase']:.2f}; "
-                                  f"baseline CU loss <= {cfg['cu_drop_budget']:.2f}"))
+                                  f"baseline CU budget <= {cfg['cu_drop_budget']:.2f}; deficit <= baseline"))
             if key == "dry":
                 ax.axhline(cfg["dry_frac_limit"] * 100, color="gray", ls="--", lw=1,
                            label="dry-fraction limit")
