@@ -104,6 +104,31 @@ The sprinkler layout may include an optional `flow_lpm` column with a measured f
 
 **Scope:** all heads are assumed to have the same supplied flow. Predictions omit wind, drift, evaporation, pressure loss, and network hydraulics. The tool computes errors but does not declare a model valid or decide pass/fail. Set acceptance thresholds before looking at holdout errors, and do not calibrate using holdout observations.
 
+### Optional machine-readable acceptance assessment
+
+If the study protocol already specifies justified limits, store them in a JSON file before evaluating holdout data. The following numbers are **illustrative syntax only**, not recommended engineering tolerances:
+
+```json
+{
+  "max_holdout_mae_mm": 1.0,
+  "max_holdout_rmse_mm": 1.5,
+  "max_absolute_bias_mm": 0.5
+}
+```
+
+Pass the file to the installed command:
+
+```bash
+campos-field-evaluate \
+  --polygon-csv data/site_polygon.csv \
+  --heads-csv data/sprinkler_layout.csv \
+  --observations data/field_catch_can_observations.csv \
+  --acceptance-thresholds-json data/preregistered-thresholds.json \
+  --outdir out/field-evaluation
+```
+
+The metrics JSON and generated HTML/Markdown reports then record each observed holdout metric, its user-supplied limit, and whether that individual check passed. The threshold file's SHA-256 is recorded for provenance. Without this option, the tool reports descriptive errors and does not invent an acceptance result. A software-level pass only means the chosen numeric limits were met for these supplied observations; it does not establish general validity, independent sampling, or water savings.
+
 ## Paired error metrics for predictions already available
 
 campOS also includes `scripts/evaluate_observation_errors.py`. It computes descriptive bias, MAE, RMSE, maximum absolute error, and an optional R-squared-style comparison for paired depths supplied by the user. It requires a CSV with `measured_mm,predicted_mm,split`; `split` must be `calibration` or `holdout`, and at least two holdout rows are required by default.
