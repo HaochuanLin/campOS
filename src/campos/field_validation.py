@@ -287,6 +287,11 @@ def main() -> int:
                         help="optional measured relative radial profile (takes precedence over slope)")
     parser.add_argument("--acceptance-thresholds-json", type=Path, default=None,
                         help="optional pre-registered JSON limits: max_holdout_mae_mm, max_holdout_rmse_mm, max_absolute_bias_mm")
+    parser.add_argument(
+        "--fail-on-zone-geometry-mismatch",
+        action="store_true",
+        help="return a nonzero exit code if inside/outside observation labels contradict the lawn polygon",
+    )
     parser.add_argument("--outdir", type=Path, default=Path("out/field-evaluation"))
     args = parser.parse_args()
     acceptance_assessment = None
@@ -336,10 +341,20 @@ def main() -> int:
         "status": (
             "acceptance_thresholds_failed"
             if acceptance_assessment is not None and acceptance_assessment["status"] == "fail"
+            else "zone_geometry_gate_failed"
+            if args.fail_on_zone_geometry_mismatch and any(row["zone_geometry_mismatch"] for row in predictions)
             else "acceptance_thresholds_passed"
             if acceptance_assessment is not None
             else "paired_spatial_predictions_and_descriptive_errors_generated"
         ),
+        "zone_geometry_gate": {
+            "enabled": args.fail_on_zone_geometry_mismatch,
+            "mismatch_count": sum(bool(row["zone_geometry_mismatch"]) for row in predictions),
+            "passed": (
+                not any(row["zone_geometry_mismatch"] for row in predictions)
+                if args.fail_on_zone_geometry_mismatch else None
+            ),
+        },
         "scope": "model-to-catch-can comparison at exact supplied coordinates",
         "n_sprinkler_heads": int(len(heads)),
         "n_valid_observations": len(predictions),
@@ -396,7 +411,11 @@ def main() -> int:
         ),
     }, indent=2))
     # Preserve outputs for audit, but make a failed pre-registered gate fail CI/shell automation.
-    return 2 if acceptance_assessment is not None and acceptance_assessment["status"] == "fail" else 0
+    acceptance_failed = acceptance_assessment is not None and acceptance_assessment["status"] == "fail"
+    zone_gate_failed = args.fail_on_zone_geometry_mismatch and any(
+        row["zone_geometry_mismatch"] for row in predictions
+    )
+    return 2 if acceptance_failed or zone_gate_failed else 0
 
 
 if __name__ == "__main__":
