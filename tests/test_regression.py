@@ -1005,20 +1005,20 @@ def test_pareto_overspray_objective_counts_only_water_outside_lawn():
 
 
 def test_baseline_guard_rejects_pareto_points_that_increase_overspray():
-    baseline = {"f1": 0.007, "CU": 0.700}
+    baseline = {"f1": 0.007, "CU": 0.700, "f2": 0.15}
     front = [
-        {"f1": 0.051, "CU": 0.765},
-        {"f1": 0.142, "CU": 0.729},
+        {"f1": 0.051, "CU": 0.765, "f2": 0.10},
+        {"f1": 0.142, "CU": 0.729, "f2": 0.11},
     ]
     assert sim.select_tradeoff(front, budget=0.03, baseline=baseline) is None
 
 
 def test_baseline_guard_selects_lowest_overspray_without_exceeding_cu_budget():
-    baseline = {"f1": 0.10, "CU": 0.80}
+    baseline = {"f1": 0.10, "CU": 0.80, "f2": 0.20}
     front = [
-        {"f1": 0.08, "CU": 0.75},
-        {"f1": 0.06, "CU": 0.76},
-        {"f1": 0.04, "CU": 0.70},
+        {"f1": 0.08, "CU": 0.75, "f2": 0.15},
+        {"f1": 0.06, "CU": 0.76, "f2": 0.14},
+        {"f1": 0.04, "CU": 0.70, "f2": 0.12},
     ]
     selected = sim.select_tradeoff(front, budget=0.05, baseline=baseline)
     assert selected == 1
@@ -1027,24 +1027,33 @@ def test_baseline_guard_selects_lowest_overspray_without_exceeding_cu_budget():
 
 
 def test_baseline_guard_returns_none_when_cu_budget_is_violated():
-    baseline = {"f1": 0.10, "CU": 0.80}
+    baseline = {"f1": 0.10, "CU": 0.80, "f2": 0.20}
     front = [
-        {"f1": 0.05, "CU": 0.70},
-        {"f1": 0.08, "CU": 0.74},
+        {"f1": 0.05, "CU": 0.70, "f2": 0.10},
+        {"f1": 0.08, "CU": 0.74, "f2": 0.12},
     ]
     assert sim.select_tradeoff(front, budget=0.03, baseline=baseline) is None
 
 
 
 def test_baseline_guard_allows_only_explicit_overspray_tolerance():
-    baseline = {"f1": 0.007, "CU": 0.700}
+    baseline = {"f1": 0.007, "CU": 0.700, "f2": 0.15}
     front = [
-        {"f1": 0.015, "CU": 0.700},
-        {"f1": 0.030, "CU": 0.710},
+        {"f1": 0.015, "CU": 0.700, "f2": 0.14},
+        {"f1": 0.016, "CU": 0.710, "f2": 0.16},
     ]
     assert sim.select_tradeoff(
         front, budget=0.03, baseline=baseline, max_overspray_increase=0.01
     ) == 0
     assert sim.select_tradeoff(
         front, budget=0.03, baseline=baseline, max_overspray_increase=0.005
+    ) is None
+
+
+
+def test_baseline_guard_rejects_worse_interior_deficit_even_with_overspray_tolerance():
+    baseline = {"f1": 0.007, "CU": 0.700, "f2": 0.15}
+    front = [{"f1": 0.02, "CU": 0.700, "f2": 0.16}]
+    assert sim.select_tradeoff(
+        front, budget=0.03, baseline=baseline, max_overspray_increase=0.10
     ) is None
