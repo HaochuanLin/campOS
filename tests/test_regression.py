@@ -889,7 +889,7 @@ def test_catch_can_prediction_uses_exact_coordinates_and_reports_holdout_metrics
         "site_id,run_id,can_id,x_m,y_m,zone,collection_duration_s,"
         "collected_volume_ml,measured_depth_mm,container_opening_area_cm2,validity_flag,split\n"
         "site-1,cal-run,can-1,10,10,inside,600,,0.127323954,,valid,calibration\n"
-        "site-1,cal-run,can-2,11,10,inside,600,,0.127323954,,valid,calibration\n"
+        "site-1,cal-run,can-2,11,10,outside,600,,0.127323954,,valid,calibration\n"
         "site-1,test-run,can-3,12,10,inside,600,,0.127323954,,valid,holdout\n"
         "site-1,test-run,can-4,13,10,inside,600,,0.127323954,,valid,holdout\n",
         encoding="utf-8",
