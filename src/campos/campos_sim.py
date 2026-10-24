@@ -204,6 +204,20 @@ def load_polygon_csv(path):
     return points
 
 
+def polygons_overlap(poly_a, poly_b):
+    """Conservative polygon-overlap check, including boundary crossings."""
+    a = np.asarray(poly_a, dtype=float)
+    b = np.asarray(poly_b, dtype=float)
+    path_a, path_b = Path(a), Path(b)
+    if np.any(path_a.contains_points(b)) or np.any(path_b.contains_points(a)):
+        return True
+    for i in range(len(a)):
+        for j in range(len(b)):
+            if _segments_intersect(a[i], a[(i + 1) % len(a)], b[j], b[(j + 1) % len(b)]):
+                return True
+    return False
+
+
 def load_heads_csv(path, polygon, cfg):
     """Load initial sprinkler rows: x_m,y_m,radius_m,start_angle_deg,arc_width_deg."""
     required = {"x_m", "y_m", "radius_m", "start_angle_deg", "arc_width_deg"}
