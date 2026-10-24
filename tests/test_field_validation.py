@@ -7,7 +7,9 @@ import pytest
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "src"))
 
-from campos.field_validation import load_heads, load_observations  # noqa: E402
+from campos.field_validation import (  # noqa: E402
+    assess_holdout, load_heads, load_observations, validate_acceptance_thresholds,
+)
 from campos.field_observations import validate_file  # noqa: E402
 
 
@@ -158,3 +160,39 @@ def test_qc_still_requires_measurement_for_valid_observation(tmp_path):
     )
     with pytest.raises(ValueError, match="for valid observations"):
         validate_file(input_path, tmp_path / "normalized.csv", tmp_path / "summary.json")
+
+
+
+def test_acceptance_thresholds_require_explicit_finite_nonnegative_limits():
+    assert validate_acceptance_thresholds({"max_holdout_mae_mm": "2.5"}) == {
+        "max_holdout_mae_mm": 2.5
+    }
+    for invalid in (
+        {},
+        {"max_holdout_mae_mm": -1},
+        {"max_holdout_rmse_mm": float("nan")},
+        {"universal_pass_score": 0.1},
+    ):
+        with pytest.raises(ValueError):
+            validate_acceptance_thresholds(invalid)
+
+
+def test_holdout_assessment_uses_user_limits_and_absolute_bias():
+    metrics = {
+        "holdout": {
+            "mae_mm": 1.2,
+            "rmse_mm": 1.8,
+            "bias_mm_predicted_minus_measured": -0.4,
+        }
+    }
+    thresholds = validate_acceptance_thresholds({
+        "max_holdout_mae_mm": 1.5,
+        "max_holdout_rmse_mm": 2.0,
+        "max_absolute_bias_mm": 0.5,
+    })
+    assessment = assess_holdout(metrics, thresholds)
+    assert assessment["status"] == "pass"
+    assert all(check["passed"] for check in assessment["checks"])
+
+    strict = validate_acceptance_thresholds({"max_absolute_bias_mm": 0.3})
+    assert assess_holdout(metrics, strict)["status"] == "fail"
