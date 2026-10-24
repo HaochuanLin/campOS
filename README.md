@@ -67,7 +67,7 @@ python -m pip install -e ".[ui]"
 streamlit run src/campos/app.py
 ```
 
-The interface lets you select synthetic sites or upload a surveyed lawn polygon and sprinkler-layout CSV, choose an optimization mode, seed, and grid resolution, inspect result tables and plots, and download generated artifacts. Custom-site mode can optionally take a separate road/sidewalk polygon for the protected-surface objective. It runs locally; it is not a hosted service. Uploaded geometry must use metre-based coordinates and the documented CSV columns; this UI does not replace surveying, field measurements, or independent validation. See the [local UI guide](docs/LOCAL_UI_GUIDE.md) for the input contract and interpretation limits.
+The interface lets you select synthetic sites or upload a surveyed lawn polygon and sprinkler-layout CSV, choose an optimization mode, seed, and grid resolution, inspect result tables and plots, and download generated artifacts. Custom-site mode can optionally take a separate road/sidewalk polygon for the protected-surface objective. It runs locally; it is not a hosted service. Uploaded geometry must use metre-based coordinates and the documented CSV columns; this UI does not replace surveying, field measurements, or independent validation. See the [local UI guide](docs/LOCAL_UI_GUIDE.md) for the input contract and interpretation limits. The UI also offers example lawn, sprinkler-layout, and protected-surface CSVs; their coordinates are illustrative, not surveyed measurements.
 
 ### One-command start (no real data required)
 
