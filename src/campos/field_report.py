@@ -93,6 +93,7 @@ def build_report(metrics_path: Path) -> tuple[str, str]:
             "",
             f"- Status: {acceptance.get('status', 'unknown')}",
             f"- Note: {acceptance.get('note', '')}",
+            f"- Threshold config SHA-256: {report.get('acceptance_thresholds_json_sha256') or 'not recorded'}",
             "",
             "| Metric | Observed | Limit | Passed |",
             "|---|---:|---:|:---:|",
@@ -161,6 +162,7 @@ def build_report(metrics_path: Path) -> tuple[str, str]:
             "<h2>Pre-registered holdout acceptance assessment</h2>"
             f"<p><strong>Status:</strong> {esc(acceptance.get('status', 'unknown'))}</p>"
             f"<p>{esc(acceptance.get('note', ''))}</p>"
+            f"<p>Threshold config SHA-256: <code>{esc(report.get('acceptance_thresholds_json_sha256') or 'not recorded')}</code></p>"
             "<table><thead><tr><th>Metric</th><th>Observed</th><th>Limit</th>"
             f"<th>Passed</th></tr></thead><tbody>{acceptance_rows}</tbody></table>"
         )
