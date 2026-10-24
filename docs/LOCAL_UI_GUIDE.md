@@ -9,7 +9,7 @@ python -m pip install -e ".[ui]"
 streamlit run src/campos/app.py
 ```
 
-The app runs locally. It is a user interface for the research prototype, not a hosted service or a certified engineering tool.
+The app runs locally. It is a user interface for the research prototype, not a hosted service or a certified engineering tool. To enable the experimental AI residual-correction option as well, install `python -m pip install -e ".[ui,ai]"`; it is optional and should only be used after a successful field-evaluation run.
 
 ## Synthetic mode
 
