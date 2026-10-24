@@ -81,6 +81,8 @@ Current work primarily strengthens levels 1 and 2 and prepares workflows for lev
 
 ### Phase B — Strengthen physical consistency
 
+- Add an explicit surveyed protected-surface mask (e.g. sidewalk/road polygons) so the objective can distinguish protected hardscape from other outside-lawn areas; report both total outside-lawn water and protected-surface water separately.
+- Validate protected-surface geometry and predictions with catch-can observations before describing results as road/sidewalk-specific.
 - Trace pressure-performance input through flow, throw, radial distribution, and applied-depth calculation.
 - Make units and conversions explicit at each boundary.
 - Test full-circle and sector-flow conservation and verify that pressure interpolation is restricted to measured input ranges.
