@@ -1,0 +1,63 @@
+name: hosted-smoke
+
+on:
+  pull_request:
+  workflow_dispatch:
+  schedule:
+    - cron: "17 */6 * * *"
+
+permissions:
+  contents: read
+
+jobs:
+  hosted-app:
+    name: Check deployed Streamlit app
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - name: Check public app page and health endpoint
+        shell: bash
+        run: |
+          set -euo pipefail
+          base_url="https://campos-optimizer.streamlit.app"
+          page_ok=0
+          health_ok=0
+
+          for attempt in $(seq 1 12); do
+            status="$(curl --location --silent --show-error --output /tmp/campos-page.html --write-out '%{http_code}' --max-time 20 "$base_url" || true)"
+            if [ "$status" = "200" ] && grep -Eqi 'streamlit|campOS|sprinkler|irrigation' /tmp/campos-page.html; then
+              page_ok=1
+              echo "Hosted app root returned HTTP 200 and page content looks like a Streamlit app."
+              break
+            fi
+            echo "App page attempt $attempt returned HTTP ${status:-no response}; retrying after 10 seconds."
+            sleep 10
+          done
+
+          for attempt in $(seq 1 12); do
+            status="$(curl --location --silent --show-error --output /tmp/campos-health.txt --write-out '%{http_code}' --max-time 20 "$base_url/_stcore/health" || true)"
+            if [ "$status" = "200" ]; then
+              health_ok=1
+              echo "Hosted app health endpoint returned HTTP 200."
+              cat /tmp/campos-health.txt
+              break
+            fi
+            echo "Health check attempt $attempt returned HTTP ${status:-no response}; retrying after 10 seconds."
+            sleep 10
+          done
+
+          if [ "$page_ok" -ne 1 ] || [ "$health_ok" -ne 1 ]; then
+            echo "::error::Hosted app check failed (root_page_ok=$page_ok, health_ok=$health_ok)."
+            echo "Check Streamlit Community Cloud deployment status and Manage app → Logs."
+            exit 1
+          fi
+      - name: Publish hosted-app check summary
+        if: always()
+        run: |
+          {
+            echo "## campOS hosted-app smoke check"
+            echo
+            echo "- Target: https://campos-optimizer.streamlit.app/"
+            echo "- Checks: public root page responds with HTTP 200 and Streamlit health endpoint responds with HTTP 200."
+            echo "- Scope: deployment reachability only; this does not exercise browser downloads or prove field accuracy."
+          } >> "$GITHUB_STEP_SUMMARY"
