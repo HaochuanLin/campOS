@@ -43,6 +43,8 @@ def test_ai_residual_correction_trains_only_on_calibration_rows(tmp_path):
     assert summary["holdout_rows_used_for_training_or_kernel_selection"] is False
     assert summary["holdout_baseline_metrics"]["n"] == 4
     assert summary["holdout_ai_corrected_metrics"]["n"] == 4
+    assert 0.0 <= summary["holdout_ai_95pct_interval_empirical_coverage"] <= 1.0
+    assert summary["holdout_ai_mean_95pct_interval_width_mm"] >= 0.0
     with (outdir / "ai_corrected_predictions.csv").open(newline="", encoding="utf-8-sig") as fh:
         output_rows = list(csv.DictReader(fh))
     assert len(output_rows) == 12
