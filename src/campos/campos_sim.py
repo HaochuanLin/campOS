@@ -457,11 +457,17 @@ def bi_report(site, heads, ref, cfg):
     total = site.total(heads)
     f1, f2, dry = bi_eval(site, total, ref, cfg)
     _, m = score(site, total, cfg)
-    protected_water = float(total[site.protected_mask].sum()) if site.protected_path is not None else 0.0
+    protected_water_rel = (
+        float(total[site.protected_mask].sum() / ref["W0"])
+        if site.protected_path is not None else 0.0
+    )
+    outside_lawn_water_rel = float(
+        max(0.0, total.sum() - total.ravel()[site.idx].sum()) / ref["W0"]
+    )
     return dict(f1=f1, f2=f2, dry=dry, CU=float(m["CU"]), AR=float(m["AR"]),
                 over_own=float(m["overspray"]), water_rel=float(total.sum() / ref["W0"]),
-                outside_lawn_water=float(max(0.0, total.sum() - total.ravel()[site.idx].sum())),
-                protected_surface_water=protected_water, heads=heads)
+                outside_lawn_water=outside_lawn_water_rel,
+                protected_surface_water=protected_water_rel, heads=heads)
 
 
 class ParetoArchive:
