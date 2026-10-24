@@ -89,12 +89,13 @@ Before interpreting a protected-surface objective, quantify geometric rasterizat
 python scripts/check_protected_surface_resolution.py \
   --polygon-csv data/site_polygon.csv \
   --protected-surface-csv data/sidewalk_polygon.csv \
+  --heads-csv data/sprinkler_layout.csv \
   --cell-sizes 2,1,0.5,0.25 \
   --max-relative-error 0.05 \
   --out out/protected-surface-resolution.csv
 ```
 
-This diagnostic checks the rasterized polygon area only; it does not establish convergence of simulated water distribution or field performance. See [custom-site and resolution-check documentation](docs/CUSTOM_SITE_INPUTS.md).
+The optional `--heads-csv` evaluates one unchanged sprinkler layout at each resolution and reports the modelled water share reaching the protected polygon. The area-error threshold applies only to polygon area; water-share variation still needs review and does not establish field performance. See [custom-site and resolution-check documentation](docs/CUSTOM_SITE_INPUTS.md).
 
 ### Run the included field-evaluation example
 
