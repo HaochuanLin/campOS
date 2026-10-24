@@ -1392,3 +1392,27 @@ def test_pareto_guardrail_diagnostics_name_each_failed_constraint():
         "interior_deficit": False,
         "dry_area": False,
     }
+
+
+def test_quickstart_index_is_browsable_and_labels_synthetic_results(tmp_path):
+    from campos.quickstart import LIMITATIONS, build_index
+
+    (tmp_path / "results_movable.csv").write_text(
+        "site,baseline_AR,optimized_AR,baseline_CU,optimized_CU\\nA,2.0,1.5,0.7,0.8\\n",
+        encoding="utf-8",
+    )
+    (tmp_path / "layouts.png").write_bytes(b"test image placeholder")
+    manifest = {
+        "finished_at_utc": "2026-10-24T00:00:00+00:00",
+        "mode": "movable",
+        "sites": ["A"],
+        "quick": True,
+    }
+    report = build_index(tmp_path, manifest)
+    page = report.read_text(encoding="utf-8")
+    assert "campOS quickstart" in page
+    assert "not field-validated" in page
+    assert "results_movable.csv" in page
+    assert "layouts.png" in page
+    assert "optimized_AR" in page
+    assert all(item in page for item in LIMITATIONS)
