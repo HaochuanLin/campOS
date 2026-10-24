@@ -125,10 +125,13 @@ def main(argv: list[str] | None = None) -> int:
         help="optional predeclared acceptance gate; fail if AI holdout RMSE exceeds baseline by more than this amount",
     )
     args = parser.parse_args(argv)
-    if not math.isfinite(args.length_scale_m) or args.length_scale_m <= 0:
-        parser.error("--length-scale-m must be finite and positive")
-    if not math.isfinite(args.noise_level_mm) or args.noise_level_mm <= 0:
-        parser.error("--noise-level-mm must be finite and positive")
+    # These are initial values for log-space kernel optimization. Keep them
+    # inside the optimizer's fixed bounds so scikit-learn fails with a clear
+    # CLI diagnostic rather than a low-level theta/bounds exception.
+    if not math.isfinite(args.length_scale_m) or not 0.25 <= args.length_scale_m <= 100.0:
+        parser.error("--length-scale-m must be finite and between 0.25 and 100 metres")
+    if not math.isfinite(args.noise_level_mm) or not 1e-4 <= args.noise_level_mm <= 100.0:
+        parser.error("--noise-level-mm must be finite and between 0.0001 and 100 mm^2")
     if args.max_holdout_rmse_increase_mm is not None and (
         not math.isfinite(args.max_holdout_rmse_increase_mm)
         or args.max_holdout_rmse_increase_mm < 0
