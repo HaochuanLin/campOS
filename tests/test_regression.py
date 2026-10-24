@@ -461,6 +461,7 @@ def test_cli_records_explicit_optimization_policy(tmp_path):
             "--dry-fraction-limit", "0.04",
             "--target-factor", "1.1",
             "--cu-drop-budget", "0.05",
+            "--max-overspray-increase", "0.02",
             "--pareto-weights", "0,0.5,1",
             "--outdir", str(outdir),
         ],
@@ -472,6 +473,8 @@ def test_cli_records_explicit_optimization_policy(tmp_path):
     assert policy["dry_fraction_limit"] == 0.04
     assert policy["target_factor"] == 1.1
     assert policy["cu_drop_budget"] == 0.05
+    assert policy["max_overspray_increase"] == 0.02
+    assert policy["selection_guardrails"]["max_overspray_increase_vs_baseline"] == 0.02
     assert policy["pareto_overspray_weights"] == [0.0, 0.5, 1.0]
     assert "not a single weighted score" in policy["note"]
     assert metadata["config"]["pareto_weights"] == [0.0, 0.5, 1.0]
@@ -482,6 +485,7 @@ def test_cli_rejects_invalid_optimization_policy_values(tmp_path):
         (["--dry-fraction-limit", "1.1"], "--dry-fraction-limit"),
         (["--target-factor", "0"], "--target-factor"),
         (["--cu-drop-budget", "-0.1"], "--cu-drop-budget"),
+        (["--max-overspray-increase", "1.1"], "--max-overspray-increase"),
         (["--pareto-weights", "0,0.5,1.2"], "--pareto-weights"),
         (["--pareto-weights", "0,0.5,0.5"], "duplicate"),
     ]
