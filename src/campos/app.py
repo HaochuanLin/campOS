@@ -245,7 +245,7 @@ if run:
                         )
                     else:
                         evaluation_report_path = outdir / "field_evaluation_metrics.json"
-                        failed_gate_statuses = {"acceptance_thresholds_failed", "zone_geometry_gate_failed"}
+                        failed_gate_statuses = {"acceptance_thresholds_failed", "zone_geometry_gate_failed", "multiple_acceptance_gates_failed"}
                         try:
                             evaluation_report = json.loads(evaluation_report_path.read_text(encoding="utf-8"))
                         except (OSError, UnicodeError, json.JSONDecodeError):
