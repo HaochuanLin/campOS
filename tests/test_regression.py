@@ -881,7 +881,7 @@ def test_catch_can_prediction_uses_exact_coordinates_and_reports_holdout_metrics
     polygon.write_text("x_m,y_m\n0,0\n20,0\n20,20\n0,20\n", encoding="utf-8")
     heads = tmp_path / "heads.csv"
     heads.write_text(
-        "x_m,y_m,radius_m,start_angle_deg,arc_width_deg,flow_lpm\n10,10,5,0,360,1.0\n",
+        "x_m,y_m,radius_m,start_angle_deg,arc_width_deg,flow_lpm\n10,10,5,0,360,1.0\n-2,10,5,0,360,1.0\n",
         encoding="utf-8",
     )
     observations = tmp_path / "observations.csv"
@@ -891,7 +891,8 @@ def test_catch_can_prediction_uses_exact_coordinates_and_reports_holdout_metrics
         "site-1,cal-run,can-1,10,10,inside,600,,0.127323954,,valid,calibration\n"
         "site-1,cal-run,can-2,11,10,outside,600,,0.127323954,,valid,calibration\n"
         "site-1,test-run,can-3,12,10,inside,600,,0.127323954,,valid,holdout\n"
-        "site-1,test-run,can-4,13,10,inside,600,,0.127323954,,valid,holdout\n",
+        "site-1,test-run,can-4,13,10,inside,600,,0.127323954,,valid,holdout\n"
+        "site-1,test-run,can-5,-1,10,outside,600,,0.127323954,,valid,holdout\n",
         encoding="utf-8",
     )
     outdir = tmp_path / "evaluation"
@@ -906,14 +907,17 @@ def test_catch_can_prediction_uses_exact_coordinates_and_reports_holdout_metrics
     )
     assert completed.returncode == 0, completed.stdout + completed.stderr
     rows = list(csv.DictReader((outdir / "paired_predictions.csv").open(encoding="utf-8")))
-    assert len(rows) == 4
-    assert all(row["point_inside_polygon"] == "True" for row in rows)
+    assert len(rows) == 5
+    assert all(row["point_inside_polygon"] == "True" for row in rows[:4])
+    assert rows[4]["point_inside_polygon"] == "False"
     assert np.isclose(float(rows[0]["predicted_mm"]), 60 / (np.pi * 25) / 6)
     report = json.loads((outdir / "field_evaluation_metrics.json").read_text(encoding="utf-8"))
-    assert report["metrics"]["split_counts"] == {"calibration": 2, "holdout": 2}
+    assert report["metrics"]["split_counts"] == {"calibration": 2, "holdout": 3}
     assert report["metrics"]["metrics"]["holdout"]["mae_mm"] < 1e-6
     assert report["zone_geometry_mismatch_count"] == 1
     assert report["zone_geometry_mismatch_can_ids"] == ["can-2"]
+    assert report["metrics_by_zone"]["outside"]["holdout_n"] == 1
+    assert report["metrics_by_zone"]["outside"]["holdout"]["mae_mm"] < 1e-6
     assert "no universal pass threshold" in " ".join(report["limitations"]).lower()
 
 
