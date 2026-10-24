@@ -80,6 +80,7 @@ CFG = dict(
     archive_eps=0.002,      # archive resolution: points within eps of an existing one are dropped
     pareto_max_points=40,   # thin the final front to this many points for CSV/plot
     cu_drop_budget=0.03,    # maximum absolute CU loss from baseline allowed by the selection policy
+    max_overspray_increase=0.0,  # maximum allowed increase in f1 vs baseline; 0 means no regression
     # --- economics: ALL PLACEHOLDERS, replace with real numbers ---
     radial_slope=0.0,       # sensitivity parameter; 0 = uniform null model
     price_per_m3=5.0,       # UNUSED until a calibrated water-volume model is implemented
@@ -495,7 +496,7 @@ def pareto_search(site, heads0, cfg, fixed_xy, seed, ref, warm=None):
     return arch.h
 
 
-def select_tradeoff(front, budget, baseline=None):
+def select_tradeoff(front, budget, baseline=None, max_overspray_increase=0.0):
     """Select a low-overspray point without silently regressing the baseline.
 
     When a baseline report is supplied, candidates must (1) stay within the
@@ -512,7 +513,7 @@ def select_tradeoff(front, budget, baseline=None):
         ok = [i for i, p in enumerate(front) if p["CU"] >= cu_best - budget]
     else:
         cu_floor = baseline["CU"] - budget
-        overspray_ceiling = baseline["f1"] + 1e-12
+        overspray_ceiling = baseline["f1"] + max(0.0, max_overspray_increase) + 1e-12
         ok = [
             i for i, p in enumerate(front)
             if p["CU"] >= cu_floor and p["f1"] <= overspray_ceiling
@@ -544,7 +545,10 @@ def run_pareto(name, poly, cfg, fixed_xy, refs=None):
     front = [bi_report(site, cand[i], ref, cfg) for i in order]
     front.sort(key=lambda p: p["f1"])
     baseline_report = bi_report(site, h0, ref, cfg)
-    sel = select_tradeoff(front, cfg["cu_drop_budget"], baseline=baseline_report)
+    sel = select_tradeoff(
+        front, cfg["cu_drop_budget"], baseline=baseline_report,
+        max_overspray_increase=cfg["max_overspray_increase"],
+    )
     refs_out = {"Baseline (standard grid)": baseline_report,
                 "Naive full-circle (reference only)": bi_report(site, naive_full_circle(h0), ref, cfg)}
     for label, heads in (refs or {}).items():
@@ -705,7 +709,8 @@ def plot_pareto(results, fn, cfg):
                 p = fr[r["selected"]]
                 ax.scatter([p["f1"] * 100], [p[key] * mult], s=220, facecolors="none",
                            edgecolors="#ff7f0e", linewidths=2.2, zorder=5,
-                           label=f"selected: baseline overspray guard + CU loss <= {cfg['cu_drop_budget']:.2f}")
+                           label=(f"selected: overspray increase <= {cfg['max_overspray_increase']:.2f}; "
+                                  f"baseline CU loss <= {cfg['cu_drop_budget']:.2f}"))
             if key == "dry":
                 ax.axhline(cfg["dry_frac_limit"] * 100, color="gray", ls="--", lw=1,
                            label="dry-fraction limit")
@@ -761,6 +766,8 @@ def main(argv=None):
                     help="Pareto target depth as a multiple of baseline mean lawn depth (> 0)")
     ap.add_argument("--cu-drop-budget", type=float, default=CFG["cu_drop_budget"],
                     help="maximum absolute CU loss from baseline CU for a selected Pareto point (0..1)")
+    ap.add_argument("--max-overspray-increase", type=float, default=CFG["max_overspray_increase"],
+                    help="maximum allowed increase in Pareto f1 over baseline, as a fraction of baseline total water (0..1; default 0)")
     ap.add_argument("--pareto-weights", default=",".join(str(x) for x in CFG["pareto_weights"]),
                     help="comma-separated overspray weights in [0,1] for Pareto search, e.g. 0,0.25,0.5,0.75,1")
     # Load JSON defaults before the full parse so explicitly supplied CLI values win.
@@ -782,7 +789,7 @@ def main(argv=None):
             "mode", "sites", "polygon_csv", "heads_csv", "outdir", "quick",
             "seed", "cell_size", "profile_csv", "radial_slope",
             "performance_csv", "pressure_kpa", "dry_fraction_limit",
-            "target_factor", "cu_drop_budget", "pareto_weights",
+            "target_factor", "cu_drop_budget", "max_overspray_increase", "pareto_weights",
         }
         unknown = sorted(set(config_data) - config_keys)
         if unknown:
@@ -810,6 +817,8 @@ def main(argv=None):
         ap.error("--target-factor must be finite and greater than zero")
     if not np.isfinite(args.cu_drop_budget) or not 0.0 <= args.cu_drop_budget <= 1.0:
         ap.error("--cu-drop-budget must be finite and between 0 and 1")
+    if not np.isfinite(args.max_overspray_increase) or not 0.0 <= args.max_overspray_increase <= 1.0:
+        ap.error("--max-overspray-increase must be finite and between 0 and 1")
     try:
         pareto_weights = tuple(float(x.strip()) for x in args.pareto_weights.split(","))
     except ValueError:
@@ -823,7 +832,8 @@ def main(argv=None):
     cfg.update(
         seed=args.seed, cell=args.cell_size, radial_slope=args.radial_slope,
         dry_frac_limit=args.dry_fraction_limit, target_factor=args.target_factor,
-        cu_drop_budget=args.cu_drop_budget, pareto_weights=pareto_weights,
+        cu_drop_budget=args.cu_drop_budget, max_overspray_increase=args.max_overspray_increase,
+        pareto_weights=pareto_weights,
     )
     profile_sha256 = None
     performance_sha256 = None
@@ -894,6 +904,7 @@ def main(argv=None):
         "radial_slope": "--radial-slope", "performance_csv": "--performance-csv",
         "pressure_kpa": "--pressure-kpa", "dry_fraction_limit": "--dry-fraction-limit",
         "target_factor": "--target-factor", "cu_drop_budget": "--cu-drop-budget",
+        "max_overspray_increase": "--max-overspray-increase",
         "pareto_weights": "--pareto-weights",
     }
     parameter_sources = {}
@@ -951,10 +962,11 @@ def main(argv=None):
             "dry_fraction_limit": cfg["dry_frac_limit"],
             "target_factor": cfg["target_factor"],
             "cu_drop_budget": cfg["cu_drop_budget"],
+            "max_overspray_increase": cfg["max_overspray_increase"],
             "pareto_overspray_weights": list(cfg["pareto_weights"]),
             "note": "weights guide stochastic search, not a single weighted score; selected trade-off must not increase baseline overspray and must keep CU within the configured absolute loss budget from baseline; if no Pareto point meets both, no trade-off is selected",
             "selection_guardrails": {
-                "max_overspray_increase_vs_baseline": 0.0,
+                "max_overspray_increase_vs_baseline": cfg["max_overspray_increase"],
                 "minimum_CU": "baseline_CU - cu_drop_budget",
                 "fallback": "no selection when no feasible Pareto point meets both guardrails",
             },
