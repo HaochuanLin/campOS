@@ -34,6 +34,13 @@ jobs:
         run: python -m pytest -q
       - name: Compile the UI module
         run: python -m py_compile src/campos/app.py streamlit_app.py
+      - name: Run the packaged quickstart and verify its artifacts
+        run: |
+          set -euo pipefail
+          campos-start --outdir out/ci-quickstart --mode compare --sites A
+          test -s out/ci-quickstart/index.html
+          test -s out/ci-quickstart/quickstart_manifest.json
+          campos-verify-artifacts --manifest out/ci-quickstart/quickstart_manifest.json
       - name: Exercise the app script with Streamlit AppTest
         run: |
           python - <<'PY'
