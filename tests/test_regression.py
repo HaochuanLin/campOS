@@ -84,6 +84,28 @@ def test_ai_residual_correction_can_fail_predeclared_rmse_gate(tmp_path):
     assert summary["holdout_rmse_change_mm_corrected_minus_baseline"] > 0.0
 
 
+def test_ai_residual_correction_rejects_duplicate_catch_can_rows(tmp_path):
+    predictions = tmp_path / "duplicate_can.csv"
+    rows = ["site_id,run_id,can_id,x_m,y_m,measured_mm,predicted_mm,split"]
+    for i in range(11):
+        split = "calibration" if i < 8 else "holdout"
+        run_id = "calibration-run" if split == "calibration" else "holdout-run"
+        can_id = "duplicate-can" if i in (0, 1) else f"can{i}"
+        rows.append(f"site,{run_id},{can_id},{float(i)},{float(i % 3)},5.0,5.0,{split}")
+    predictions.write_text("\n".join(rows) + "\n", encoding="utf-8")
+    completed = subprocess.run(
+        [
+            sys.executable, str(ROOT / "scripts" / "ai_residual_correction.py"),
+            "--predictions-csv", str(predictions),
+            "--outdir", str(tmp_path / "ai-output"),
+        ],
+        cwd=ROOT, text=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
+        check=False,
+    )
+    assert completed.returncode != 0
+    assert "duplicate site_id/run_id/can_id" in completed.stdout
+
+
 def test_ai_residual_correction_rejects_run_split_leakage(tmp_path):
     predictions = tmp_path / "mixed_run.csv"
     rows = ["site_id,run_id,can_id,x_m,y_m,measured_mm,predicted_mm,split"]
