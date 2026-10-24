@@ -208,8 +208,10 @@ def main(argv=None):
         failures.append(f"f1 spread exceeds {args.max_f1_spread:g}")
     if args.max_f2_spread is not None and (f2_spread is None or f2_spread > args.max_f2_spread):
         failures.append(f"f2 spread exceeds {args.max_f2_spread:g}")
-    if args.max_position_rms is not None and (max_position is None or max_position > args.max_position_rms):
-        failures.append(f"layout position RMS exceeds {args.max_position_rms:g} m or is unavailable")
+    layout_mismatch = any(row["head_count_match"] is False for row in results)
+    if args.max_position_rms is not None and (
+            max_position is None or max_position > args.max_position_rms or layout_mismatch):
+        failures.append(f"layout position RMS exceeds {args.max_position_rms:g} m, is unavailable, or head counts differ")
     if failures:
         print("FAIL: " + "; ".join(failures))
         return 2
