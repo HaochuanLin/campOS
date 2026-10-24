@@ -30,6 +30,7 @@ jobs:
           campos-sim --help
           campos-field-evaluate --help
           campos-observation-qc --help
+          campos-field-report --help
       - name: Run field-evaluation CLI smoke test
         if: matrix.python-version == '3.10'
         run: |
@@ -40,6 +41,9 @@ jobs:
             --outdir out/field-evaluation-smoke
           test -s out/field-evaluation-smoke/paired_predictions.csv
           test -s out/field-evaluation-smoke/field_evaluation_metrics.json
+          campos-field-report --input-json out/field-evaluation-smoke/field_evaluation_metrics.json
+          test -s out/field-evaluation-smoke/field_evaluation_report.html
+          test -s out/field-evaluation-smoke/field_evaluation_report.md
       - name: Run radial sensitivity scenarios
         if: matrix.python-version == '3.10'
         run: python scripts/radial_sensitivity.py --outdir out/radial-sensitivity
