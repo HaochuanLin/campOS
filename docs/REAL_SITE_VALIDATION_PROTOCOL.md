@@ -82,6 +82,30 @@ field-study/
     plots...
 ```
 
+## Paired error metrics for predictions already available
+
+campOS also includes `scripts/evaluate_observation_errors.py`. It computes descriptive bias, MAE, RMSE, maximum absolute error, and an optional R-squared-style comparison for paired depths supplied by the user. It requires a CSV with `measured_mm,predicted_mm,split`; `split` must be `calibration` or `holdout`, and at least two holdout rows are required by default.
+
+Example input (illustrative values only, not a dataset):
+
+```csv
+measured_mm,predicted_mm,split
+4.2,4.0,calibration
+3.8,4.1,calibration
+4.5,4.3,holdout
+3.9,4.0,holdout
+```
+
+Run it with:
+
+```bash
+python scripts/evaluate_observation_errors.py \
+  --input out/paired_depths.csv \
+  --out out/paired_error_metrics.json
+```
+
+**Important limitation:** this utility scores paired values only. It does not produce a prediction at each catch-can coordinate, perform spatial interpolation, calibrate parameters, or prove that the holdout split is independent. The user must document how each prediction was obtained and how it was spatially matched to the observation. Do not report these metrics as model validation until the prediction mapping, independence, measurement uncertainty, and pre-registered acceptance criteria are justified.
+
 ## What a valid conclusion may say
 
 A defensible report identifies the site, sprinkler/nozzle, pressure range, weather and measurement procedure; distinguishes calibration from held-out evaluation; shows raw data and errors; and states limitations. It should not generalize from one lawn to all sites.
