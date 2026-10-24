@@ -100,7 +100,7 @@ Replace the example paths and flow with the actual measured inputs. The script e
 - `paired_predictions.csv`: measured and predicted depth, residual, absolute error, location, zone, and split.
 - `field_evaluation_metrics.json`: input SHA-256 hashes, assumptions, calibration and holdout counts, and descriptive error metrics.
 
-The field CSV must include a `split` column set to `calibration` or `holdout`. All cans from a single `site_id,run_id` must remain in one split; the tool rejects mixed splits within a run. The default uniform radial profile is a null-model assumption. A measured relative radial profile can be supplied with `--profile-csv`, but it still requires measured flow for absolute depth prediction.
+The sprinkler layout may include an optional `flow_lpm` column with a measured flow for each head. If a head's value is blank, supply `--flow-lpm` as a fallback; a CLI fallback is unnecessary when every head has a measured value. The field CSV must include a `split` column set to `calibration` or `holdout`. All cans from a single `site_id,run_id` must remain in one split; the tool rejects mixed splits within a run. The default uniform radial profile is a null-model assumption. A measured relative radial profile can be supplied with `--profile-csv`, but it still requires measured flow for absolute depth prediction.
 
 **Scope:** all heads are assumed to have the same supplied flow. Predictions omit wind, drift, evaporation, pressure loss, and network hydraulics. The tool computes errors but does not declare a model valid or decide pass/fail. Set acceptance thresholds before looking at holdout errors, and do not calibrate using holdout observations.
 
