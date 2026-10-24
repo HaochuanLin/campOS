@@ -52,11 +52,19 @@ def main(argv=None):
                         help="output CSV path")
     parser.add_argument("--max-relative-error", type=float, default=None,
                         help="optional maximum relative area error required at the finest requested cell size (0..1)")
+    parser.add_argument("--max-water-share-spread", type=float, default=None,
+                        help="optional maximum max-minus-min protected-water share across grids, in percentage points; requires --heads-csv")
     args = parser.parse_args(argv)
     if args.margin < 0 or not (args.margin < float("inf")):
         parser.error("--margin must be finite and non-negative")
     if args.max_relative_error is not None and not (0 <= args.max_relative_error <= 1):
         parser.error("--max-relative-error must be in [0,1]")
+
+    if args.max_water_share_spread is not None:
+        if not args.heads_csv:
+            parser.error("--max-water-share-spread requires --heads-csv")
+        if not (0 <= args.max_water_share_spread <= 100):
+            parser.error("--max-water-share-spread must be in [0,100] percentage points")
 
     lawn = load_polygon_csv(args.polygon_csv)
     protected = load_polygon_csv(args.protected_surface_csv)
@@ -124,6 +132,13 @@ def main(argv=None):
             and float(finest["relative_area_error_pct"]) / 100 > args.max_relative_error):
         print(f"FAIL: finest grid exceeds requested {args.max_relative_error * 100:.3f}% area-error limit")
         return 2
+    if args.heads_csv:
+        shares = [float(row["protected_water_pct_of_total_water"]) for row in rows]
+        spread = max(shares) - min(shares)
+        print(f"Protected-water share spread across grid sizes: {spread:.3f} percentage points")
+        if args.max_water_share_spread is not None and spread > args.max_water_share_spread:
+            print(f"FAIL: water-share spread exceeds requested {args.max_water_share_spread:.3f} percentage-point limit")
+            return 2
     return 0
 
 
