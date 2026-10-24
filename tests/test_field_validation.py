@@ -244,3 +244,23 @@ def test_field_report_displays_optional_acceptance_assessment(tmp_path):
     assert "User-defined limits only." in html_report
     assert "abc123" in markdown
     assert "abc123" in html_report
+
+
+
+@pytest.mark.parametrize(
+    ("field", "value", "message"),
+    [
+        ("x_m", "nan", "must be finite"),
+        ("measured_depth_mm", "-0.1", "must be >= 0"),
+        ("collected_volume_ml", "-1", "must be >= 0"),
+        ("container_opening_area_cm2", "0", "must be > 0"),
+    ],
+)
+def test_qc_rejects_invalid_measurement_values(tmp_path, field, value, message):
+    row = field_record("can-1", "valid")
+    row["measured_depth_mm"] = "4"
+    row[field] = value
+    input_path = write_csv(tmp_path / "raw.csv", list(row.keys()), [row])
+
+    with pytest.raises(ValueError, match=message):
+        validate_file(input_path, tmp_path / "normalized.csv", tmp_path / "summary.json")
