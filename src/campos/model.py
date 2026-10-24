@@ -197,16 +197,27 @@ class Site:
         self.radial_slope = cfg.get("radial_slope", 0.0)
         self.flow_lpm = cfg.get("flow_lpm")
         self.path = Path(poly)
+        self.protected_poly = cfg.get("protected_polygon")
+        self.protected_path = Path(self.protected_poly) if self.protected_poly is not None else None
         c = cfg["cell"]
         m = cfg["margin"]
-        x0, y0 = poly.min(axis=0) - m
-        x1, y1 = poly.max(axis=0) + m
+        bounds = [np.asarray(poly, dtype=float)]
+        if self.protected_poly is not None:
+            bounds.append(np.asarray(self.protected_poly, dtype=float))
+        all_points = np.vstack(bounds)
+        x0, y0 = all_points.min(axis=0) - m
+        x1, y1 = all_points.max(axis=0) + m
         xs = np.arange(x0, x1, c) + c / 2
         ys = np.arange(y0, y1, c) + c / 2
         self.X, self.Y = np.meshgrid(xs, ys)
         pts = np.c_[self.X.ravel(), self.Y.ravel()]
         self.mask = self.path.contains_points(pts).reshape(self.X.shape)
+        self.protected_mask = (
+            self.protected_path.contains_points(pts).reshape(self.X.shape) & ~self.mask
+            if self.protected_path is not None else np.zeros_like(self.mask, dtype=bool)
+        )
         self.idx = np.flatnonzero(self.mask.ravel())
+        self.idx_protected = np.flatnonzero(self.protected_mask.ravel())
         self.extent = (x0, x1, y0, y1)
         self.area = self.mask.sum() * c * c
         self.bbox = (poly.min(axis=0), poly.max(axis=0))
