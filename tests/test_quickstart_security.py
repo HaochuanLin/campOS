@@ -68,3 +68,28 @@ def test_quickstart_report_omits_stale_files_not_in_manifest(tmp_path):
     assert "stale-private-results.csv" not in html
     assert "old-site" not in html
     assert "999" not in html
+
+
+
+def test_quickstart_report_never_links_symlinked_artifacts(tmp_path):
+    outdir = tmp_path / "report"
+    outdir.mkdir()
+    outside = tmp_path / "outside-secret.csv"
+    outside.write_text("private fixture", encoding="utf-8")
+    (outdir / "linked.csv").symlink_to(outside)
+    report = quickstart.build_index(
+        outdir,
+        {
+            "finished_at_utc": "2026-10-24T00:00:00+00:00",
+            "mode": "movable",
+            "sites": ["A"],
+            "quick": True,
+            "artifact_checksums": {
+                "linked.csv": {"size_bytes": outside.stat().st_size, "sha256": "0" * 64},
+            },
+        },
+    )
+
+    html = report.read_text(encoding="utf-8")
+    assert "linked.csv" not in html
+    assert "private fixture" not in html
