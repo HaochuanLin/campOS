@@ -8,6 +8,7 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "src"))
 
 from campos.field_validation import load_heads, load_observations  # noqa: E402
+from campos.field_observations import validate_file  # noqa: E402
 
 
 def write_csv(path: Path, fieldnames: list[str], rows: list[dict[str, object]]) -> Path:
@@ -112,3 +113,48 @@ def test_load_observations_derives_depth_from_volume_and_area(tmp_path):
     )
     parsed = load_observations(path)
     assert [row["measured_mm"] for row in parsed] == [20.0, 30.0]
+
+
+
+def field_record(can_id: str, validity_flag: str) -> dict[str, str]:
+    return {
+        "site_id": "site-a",
+        "run_id": "run-1",
+        "can_id": can_id,
+        "x_m": "1",
+        "y_m": "2",
+        "zone": "inside",
+        "collection_duration_s": "600",
+        "collected_volume_ml": "",
+        "measured_depth_mm": "",
+        "container_opening_area_cm2": "",
+        "validity_flag": validity_flag,
+        "split": "calibration",
+    }
+
+
+def test_qc_preserves_excluded_observation_without_measurement(tmp_path):
+    input_path = write_csv(
+        tmp_path / "raw.csv",
+        list(field_record("can-1", "exclude").keys()),
+        [field_record("can-1", "exclude")],
+    )
+    output_csv = tmp_path / "out" / "normalized.csv"
+    output_json = tmp_path / "out" / "summary.json"
+
+    summary = validate_file(input_path, output_csv, output_json)
+
+    assert summary["excluded_flag_count"] == 1
+    with output_csv.open(newline="", encoding="utf-8") as handle:
+        normalized = next(csv.DictReader(handle))
+    assert normalized["measured_depth_mm_normalized"] == ""
+
+
+def test_qc_still_requires_measurement_for_valid_observation(tmp_path):
+    input_path = write_csv(
+        tmp_path / "raw.csv",
+        list(field_record("can-1", "valid").keys()),
+        [field_record("can-1", "valid")],
+    )
+    with pytest.raises(ValueError, match="for valid observations"):
+        validate_file(input_path, tmp_path / "normalized.csv", tmp_path / "summary.json")
