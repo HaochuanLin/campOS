@@ -13,6 +13,43 @@ sys.path.insert(0, str(SRC.parent.parent))
 from campos import campos_sim as sim  # noqa: E402
 
 
+def test_ai_residual_correction_trains_only_on_calibration_rows(tmp_path):
+    predictions = tmp_path / "paired_predictions.csv"
+    outdir = tmp_path / "ai-output"
+    rows = ["site_id,run_id,can_id,x_m,y_m,measured_mm,predicted_mm,split"]
+    # Eight calibration points span the site; four holdout points are interleaved.
+    for i in range(12):
+        x = float(i % 6) * 2.0
+        y = float(i // 6) * 4.0
+        split = "calibration" if i < 8 else "holdout"
+        # Smooth spatial residual trend gives the GP a meaningful, but synthetic, test signal.
+        predicted = 5.0
+        measured = predicted + 0.2 * x - 0.1 * y
+        rows.append(f"site,run,can{i},{x},{y},{measured},{predicted},{split}")
+    predictions.write_text("\n".join(rows) + "\n", encoding="utf-8")
+    completed = subprocess.run(
+        [
+            sys.executable, str(ROOT / "scripts" / "ai_residual_correction.py"),
+            "--predictions-csv", str(predictions),
+            "--outdir", str(outdir),
+            "--length-scale-m", "3.0",
+        ],
+        cwd=ROOT, text=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, check=False,
+    )
+    assert completed.returncode == 0, completed.stdout
+    summary = json.loads((outdir / "ai_residual_correction_summary.json").read_text(encoding="utf-8"))
+    assert summary["calibration_count"] == 8
+    assert summary["holdout_count"] == 4
+    assert summary["holdout_rows_used_for_training_or_kernel_selection"] is False
+    assert summary["holdout_baseline_metrics"]["n"] == 4
+    assert summary["holdout_ai_corrected_metrics"]["n"] == 4
+    with (outdir / "ai_corrected_predictions.csv").open(newline="", encoding="utf-8-sig") as fh:
+        output_rows = list(csv.DictReader(fh))
+    assert len(output_rows) == 12
+    assert all(float(row["ai_corrected_predicted_mm"]) >= 0 for row in output_rows)
+    assert all(float(row["ai_residual_std_mm"]) >= 0 for row in output_rows)
+
+
 def test_catch_can_validation_keeps_holdout_out_of_scale_fit(tmp_path):
     lawn_csv = tmp_path / "lawn.csv"
     heads_csv = tmp_path / "heads.csv"
