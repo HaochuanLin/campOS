@@ -1398,17 +1398,19 @@ def test_quickstart_index_is_browsable_and_labels_synthetic_results(tmp_path):
     from campos.quickstart import LIMITATIONS, build_index
 
     (tmp_path / "results_movable.csv").write_text(
-        "site,baseline_AR,optimized_AR,baseline_CU,optimized_CU,optimized_overspray_pct_of_own_water,optimized_dry_area_pct\nA,2.0,1.5,0.7,0.8,4.0,1.0\n",
+        "site,baseline_AR,optimized_AR,baseline_CU,optimized_CU,optimized_overspray_pct_of_own_water,optimized_dry_area_pct\n"
+        "A,2.0,1.5,0.7,0.8,4.0,1.0\n",
         encoding="utf-8",
     )
     (tmp_path / "results_fixed.csv").write_text(
-        "site,baseline_AR,optimized_AR,baseline_CU,optimized_CU,optimized_overspray_pct_of_own_water,optimized_dry_area_pct\nA,2.0,1.7,0.7,0.75,3.0,2.0\n",
+        "site,baseline_AR,optimized_AR,baseline_CU,optimized_CU,optimized_overspray_pct_of_own_water,optimized_dry_area_pct\n"
+        "A,2.0,1.7,0.7,0.75,3.0,2.0\n",
         encoding="utf-8",
     )
     (tmp_path / "layouts.png").write_bytes(b"test image placeholder")
     manifest = {
         "finished_at_utc": "2026-10-24T00:00:00+00:00",
-        "mode": "movable",
+        "mode": "compare",
         "sites": ["A"],
         "quick": True,
     }
