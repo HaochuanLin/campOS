@@ -10,7 +10,7 @@ Template: `data/templates/site_polygon_template.csv`.
 
 ## Sprinkler-layout CSV
 
-Required header: `x_m,y_m,radius_m,start_angle_deg,arc_width_deg`.
+Required header: `x_m,y_m,radius_m,start_angle_deg,arc_width_deg`. An optional `flow_lpm` column can store measured flow per head for the field-evaluation workflow; the optimizer ignores this extra column. If the value is blank, `campos-field-evaluate` requires a `--flow-lpm` fallback.
 
 - `x_m,y_m`: initial sprinkler centre in the same metre-based coordinate system as the polygon.
 - `radius_m`: initial throw radius; it must be within the optimizer's configured radius range.
