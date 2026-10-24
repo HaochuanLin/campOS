@@ -60,6 +60,22 @@ def build_index(outdir: Path, manifest: dict) -> Path:
                 f"<div class=\"table-wrap\"><table><thead><tr>{th}</tr></thead><tbody>{trs}</tbody></table></div>"
             )
 
+    comparison_table = ""
+    comparison_rows = []
+    for mode, filename in (("fixed", "results_fixed.csv"), ("movable", "results_movable.csv")):
+        path = outdir / filename
+        if path.is_file():
+            with path.open(newline="", encoding="utf-8-sig") as f:
+                comparison_rows.extend((mode, row) for row in csv.DictReader(f))
+    if len({mode for mode, _ in comparison_rows}) == 2:
+        columns = ("mode", "site", "baseline_AR", "optimized_AR", "optimized_overspray_pct_of_own_water", "optimized_CU", "optimized_dry_area_pct")
+        th = "".join(f"<th>{html.escape(key)}</th>" for key in columns)
+        trs = "".join(
+            "<tr>" + "".join(f"<td>{html.escape(str(mode if key == 'mode' else row.get(key, '')))}</td>" for key in columns) + "</tr>"
+            for mode, row in comparison_rows
+        )
+        comparison_table = "<h2>Fixed vs movable comparison</h2><p>Compare model-defined outcomes across the same synthetic site. Lower overspray is not guaranteed by a better AR score.</p><div class=\"table-wrap\"><table><thead><tr>" + th + "</tr></thead><tbody>" + trs + "</tbody></table></div>"
+
     caveats = "".join(f"<li>{html.escape(item)}</li>" for item in LIMITATIONS)
     document = f"""<!doctype html>
 <html lang="en">
@@ -88,6 +104,7 @@ code {{ overflow-wrap: anywhere; }}
 </header>
 <div class="notice"><strong>Important limitation:</strong> This is a software demo, not a field-validated irrigation design. Synthetic success does not establish real-world water savings or road-wetting reduction.</div>
 {metric_table}
+{comparison_table}
 <h2>Generated files</h2>
 <table><thead><tr><th>Artifact</th><th>Size</th></tr></thead><tbody>{artifact_rows}</tbody></table>
 <h2>Known limitations</h2><ul>{caveats}</ul>
