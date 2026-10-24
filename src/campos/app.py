@@ -10,6 +10,7 @@ import shutil
 import subprocess
 import sys
 import tempfile
+import zipfile
 
 import streamlit as st
 
@@ -359,6 +360,12 @@ if run:
             for path in sorted(outdir.iterdir()):
                 if path.is_file():
                     artifacts[path.name] = path.read_bytes()
+            bundle_buffer = io.BytesIO()
+            with zipfile.ZipFile(bundle_buffer, mode="w", compression=zipfile.ZIP_DEFLATED) as bundle_zip:
+                for artifact_name, artifact_payload in artifacts.items():
+                    bundle_zip.writestr(artifact_name, artifact_payload)
+            bundle_bytes = bundle_buffer.getvalue()
+
             tables = {}
             for name, payload in artifacts.items():
                 if name.endswith(".csv"):
@@ -387,6 +394,7 @@ if run:
                     ai_summary = {}
             st.session_state["campos_run"] = {
                 "artifacts": artifacts,
+                "bundle_bytes": bundle_bytes,
                 "tables": tables,
                 "field_metrics": field_metrics,
                 "field_evaluation_report": field_evaluation_report,
@@ -409,6 +417,15 @@ if run:
 result = st.session_state.get("campos_run")
 if result:
     st.subheader("Results")
+    plot_count = sum(name.lower().endswith(".png") for name in result["artifacts"])
+    st.success(
+        f"Run completed · {len(result['artifacts'])} output files · {plot_count} plots available. "
+        "Download the complete bundle to keep the report and raw artifacts together."
+    )
+    overview = st.columns(3)
+    overview[0].metric("Output files", len(result["artifacts"]))
+    overview[1].metric("Generated plots", plot_count)
+    overview[2].metric("Grid resolution", f"{result['cell_size_m']:g} m")
     st.write(
         f"**Mode:** {result['mode']} · **Sites:** {', '.join(result['sites'])} · "
         f"**Seed:** {result['seed']} · **Grid:** {result['cell_size_m']:g} m"
@@ -499,6 +516,17 @@ if result:
                 st.image(data, caption=name, use_container_width=True)
 
     st.subheader("Download outputs")
+    st.download_button(
+        label="Download complete run bundle (.zip)",
+        data=result["bundle_bytes"],
+        file_name=f"campos-{result['mode']}-seed-{result['seed']}.zip",
+        mime="application/zip",
+        type="primary",
+        use_container_width=True,
+        key="download-complete-run-bundle",
+        help="Includes all generated CSV, JSON, plot, HTML, and Markdown artifacts from this run.",
+    )
+    st.caption("The ZIP preserves the raw outputs together so you can archive or share a reproducible run.")
     buttons = st.columns(3)
     downloadable = [
         (name, data) for name, data in result["artifacts"].items()
