@@ -1,0 +1,89 @@
+# Real-site validation protocol
+
+## Purpose and current status
+
+This protocol defines the evidence required before campOS results are used to inform a real irrigation retrofit. It is a **data-collection and evaluation plan**, not evidence that the current model has passed field validation. The repository does not contain an independently measured site dataset or a pre-approved universal pass threshold.
+
+The validation question is narrow: under documented operating conditions, how closely does the model predict the spatial distribution of applied water, including water collected outside the intended lawn boundary? A successful comparison at one site does not establish general validity for other sprinkler models, pressures, weather, soils, or layouts.
+
+## Safety and scope
+
+- Do not use an unvalidated simulation as an installation instruction or change an operating irrigation system solely because of its output.
+- Obtain site-owner permission and follow site safety procedures. Keep people away from operating sprinkler equipment and avoid measurements near traffic or electrical hazards.
+- Record whether the sprinkler system, nozzle, pressure, wind, and operating schedule match the model inputs. Do not silently treat unknown values as measured.
+- This protocol does not estimate water savings or payback. Spatial catch measurements and the model's dimensionless overspray proxy are not, by themselves, total seasonal water use.
+
+## Before collecting data
+
+Create a versioned run directory and preserve the exact input CSVs, model configuration, software revision, random seed, grid size, and generated outputs. Record:
+
+1. Site boundary in a consistent local metre-based coordinate system, plus a sketch/photo and the method used to survey it.
+2. Every sprinkler head's coordinate, make/model, nozzle, arc setting, orientation, measured or documented operating pressure, and any known wear or obstruction.
+3. Supply pressure at the relevant operating condition; where possible record pressure at the head, not only at the source.
+4. Catch-can positions and heights, container opening areas, instrument resolution, reading procedure, run duration, and timestamps.
+5. Weather and operating conditions, including wind direction/speed if available, temperature, and any interruption or visible drift.
+6. The intended lawn boundary and the locations classified as outside-lawn surfaces (for example, sidewalk or road). Keep classification rules fixed before looking at results.
+
+If a value is unavailable, enter an explicit missing value and explain it in notes; do not substitute a plausible-looking number.
+
+## Measurement design
+
+### Spatial catch-can survey
+
+- Place calibrated, identical catch cans on a documented grid or set of transects spanning both the lawn and nearby outside-lawn area. Include boundary-crossing transects so overspray can be observed instead of inferred only from lawn samples.
+- Survey each can's centre coordinate in the same coordinate frame as the polygon and head coordinates. Record the opening area and collected volume or water depth, and use consistent units.
+- Collect repeat runs under as similar conditions as practicable. Record each run separately; do not average away a run affected by changed pressure, wind, blockage, or an interruption.
+- Measure operating duration and pressure for every run. Use a consistent method to convert collected water to depth. Keep raw observations unchanged and store corrections as separate, documented fields.
+- The measurement grid is a sample of the applied-water field, not a direct measure of plant water need, soil moisture, runoff, or seasonal consumption.
+
+### Baseline and candidate comparison
+
+1. Measure the existing layout before changing any equipment.
+2. Freeze model assumptions and compare predicted values at the measured coordinates with baseline observations.
+3. If calibration is needed, use only a predeclared calibration subset. Record every parameter changed and why.
+4. Freeze the calibrated configuration before evaluating a held-out set of runs, locations, or dates. Do not tune on the held-out observations.
+5. Only after baseline evaluation, simulate a candidate layout. If it is installed, repeat the same measurement procedure and document any differences in operating conditions.
+6. Compare baseline and candidate with matched conditions where possible. Report all valid runs and exclusions with reasons.
+
+The current simulator's raster output and catch-can samples may not be directly comparable without an explicit, documented spatial sampling/interpolation step. Do not claim a quantitative validation score until this mapping and its uncertainty are defined. Never silently compare a raster cell to a nearby can as if they were the same measurement.
+
+## Pre-register the evaluation
+
+Before examining held-out results, write down the site-specific acceptance criteria and why they are appropriate. Do not choose thresholds after seeing the errors. At minimum, report:
+
+- Mean bias (prediction minus observation) in depth units.
+- MAE and RMSE in depth units, with sample count and units.
+- Error by distance from sprinkler and by inside/outside-lawn classification where the sample count permits.
+- Repeatability across runs and the operating conditions represented.
+- Uncertainty from measurement resolution, spatial sampling, raster resolution, and any interpolation.
+- A separate outside-lawn analysis. Do not interpret an outside-lawn fraction as a measured water-volume saving unless absolute flow and the relevant water balance have been validated.
+
+A field-validation claim should require acceptable performance on held-out observations, documented reproducibility, and a clear statement of the tested equipment and operating envelope. There is no universal pass threshold supplied by campOS; the threshold must be justified for the intended decision and agreed before evaluation.
+
+## Data files
+
+Use [field catch-can template](../data/templates/field_catch_can_template.csv) for raw observations. Keep one row per can per run. The template is intentionally empty and is not a dataset. Use a separate site log for survey method, sprinkler specification, pressure, weather, and deviations; link the files with stable site and run IDs.
+
+Recommended folder layout:
+
+```text
+field-study/
+  protocol-and-preregistered-thresholds.md
+  site_log.csv
+  site_polygon.csv
+  sprinkler_layout.csv
+  field_catch_can_observations.csv
+  model_run/
+    run_metadata.json
+    raw_outputs...
+  analysis/
+    exclusions.csv
+    held_out_metrics.csv
+    plots...
+```
+
+## What a valid conclusion may say
+
+A defensible report identifies the site, sprinkler/nozzle, pressure range, weather and measurement procedure; distinguishes calibration from held-out evaluation; shows raw data and errors; and states limitations. It should not generalize from one lawn to all sites.
+
+Until the model has a documented observation-to-prediction comparison workflow and independent held-out results, describe these steps as **preparation for field validation**, not completed validation.
