@@ -913,7 +913,7 @@ def test_catch_can_prediction_uses_exact_coordinates_and_reports_holdout_metrics
     assert report["metrics"]["split_counts"] == {"calibration": 2, "holdout": 2}
     assert report["metrics"]["metrics"]["holdout"]["mae_mm"] < 1e-6
     assert report["zone_geometry_mismatch_count"] == 1
-    assert report["zone_geometry_mismatch_can_ids"] == ["can-02"]
+    assert report["zone_geometry_mismatch_can_ids"] == ["can-2"]
     assert "no universal pass threshold" in " ".join(report["limitations"]).lower()
 
 
