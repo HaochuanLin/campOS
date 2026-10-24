@@ -13,9 +13,9 @@ The app runs locally. It is a user interface for the research prototype, not a h
 
 ## Publish a hosted demo
 
-For a hosted demo, configure Streamlit Community Cloud to use repository `HaochuanLin/campOS`, the branch containing this entry point, and `streamlit_app.py` as the main file. The root entry point adds the `src` directory to Python's import path and loads the existing UI module. Dependencies are declared in the repository-root `requirements.txt`.
+For a hosted demo, configure Streamlit Community Cloud to use repository `HaochuanLin/campOS`, branch `main`, and `streamlit_app.py` as the main file. The root entry point adds the `src` directory to Python's import path and loads the existing UI module. Dependencies are declared in the repository-root `requirements.txt`. After a push to `main`, check the app's deployment status and logs if the live page does not update.
 
-A local launch or a successful CI smoke test does not mean the hosted deployment has been created. Publishing requires an authorized Streamlit account and a deployment action in that account. For an open pull request, select its branch only for a temporary review deployment; use the default branch once the changes have been merged.
+A local launch or a successful CI smoke test does not mean the hosted deployment has been created. Publishing requires an authorized Streamlit account and a deployment action in that account. The `/_stcore/health` check confirms the Streamlit server responds, but does not prove every browser interaction or real-world model result is correct.
 
 ## Synthetic mode
 
