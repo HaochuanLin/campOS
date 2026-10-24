@@ -90,3 +90,11 @@ def test_artifact_verifier_rejects_symlinked_artifact(tmp_path):
     verified, failures = verifier.verify_manifest(manifest)
     assert verified == []
     assert failures == ["linked.txt: artifact must be a regular file beside the manifest"]
+
+
+def test_artifact_verifier_reports_non_utf8_manifest(tmp_path):
+    manifest = tmp_path / "quickstart_manifest.json"
+    manifest.write_bytes(b"\xff\xfe")
+    verified, failures = verifier.verify_manifest(manifest)
+    assert verified == []
+    assert failures and failures[0].startswith("cannot read manifest:")
