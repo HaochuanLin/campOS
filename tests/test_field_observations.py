@@ -86,3 +86,24 @@ def test_nonpositive_collection_duration_is_rejected(tmp_path):
     source = write_csv(tmp_path / "raw.csv", [row(collection_duration_s="0")])
     with pytest.raises(ValueError, match="collection_duration_s must be > 0"):
         observations.validate_file(source, tmp_path / "normalized.csv", tmp_path / "summary.json")
+
+def test_nonfinite_coordinate_is_rejected(tmp_path):
+    source = write_csv(tmp_path / "raw.csv", [row(x_m="nan")])
+    with pytest.raises(ValueError, match="x_m must be finite"):
+        observations.validate_file(source, tmp_path / "normalized.csv", tmp_path / "summary.json")
+
+
+def test_invalid_zone_label_is_rejected(tmp_path):
+    source = write_csv(tmp_path / "raw.csv", [row(zone="road-ish")])
+    with pytest.raises(ValueError, match="zone must be one of"):
+        observations.validate_file(source, tmp_path / "normalized.csv", tmp_path / "summary.json")
+
+
+def test_disagreement_between_measured_and_derived_depth_is_flagged(tmp_path):
+    source = write_csv(
+        tmp_path / "raw.csv",
+        [row(measured_depth_mm="10", collected_volume_ml="20", container_opening_area_cm2="4")],
+    )
+    summary = observations.validate_file(source, tmp_path / "normalized.csv", tmp_path / "summary.json")
+    assert summary["quality_warnings"]
+    assert "differs from volume/area-derived depth" in summary["quality_warnings"][0]
