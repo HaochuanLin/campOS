@@ -103,3 +103,5 @@ def test_quickstart_excludes_stale_outputs_from_report_and_manifest(tmp_path, mo
     assert "results_fixed.csv" in page
     assert "results_movable.csv" not in page
     assert "old_plot.png" not in page
+    assert "Fixed vs movable comparison" not in page
+    assert "OLD" not in page
