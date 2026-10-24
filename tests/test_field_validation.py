@@ -251,7 +251,7 @@ def test_field_report_displays_optional_acceptance_assessment(tmp_path):
     assert "<script>alert(1)</script>" not in markdown
     assert "can\\|&lt;script&gt;alert(1)&lt;/script&gt;" in markdown
     assert "\n|injected" not in markdown
-    assert "alert(1)&lt;/script&gt; |injected" in markdown
+    assert "alert(1)&lt;/script&gt; \\|injected" in markdown
     assert "Strict zone-geometry gate enabled: True" in markdown
     assert "Strict zone-geometry gate passed: False" in markdown
     assert "strict geometry gate passed: False" in html_report
