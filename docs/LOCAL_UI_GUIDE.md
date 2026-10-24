@@ -11,6 +11,12 @@ streamlit run src/campos/app.py
 
 The app runs locally. It is a user interface for the research prototype, not a hosted service or a certified engineering tool. To enable the experimental AI residual-correction option as well, install `python -m pip install -e ".[ui,ai]"`; it is optional and should only be used after a successful field-evaluation run.
 
+## Publish a hosted demo
+
+For a hosted demo, configure Streamlit Community Cloud to use repository `HaochuanLin/campOS`, the branch containing this entry point, and `streamlit_app.py` as the main file. The root entry point adds the `src` directory to Python's import path and loads the existing UI module. Dependencies are declared in the repository-root `requirements.txt`.
+
+A local launch or a successful CI smoke test does not mean the hosted deployment has been created. Publishing requires an authorized Streamlit account and a deployment action in that account. For an open pull request, select its branch only for a temporary review deployment; use the default branch once the changes have been merged.
+
 ## Synthetic mode
 
 Leave **Use surveyed site CSVs** unchecked, select one or more built-in site shapes, choose an optimization mode, random seed, and grid cell size, then run. The comparison mode evaluates fixed-position and movable-head search on the same synthetic sites. A seed and cell size are displayed with the result and are forwarded to the simulator.
