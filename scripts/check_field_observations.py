@@ -16,7 +16,7 @@ from pathlib import Path
 REQUIRED_COLUMNS = {
     "site_id", "run_id", "can_id", "x_m", "y_m", "zone",
     "collection_duration_s", "collected_volume_ml", "measured_depth_mm",
-    "container_opening_area_cm2", "validity_flag",
+    "container_opening_area_cm2", "validity_flag", "split",
 }
 ALLOWED_ZONES = {"inside", "outside", "boundary", "unknown"}
 ALLOWED_FLAGS = {"valid", "exclude", "unknown"}
@@ -51,6 +51,7 @@ def validate_file(input_path: Path, output_csv: Path, output_json: Path) -> dict
 
     normalized = []
     seen = set()
+    run_splits = {}
     issues = []
     zone_counts = Counter()
     valid_count = 0
@@ -99,6 +100,14 @@ def validate_file(input_path: Path, output_csv: Path, output_json: Path) -> dict
         zone = (row.get("zone") or "unknown").strip().lower()
         if zone not in ALLOWED_ZONES:
             raise ValueError(f"row {row_number}: zone must be one of {sorted(ALLOWED_ZONES)}")
+        split = (row.get("split") or "").strip().lower()
+        if split not in {"calibration", "holdout"}:
+            raise ValueError(f"row {row_number}: split must be calibration or holdout")
+        run_key = (site_id, run_id)
+        if run_key in run_splits and run_splits[run_key] != split:
+            raise ValueError(f"row {row_number}: run {run_key} mixes calibration and holdout")
+        run_splits[run_key] = split
+
         flag = (row.get("validity_flag") or "unknown").strip().lower()
         if flag not in ALLOWED_FLAGS:
             raise ValueError(f"row {row_number}: validity_flag must be one of {sorted(ALLOWED_FLAGS)}")
@@ -113,6 +122,7 @@ def validate_file(input_path: Path, output_csv: Path, output_json: Path) -> dict
             "measured_depth_mm_normalized": depth,
             "container_opening_area_cm2": "" if area is None else area,
             "validity_flag": flag,
+            "split": split,
             "exclusion_reason": (row.get("exclusion_reason") or "").strip(),
             "observation_datetime": (row.get("observation_datetime") or "").strip(),
             "notes": (row.get("notes") or "").strip(),
