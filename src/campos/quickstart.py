@@ -73,7 +73,7 @@ def build_index(outdir: Path, manifest: dict) -> Path:
 
     metric_table = ""
     results_path = outdir / "results_movable.csv"
-    if results_path.is_file():
+    if results_path.is_file() and (artifact_names is None or "results_movable.csv" in artifact_names):
         with results_path.open(newline="", encoding="utf-8-sig") as f:
             rows = list(csv.DictReader(f))
         preferred = [
