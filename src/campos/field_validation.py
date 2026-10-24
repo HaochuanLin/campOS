@@ -274,7 +274,7 @@ def assess_holdout(metrics: dict[str, object], thresholds: dict[str, float]) -> 
     }
 
 
-def main() -> None:
+def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--polygon-csv", required=True, type=Path, help="surveyed polygon x_m,y_m")
     parser.add_argument("--heads-csv", required=True, type=Path, help="actual sprinkler layout CSV")
@@ -333,7 +333,13 @@ def main() -> None:
 
     report = {
         "schema_version": 1,
-        "status": "paired_spatial_predictions_and_descriptive_errors_generated",
+        "status": (
+            "acceptance_thresholds_failed"
+            if acceptance_assessment is not None and acceptance_assessment["status"] == "fail"
+            else "acceptance_thresholds_passed"
+            if acceptance_assessment is not None
+            else "paired_spatial_predictions_and_descriptive_errors_generated"
+        ),
         "scope": "model-to-catch-can comparison at exact supplied coordinates",
         "n_sprinkler_heads": int(len(heads)),
         "n_valid_observations": len(predictions),
@@ -383,9 +389,15 @@ def main() -> None:
         "holdout_n": metrics["split_counts"]["holdout"],
         "holdout_mae_mm": metrics["metrics"]["holdout"]["mae_mm"],
         "holdout_rmse_mm": metrics["metrics"]["holdout"]["rmse_mm"],
-        "warning": "descriptive evaluation only; no pass/fail certification",
+        "warning": (
+            "pre-registered acceptance thresholds failed; inspect the written metrics and predictions"
+            if acceptance_assessment is not None and acceptance_assessment["status"] == "fail"
+            else "descriptive evaluation only; thresholds are user-defined and do not certify physical validity"
+        ),
     }, indent=2))
+    # Preserve outputs for audit, but make a failed pre-registered gate fail CI/shell automation.
+    return 2 if acceptance_assessment is not None and acceptance_assessment["status"] == "fail" else 0
 
 
 if __name__ == "__main__":
-    main()
+    raise SystemExit(main())
