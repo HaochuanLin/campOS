@@ -11,6 +11,7 @@ from campos.field_validation import (  # noqa: E402
     assess_holdout, load_heads, load_observations, validate_acceptance_thresholds,
 )
 from campos.field_observations import validate_file  # noqa: E402
+from campos.observation_errors import evaluate  # noqa: E402
 
 
 def write_csv(path: Path, fieldnames: list[str], rows: list[dict[str, object]]) -> Path:
@@ -196,3 +197,15 @@ def test_holdout_assessment_uses_user_limits_and_absolute_bias():
 
     strict = validate_acceptance_thresholds({"max_absolute_bias_mm": 0.3})
     assert assess_holdout(metrics, strict)["status"] == "fail"
+
+
+
+def test_acceptance_assessment_integrates_with_evaluation_metrics():
+    evaluated = evaluate([
+        {"measured_mm": 5.0, "predicted_mm": 5.5, "split": "holdout"},
+        {"measured_mm": 4.0, "predicted_mm": 4.2, "split": "holdout"},
+    ])
+    thresholds = validate_acceptance_thresholds({"max_holdout_mae_mm": 1.0})
+    assessment = assess_holdout(evaluated["metrics"], thresholds)
+    assert assessment["status"] == "pass"
+    assert assessment["checks"][0]["observed"] == pytest.approx(0.35)
