@@ -152,7 +152,31 @@ with st.sidebar:
             st.caption("The protected-surface objective is active in Pareto modes only. Choose pareto-fixed or pareto-movable to optimize against a road/sidewalk polygon.")
         st.caption("Coordinates and radii must be in metres. These are illustrative examples, not surveyed measurements.")
         template_dir = Path(__file__).resolve().parents[2] / "data" / "templates"
-        for label, filename in (
+        template_files = (
+            ("Download lawn polygon example", "site_polygon_template.csv"),
+            ("Download sprinkler layout example", "sprinkler_layout_template.csv"),
+            ("Download protected-surface example", "protected_surface_template.csv"),
+            ("Download catch-can observation template", "field_catch_can_template.csv"),
+            ("Download radial-profile template", "catch_can_profile_template.csv"),
+            ("Download pressure-performance template", "sprinkler_performance_template.csv"),
+        )
+        template_bundle = io.BytesIO()
+        with zipfile.ZipFile(template_bundle, mode="w", compression=zipfile.ZIP_DEFLATED) as bundle_zip:
+            for _, filename in template_files:
+                template_path = template_dir / filename
+                if template_path.is_file():
+                    bundle_zip.write(template_path, arcname=filename)
+        if template_bundle.tell() > 0:
+            st.download_button(
+                "Download all starter templates (.zip)",
+                data=template_bundle.getvalue(),
+                file_name="campos-starter-templates.zip",
+                mime="application/zip",
+                key="download-starter-templates-bundle",
+                use_container_width=True,
+                help="A single ZIP with the example CSV files for site geometry, sprinklers, protected surfaces, and observations.",
+            )
+        for label, filename in template_files:
             ("Download lawn polygon example", "site_polygon_template.csv"),
             ("Download sprinkler layout example", "sprinkler_layout_template.csv"),
             ("Download protected-surface example", "protected_surface_template.csv"),
