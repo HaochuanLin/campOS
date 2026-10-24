@@ -1,2 +1,2 @@
-x_m,y_m,radius_m,start_angle_deg,arc_width_deg
-10,10,5,0,360
+x_m,y_m,radius_m,start_angle_deg,arc_width_deg,flow_lpm
+10,10,5,0,360,1.0
