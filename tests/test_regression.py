@@ -1057,3 +1057,29 @@ def test_baseline_guard_rejects_worse_interior_deficit_even_with_overspray_toler
     assert sim.select_tradeoff(
         front, budget=0.03, baseline=baseline, max_overspray_increase=0.10
     ) is None
+
+
+
+def test_baseline_guard_rejects_dry_area_constraint_violation():
+    baseline = {"f1": 0.10, "CU": 0.80, "f2": 0.20, "dry": 0.01}
+    candidates = [
+        {"f1": 0.05, "CU": 0.80, "f2": 0.15, "dry": 0.03},
+        {"f1": 0.06, "CU": 0.80, "f2": 0.15, "dry": 0.01},
+    ]
+    assert sim.select_tradeoff(
+        candidates, budget=0.03, baseline=baseline, dry_limit=0.02
+    ) == 1
+
+
+def test_pareto_guardrail_diagnostics_name_each_failed_constraint():
+    point = {"f1": 0.12, "CU": 0.70, "f2": 0.25, "dry": 0.04}
+    baseline = {"f1": 0.10, "CU": 0.80, "f2": 0.20, "dry": 0.01}
+    checks = sim.tradeoff_guardrail_checks(
+        point, baseline, budget=0.03, max_overspray_increase=0.01, dry_limit=0.02
+    )
+    assert checks == {
+        "cu": False,
+        "overspray": False,
+        "interior_deficit": False,
+        "dry_area": False,
+    }
