@@ -215,8 +215,12 @@ class Site:
         all_points = np.vstack(bounds)
         x0, y0 = all_points.min(axis=0) - m
         x1, y1 = all_points.max(axis=0) + m
-        width_m, height_m = x1 - x0, y1 - y0
-        cells_x, cells_y = width_m / c, height_m / c
+        # Tiny positive cells or extreme coordinates can overflow during
+        # the estimate itself; treat that as invalid input without emitting
+        # a noisy RuntimeWarning before the actionable ValueError below.
+        with np.errstate(over="ignore", divide="ignore", invalid="ignore"):
+            width_m, height_m = x1 - x0, y1 - y0
+            cells_x, cells_y = width_m / c, height_m / c
         if (
             not np.all(np.isfinite([x0, y0, x1, y1, cells_x, cells_y]))
             or width_m <= 0 or height_m <= 0
