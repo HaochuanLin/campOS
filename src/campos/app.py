@@ -176,6 +176,10 @@ if run:
                     field_eval_ok = False
                     field_eval_message = "Field evaluation timed out. The optimization outputs are still available."
                     field_eval_log = "The field-evaluation command exceeded the 5-minute timeout."
+                except OSError as exc:
+                    field_eval_ok = False
+                    field_eval_message = "Field evaluation could not be launched. The optimization outputs are still available."
+                    field_eval_log = str(exc)
 
             artifacts = {}
             for path in sorted(outdir.iterdir()):
