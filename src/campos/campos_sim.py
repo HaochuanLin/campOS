@@ -496,15 +496,27 @@ def pareto_search(site, heads0, cfg, fixed_xy, seed, ref, warm=None):
     return arch.h
 
 
-def select_tradeoff(front, budget, baseline=None, max_overspray_increase=0.0):
+def tradeoff_guardrail_checks(point, baseline, budget, max_overspray_increase=0.0,
+                             dry_limit=None):
+    """Return named baseline-relative feasibility checks for one Pareto point."""
+    if baseline is None:
+        return {"cu": True, "overspray": True, "interior_deficit": True, "dry_area": True}
+    checks = {
+        "cu": point["CU"] >= baseline["CU"] - budget - 1e-12,
+        "overspray": point["f1"] <= baseline["f1"] + max(0.0, max_overspray_increase) + 1e-12,
+        "interior_deficit": point["f2"] <= baseline["f2"] + 1e-12,
+        "dry_area": True if dry_limit is None else point["dry"] <= dry_limit + 1e-12,
+    }
+    return checks
+
+
+def select_tradeoff(front, budget, baseline=None, max_overspray_increase=0.0, dry_limit=None):
     """Select a low-overspray point without silently regressing the baseline.
 
-    When a baseline report is supplied, candidates must (1) stay within the
-    absolute CU-loss budget relative to the baseline and (2) not exceed the
-    baseline's overspray ratio. If no candidate satisfies both conditions,
-    return None rather than presenting a worse-overspray point as the chosen
-    solution. Without a baseline, retain the legacy front-relative behavior
-    for callers that explicitly request it.
+    With a baseline, candidates must respect the CU-loss budget, overspray
+    tolerance, no-worse interior deficit, and (when supplied) dry-area limit.
+    Return None when no candidate satisfies every guardrail. Without a
+    baseline, retain the legacy front-relative behavior for compatibility.
     """
     if not front:
         return None
@@ -512,13 +524,11 @@ def select_tradeoff(front, budget, baseline=None, max_overspray_increase=0.0):
         cu_best = max(p["CU"] for p in front)
         ok = [i for i, p in enumerate(front) if p["CU"] >= cu_best - budget]
     else:
-        cu_floor = baseline["CU"] - budget
-        overspray_ceiling = baseline["f1"] + max(0.0, max_overspray_increase) + 1e-12
         ok = [
             i for i, p in enumerate(front)
-            if p["CU"] >= cu_floor
-            and p["f1"] <= overspray_ceiling
-            and p["f2"] <= baseline["f2"] + 1e-12
+            if all(tradeoff_guardrail_checks(
+                p, baseline, budget, max_overspray_increase, dry_limit
+            ).values())
         ]
     return min(ok, key=lambda i: front[i]["f1"]) if ok else None
 
@@ -550,6 +560,7 @@ def run_pareto(name, poly, cfg, fixed_xy, refs=None):
     sel = select_tradeoff(
         front, cfg["cu_drop_budget"], baseline=baseline_report,
         max_overspray_increase=cfg["max_overspray_increase"],
+        dry_limit=cfg["dry_frac_limit"],
     )
     refs_out = {"Baseline (standard grid)": baseline_report,
                 "Naive full-circle (reference only)": bi_report(site, naive_full_circle(h0), ref, cfg)}
@@ -668,13 +679,26 @@ def write_pareto_csv(results, fn, cfg):
         w.writerow(["mode", "site", "point_type", "point_index", "selected_tradeoff",
                     "overspray_pct_of_baseline_total_water_f1", "interior_deficit_pct_f2",
                     f"dry_area_pct_constraint_le_{cfg['dry_frac_limit'] * 100:.0f}",
-                    "CU", "AR_legacy", "overspray_pct_of_own_water", "total_water_relative_to_baseline"])
+                    "CU", "AR_legacy", "overspray_pct_of_own_water", "total_water_relative_to_baseline",
+                    "guardrail_cu_pass", "guardrail_overspray_pass",
+                    "guardrail_interior_deficit_pass", "guardrail_dry_area_pass",
+                    "guardrail_all_pass", "guardrail_rejection_reasons"])
         for r in results:
+            baseline = r["refs"].get("Baseline (standard grid)")
             def row(kind, i, p, selected=""):
+                is_candidate = kind == "PARETO"
+                checks = tradeoff_guardrail_checks(
+                    p, baseline, cfg["cu_drop_budget"], cfg["max_overspray_increase"],
+                    cfg["dry_frac_limit"],
+                ) if is_candidate else {}
+                failed = [name for name, passed in checks.items() if not passed]
                 w.writerow([r["mode"]["csv"], r["name"], kind, i, selected,
                             f"{p['f1']*100:.2f}", f"{p['f2']*100:.2f}", f"{p['dry']*100:.2f}",
                             f"{p['CU']:.3f}", f"{p['AR']:.3f}", f"{p['over_own']*100:.2f}",
-                            f"{p['water_rel']:.3f}"])
+                            f"{p['water_rel']:.3f}",
+                            checks.get("cu", ""), checks.get("overspray", ""),
+                            checks.get("interior_deficit", ""), checks.get("dry_area", ""),
+                            all(checks.values()) if checks else "", ";".join(failed)])
             for label, p in r["refs"].items():
                 row("reference: " + label, "", p)
             for i, p in enumerate(r["front"]):
