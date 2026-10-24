@@ -318,7 +318,7 @@ def main() -> None:
             if not isinstance(raw_thresholds, dict):
                 raise ValueError("acceptance thresholds JSON must be an object")
             thresholds = validate_acceptance_thresholds(raw_thresholds)
-            acceptance_assessment = assess_holdout(metrics, thresholds)
+            acceptance_assessment = assess_holdout(metrics["metrics"], thresholds)
     except (OSError, ValueError, json.JSONDecodeError) as exc:
         parser.error(str(exc))
 
