@@ -39,3 +39,24 @@ The run metadata records the input paths, SHA-256 hashes, coordinate units, poly
 ## Validation limits
 
 Input validation checks columns, numeric finite values, duplicate consecutive vertices, nonzero polygon area, and initial head positions/ranges. It is not a complete GIS topology validator; inspect the polygon for self-intersections, holes, obstacles, slope, and coordinate reference issues before using it. The current geometry model supports one simple polygon only: no holes, islands, terrain, or obstacles. Wind, pressure loss, evaporation, drift, and network hydraulics remain outside the model. A successful run is not an engineering approval or evidence of water savings.
+
+
+## Optional protected-surface polygon (road/sidewalk objective)
+
+For a surveyed custom site, an additional CSV can describe a road, sidewalk, or other surface whose received water should be minimized. It uses the same metre-based vertex format as the lawn polygon:
+
+    x_m,y_m
+    40,0
+    40,25
+    43,25
+    43,0
+
+Example invocation (replace paths with surveyed inputs):
+
+    python campos_sim.py --mode pareto-fixed --quick \
+      --polygon-csv data/site_polygon.csv \
+      --heads-csv data/sprinkler_layout.csv \
+      --protected-surface-csv data/sidewalk_polygon.csv \
+      --outdir out/protected-surface
+
+When supplied, Pareto f1 becomes modelled water on the protected polygon divided by baseline total modelled water. CSV output also reports outside-lawn water separately. The polygon must be valid and must not overlap the lawn interior; a shared boundary is allowed. The grid uses cell-centre inclusion, so results depend on grid resolution. This is not a runoff or drift model and is not field validation; compare resolutions and validate with catch-can observations.
