@@ -49,8 +49,13 @@ section[data-testid="stSidebar"] [data-testid="stNumberInput"] > div {
 }
 section[data-testid="stSidebar"] [data-testid="stNumberInput"] button {
   color: #102b2b !important;
-  background: #e4eee7 !important;
-  border-color: #b8cbc1 !important;
+  background: #d6e5da !important;
+  border-color: #9bb5a5 !important;
+}
+section[data-testid="stSidebar"] [data-testid="stNumberInput"] button svg,
+section[data-testid="stSidebar"] [data-baseweb="select"] svg {
+  color: #102b2b !important;
+  stroke: #102b2b !important;
 }
 section[data-testid="stSidebar"] [data-testid="stFileUploaderDropzone"] {
   background: #f4faf6;
