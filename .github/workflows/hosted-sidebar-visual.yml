@@ -73,6 +73,7 @@ jobs:
                 const number = sidebar.querySelector('[data-testid="stNumberInput"] input');
                 const select = sidebar.querySelector('[data-testid="stSelectbox"] [role="combobox"]') || sidebar.querySelector('[data-baseweb="select"]') || sidebar.querySelector('[data-testid="stSelectbox"]');
                 const stepper = sidebar.querySelector('[data-testid="stNumberInput"] button');
+                const multiSelect = sidebar.querySelector('[data-testid="stMultiSelect"]');
                 const rgb = value => {
                   const m = value.match(/[0-9.]+/g);
                   return m && m.length >= 3 ? m.slice(0, 3).map(Number) : null;
@@ -101,7 +102,38 @@ jobs:
                   }
                   return { color: s.color, background: bg, contrast: contrast(s.color, bg) };
                 };
-                return { numberInput: inspect(number), selectControl: inspect(select), stepperButton: inspect(stepper) };
+                const multiSelectIcons = multiSelect
+                  ? [...multiSelect.querySelectorAll('svg')].map((svg, index) => {
+                      const svgStyle = getComputedStyle(svg);
+                      const path = svg.querySelector('path');
+                      const pathStyle = path ? getComputedStyle(path) : null;
+                      const button = svg.closest('button');
+                      let background = button ? getComputedStyle(button).backgroundColor : svgStyle.backgroundColor;
+                      let parent = button ? button.parentElement : svg.parentElement;
+                      while (background === 'rgba(0, 0, 0, 0)' && parent) {
+                        background = getComputedStyle(parent).backgroundColor;
+                        parent = parent.parentElement;
+                      }
+                      const foreground = pathStyle && pathStyle.stroke !== 'none'
+                        ? pathStyle.stroke
+                        : pathStyle && pathStyle.fill !== 'none' ? pathStyle.fill : svgStyle.color;
+                      return {
+                        index,
+                        color: svgStyle.color,
+                        stroke: pathStyle ? pathStyle.stroke : null,
+                        fill: pathStyle ? pathStyle.fill : null,
+                        opacity: svgStyle.opacity,
+                        background,
+                        contrast: contrast(foreground, background)
+                      };
+                    })
+                  : [];
+                return {
+                  numberInput: inspect(number),
+                  selectControl: inspect(select),
+                  stepperButton: inspect(stepper),
+                  multiSelectIcons
+                };
               });
             }
             if (result.error) failures.push(result.error);
@@ -116,6 +148,15 @@ jobs:
             if (!result.stepperButton) failures.push('number input stepper button was not found');
             else if (result.stepperButton.contrast === null || result.stepperButton.contrast < 3) {
               failures.push('stepper button contrast below 3:1');
+            }
+            if (!result.multiSelectIcons || result.multiSelectIcons.length < 2) {
+              failures.push('multi-select clear/dropdown icons were not both found');
+            } else {
+              result.multiSelectIcons.forEach((icon, index) => {
+                if (icon.contrast === null || icon.contrast < 3 || icon.opacity !== '1') {
+                  failures.push('multi-select icon ' + index + ' contrast/opacity below requirement');
+                }
+              });
             }
 
             require('fs').writeFileSync('artifacts/contrast-report.json', JSON.stringify({
