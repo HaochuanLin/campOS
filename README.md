@@ -1,76 +1,64 @@
 # campOS
 
-**A research prototype for sprinkler-layout optimization on synthetic lawn geometries.**
+**Compare sprinkler layouts. Make overspray and coverage trade-offs visible. Validate with measurements before relying on predictions.**
+
+[**▶ Open the live campOS demo**](https://campos-optimizer.streamlit.app/) · [Source code](https://github.com/HaochuanLin/campOS) · [Report a bug](https://github.com/HaochuanLin/campOS/issues)
 
 [![Tests](https://github.com/HaochuanLin/campOS/actions/workflows/tests.yml/badge.svg)](https://github.com/HaochuanLin/campOS/actions/workflows/tests.yml)
 [![UI smoke](https://github.com/HaochuanLin/campOS/actions/workflows/ui-smoke.yml/badge.svg)](https://github.com/HaochuanLin/campOS/actions/workflows/ui-smoke.yml)
-[![Python 3.10–3.12](https://img.shields.io/badge/python-3.10%E2%80%933.12-blue)](https://www.python.org/)
+[![Python 3.10–3.12](https://img.shields.io/badge/python-3.10%2B-blue)](https://www.python.org/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
 
-> **Important:** campOS is not field-validated. Lawn geometry is synthetic, sprinkler physics and economic inputs include placeholders, and outputs must not be treated as installation instructions or guaranteed water savings.
+> **Research prototype — not field validated.** Built-in sites are synthetic. Results depend on discretization, assumed or supplied sprinkler characteristics, and the chosen objective. Do not use outputs as installation instructions or as evidence of guaranteed water savings.
 
-## Run the web app
+## Start here
 
-The Streamlit interface is included in this repository. To run it locally from the repository root:
+You do not need field data to try the demo.
 
-```bash
-python -m pip install -r requirements.txt
-streamlit run streamlit_app.py
-```
+1. Open the **[live app](https://campos-optimizer.streamlit.app/)**.
+2. Keep **Use surveyed site CSVs** unchecked to run a reproducible synthetic example.
+3. Choose an optimization mode and site, then click **Run simulation**.
+4. Inspect the metrics, plots, execution details, and generated artifacts.
+5. Download the complete run ZIP if you want to preserve the outputs.
 
-To publish a hosted demo on **Streamlit Community Cloud**, sign in to Streamlit and authorize access to this GitHub repository. Select repository `HaochuanLin/campOS`, branch `main`, and main file path `streamlit_app.py`. Streamlit installs dependencies from `requirements.txt`. If you already created the app, pushes to `main` should trigger a redeploy; check **Manage app → Logs** if the deployment fails. The hosted demo uses temporary runtime storage, so download outputs you need to keep. Do not upload private site surveys or sensitive location data to a public demo.
+The hosted app uses temporary runtime storage. Download anything you need to keep, and do not upload private surveys or sensitive location data to a public demo.
 
-The hosted demo uses temporary runtime storage; download outputs you need to keep. Do not upload private site surveys or sensitive location data to a public demo. Its outputs remain research results, not field-validated installation advice.
+### What the modes mean
 
-The dedicated **UI smoke** workflow checks the Streamlit app render, a synthetic simulation run, both result/template ZIP download controls, required starter-template files, and the local Streamlit health endpoint. You can inspect the run history in [GitHub Actions](https://github.com/HaochuanLin/campOS/actions/workflows/ui-smoke.yml); the workflow also supports manual runs. A green CI run verifies the tested code path, not the availability or field accuracy of the hosted demo.
+| Mode | Purpose |
+|---|---|
+| `compare` | Compare the built-in fixed-head and movable-head scenarios. |
+| `fixed` | Search while keeping existing head positions fixed. |
+| `movable` | Explore candidate head positions. |
+| `pareto-fixed` | Explore the overspray-versus-interior-coverage trade-off with fixed heads. |
+| `pareto-movable` | Explore that trade-off while allowing head positions to move. |
 
-The [hosted-app smoke monitor](https://github.com/HaochuanLin/campOS/actions/workflows/hosted-smoke.yml) independently probes the public app and Streamlit health endpoint on a schedule, and can be started manually. It is intentionally separate from pull-request CI because the deployed app follows `main`, not an unmerged branch. If it fails, inspect the sanitized redirect headers and the app's Streamlit Community Cloud settings/logs; an HTTP redirect alone does not prove a Python startup failure.
+Exact objective definitions and metric caveats are documented in [the model reference](docs/MODEL.md) and [objective audit](docs/OBJECTIVE_AUDIT.md).
 
-Use the [Phase 1 acceptance checklist](docs/PHASE1_ACCEPTANCE.md) to distinguish automated CI evidence from checks that require the deployed browser app. Phase 1 stays open until both are verified.
+## What campOS is for
 
-### Current acceptance status
+campOS is an open, reproducible decision-support prototype for comparing sprinkler layouts on irregular lawn boundaries. Its motivating problem is simple: water can land outside the intended lawn while parts of the lawn still receive too little water. A single score can hide that trade-off.
 
-- **Repository automation:** the UI smoke, Python-version matrix, and artifact-integrity checks passed on the reviewed PR revision before merge; check the workflow links above for runs on the current `main` commit.
-- **Visible app page:** a browser screenshot provided on 2026-10-25 shows the hosted app's landing page rendering. This is useful visual evidence, but does not establish that a simulation completes or that downloaded ZIP files open correctly.
-- **Hosted health monitor:** the monitor has observed repeated redirects toward Streamlit authentication paths from its runner. This conflicts with the browser screenshot and remains unresolved; confirm public-access settings and rerun the monitor before marking deployment reachability accepted.
-- **Real browser interaction:** simulation, result ZIP, template ZIP, invalid-input messaging, and refresh recovery still require an interactive browser pass.
-- **Field validity:** no surveyed-site evidence is supplied yet; no real-world water-saving or road-wetting reduction claim is established.
+The project aims to make comparisons inspectable: preserve inputs and assumptions, compare alternatives under matched conditions, show multiple metrics, and provide a path to evaluate predictions against catch-can measurements.
 
-## Project concept
+**What it can do today**
+- Run repeatable synthetic sprinkler-layout comparisons.
+- Explore fixed-position and movable-head optimization.
+- Include a protected road/sidewalk polygon in supported Pareto modes.
+- Import a site polygon and sprinkler layout in metric coordinates.
+- Generate reports, plots, machine-readable outputs, and reproducibility metadata.
+- Check field-observation CSV quality and compare predicted depths with observed catch-can measurements.
+- Experiment with an optional AI residual correction workflow, with calibration/holdout separation.
 
-campOS is an **open, reproducible decision-support prototype for comparing sprinkler-layout options on irregular lawns**. It is designed to make a design question inspectable: given a lawn boundary and an existing or proposed sprinkler layout, how do alternative configurations trade water applied outside the lawn against the modelled risk of insufficient coverage inside it?
+**What it has not established**
+- That predictions match a real sprinkler system.
+- That a recommended layout reduces actual water use or road wetting.
+- That wind, drift, evaporation, pressure variation, soil infiltration, hydraulics, and all site constraints are represented adequately.
+- That an AI correction generalizes to new sites or operating conditions.
 
-It is not an autonomous irrigation controller, a certified engineering design tool, or a water-savings calculator. Its purpose at this stage is to compare candidate layouts under explicit assumptions, expose the trade-offs behind each result, and provide a disciplined path from synthetic experiments to measurement-based evaluation.
+A more complex optimizer cannot compensate for inaccurate inputs or an unvalidated physical model. Treat all outputs as exploratory until independent field evaluation supports the relevant claim.
 
-### The workflow
-
-1. **Describe the site:** use a synthetic test shape or import a measured lawn boundary and existing head coordinates.
-2. **Establish a baseline:** record the input geometry, layout, model assumptions, grid resolution, and random seed.
-3. **Explore alternatives:** compare fixed-position retrofit and movable-head search; use Pareto modes when overspray and interior deficit must be considered together.
-4. **Inspect evidence:** review the metrics, plots, raw CSVs, run metadata, and matched-scenario reports—not a single headline score alone.
-5. **Validate before relying on it:** calibrate inputs with documented sprinkler data and evaluate predictions against independent observations before making real-site or savings claims.
-
-### What the current prototype can and cannot support
-
-- **Can support now:** reproducible synthetic comparisons, exploratory layout search, sensitivity checks, input provenance, and transparent reporting of model-defined metrics.
-- **Can support with appropriate user data:** geometry-specific comparisons and model calibration workflows, provided the supplied data are documented and their limits are respected.
-- **Cannot yet support:** validated installation recommendations, guaranteed water savings, payback estimates, or claims of field accuracy. The built-in lawn shapes are synthetic; wind, drift, evaporation, pressure losses, soil response, and other site effects are not fully modelled.
-
-See [the project charter](docs/PROJECT_CHARTER.md) for the intended scope, evidence standards, and development priorities. For a practical measurement plan, required field records, and the distinction between calibration and independent evaluation, see the [real-site validation protocol](docs/REAL_SITE_VALIDATION_PROTOCOL.md).
-
-Copy the empty [field observation template](data/templates/field_catch_can_template.csv), fill one row per can per run, and keep the raw copy unchanged. Before any model comparison, run the field-observation data-quality checker on the completed CSV:
-
-```bash
-cp data/templates/field_catch_can_template.csv data/field_catch_can_observations.csv
-# Edit data/field_catch_can_observations.csv, then run:
-campos-observation-qc \
-  --input data/field_catch_can_observations.csv \
-  --outdir out/field-data-qc
-```
-
-It checks required columns, unique can IDs per site/run, numeric values, units, zone labels, and calibration/holdout split consistency; if depth is blank, it derives depth in mm from collected volume and opening area. The normalized CSV preserves available pressure and weather fields and the JSON summary records quality warnings. This is **data QC only**—it does not compare observations with model predictions or count as field validation. For an end-to-end comparison, `scripts/predict_catch_can_depths.py` evaluates the sprinkler field at exact catch-can coordinates using a supplied polygon, sprinkler layout, measured flow per head, and filled observations CSV. It writes paired predictions and calibration/holdout metrics; see the [real-site validation protocol](docs/REAL_SITE_VALIDATION_PROTOCOL.md) for the command, required inputs, and limits. After installing the package, the same workflow is available as `campos-field-evaluate` without invoking the script path. The standalone `scripts/evaluate_observation_errors.py` remains available for scoring already-paired values. Pre-registered acceptance thresholds make a failed evaluation exit with status 2 while retaining outputs for audit; `--fail-on-zone-geometry-mismatch` can additionally fail on inside/outside labels that contradict the lawn polygon.
-
-## Quick start
+## Run locally
 
 Requires Python 3.10 or newer.
 
@@ -78,427 +66,95 @@ Requires Python 3.10 or newer.
 git clone https://github.com/HaochuanLin/campOS.git
 cd campOS
 python -m pip install -e ".[dev]"
-campos-sim --help
-campos-field-evaluate --help
-campos-observation-qc --help
-campos-field-report --help
-campos-start --help
-campos-verify-artifacts --help
 python -m pytest -q
 ```
 
-### Optional local web interface
+Run the command-line simulator:
 
-If you prefer buttons and tables over a terminal, install the optional UI dependency and start the local app:
+```bash
+campos-sim --help
+python campos_sim.py --mode movable --quick --sites A --outdir out/demo
+```
+
+The `--quick` run is a smoke test, not scientific validation.
+
+### Start the web interface locally
 
 ```bash
 python -m pip install -e ".[ui]"
-streamlit run src/campos/app.py
+streamlit run streamlit_app.py
 ```
 
-The interface lets you select synthetic sites or upload a surveyed lawn polygon and sprinkler-layout CSV, optionally add a measured radial profile or pressure-flow-throw curve, choose an optimization mode, seed, and grid resolution, inspect result tables and plots, and download generated artifacts. For uploaded catch-can data, it can also apply a pre-registered holdout-threshold JSON and an optional strict zone/polygon label gate; failed gates remain visible in the saved diagnostics and block experimental AI correction. Custom-site mode can optionally take a separate road/sidewalk polygon for the protected-surface objective. It runs locally; it is not a hosted service. Uploaded geometry must use metre-based coordinates and the documented CSV columns; this UI does not replace surveying, field measurements, or independent validation. See the [local UI guide](docs/LOCAL_UI_GUIDE.md) for the input contract and interpretation limits. The UI also offers example lawn, sprinkler-layout, and protected-surface CSVs; their coordinates are illustrative, not surveyed measurements. In custom-site mode, you can optionally upload catch-can observations to generate pointwise predictions and calibration/holdout error metrics; an evaluation failure leaves the optimization outputs available and shows diagnostics. If you also install `.[ui,ai]`, an experimental Gaussian-process residual correction can be run after field evaluation; it reports baseline-versus-corrected holdout errors and does not certify generalization.
+For a guided local setup and troubleshooting, see [the local UI guide](docs/LOCAL_UI_GUIDE.md).
 
-### One-command start (no real data required)
+## Use your own site data
 
-After installation, run:
+The UI accepts CSV inputs for a lawn polygon and sprinkler layout. Coordinates and radii must use metres. Optional inputs include a measured radial distribution profile, pressure/flow/throw performance data, catch-can observations, and a protected road/sidewalk polygon for Pareto modes.
+
+Start with the [custom-site input guide](docs/CUSTOM_SITE_INPUTS.md) and download the example files under [data/templates](data/templates/). Do not label illustrative values as measurements.
+
+For observation quality checks:
 
 ```bash
-campos-start
+campos-observation-qc --help
 ```
 
-This runs quick fixed-position and movable-head synthetic scenarios on site A using the same quick settings, then writes a browsable `index.html`, model output CSVs/plots, mode-specific run metadata, and `quickstart_manifest.json` under `out/campos-quickstart/`. Open the generated `index.html` in a browser to compare the model-defined outcomes and review limitations. You can choose a different mode, site, or output directory:
+For pointwise prediction and calibration/holdout evaluation:
 
 ```bash
-campos-start --mode compare --sites A C --outdir out/compare-demo
-campos-start --mode pareto-fixed --sites C --outdir out/pareto-demo
-campos-start --mode fixed --sites A C --outdir out/fixed-demo
-campos-start --mode compare --sites A --seed 19 --cell-size 0.25 --outdir out/reproducible-demo
+campos-field-evaluate --help
 ```
 
-The seed and grid resolution are forwarded to both compared scenarios and recorded in `quickstart_manifest.json`. Add `--full` to omit the quick smoke-test settings; longer searches may take substantially more time. The default `compare` mode runs both fixed and movable layouts. A single mode can be selected explicitly. The command does not need field observations or training data, and it does not silently fabricate them: it uses built-in synthetic geometry and labels the report accordingly.
+The evaluation workflow requires appropriately documented geometry, layout, flow and observation inputs. Reserve independent holdout data for evaluation; do not tune the model on the same observations and then report those observations as independent validation. See the [real-site validation protocol](docs/REAL_SITE_VALIDATION_PROTOCOL.md).
 
-This is a software demo, not a real-site design. It cannot establish field accuracy, actual road wetting, or water savings.
+## Reproducibility and outputs
 
-### Compare overspray against interior coverage
+A run can produce CSV data, JSON metadata, plots, HTML/Markdown reports, and a ZIP bundle through the UI. Keep the command, seed, configuration, input files, software version, and generated metadata with any result you share.
 
-For the project's central trade-off, start with a Pareto run. The fixed-position mode is useful for retrofit studies where head locations cannot be moved:
-
-```bash
-# Quick software smoke test only
-python campos_sim.py --mode pareto-fixed --quick --sites C --outdir out/pareto-smoke
-
-# More thorough synthetic exploration
-python campos_sim.py --mode pareto-fixed --sites C --outdir out/pareto
-```
-
-The Pareto modes explore the trade-off between modelled water outside the lawn and interior depth deficit, subject to the configured dry-area constraint. The search is stochastic and approximate; review the CSV, metadata, and plots rather than treating one selected point as a guaranteed optimum.
-
-The displayed trade-off is guarded against silent regressions: a selected Pareto point must stay within the baseline-relative CU-loss budget, respect the configured overspray tolerance, keep mean interior deficit no worse than baseline, and satisfy the configured dry-area limit. If no point satisfies every guardrail, the run reports no selected point and records which constraints rejected candidates in the Pareto CSV and matched benchmark summary. If you deliberately want to permit a bounded increase in the active f1 objective to improve interior coverage, set `--max-overspray-increase 0.01` to allow up to 1 percentage point of baseline total modelled water as additional objective water. Without a protected-surface polygon, f1 is all outside-lawn water; with `--protected-surface-csv`, f1 is water on that polygon. This is an explicit modelling trade-off, not a water-savings claim. The default is `0` (no increase in the active f1 objective).
-
-**Objective boundary and optional protected-surface mask:** by default, Pareto f1 counts all modelled water outside the lawn polygon; it does not distinguish roads/sidewalks from garden beds or drains. For a measured custom site, pass `--protected-surface-csv` with a separate surveyed road/sidewalk polygon CSV (`x_m,y_m` columns, metres) to make f1 count modelled water on that polygon. CSV output reports outside-lawn water and protected-surface water separately. The protected polygon may share a boundary with the lawn but must not overlap its interior. The mask uses cell-centre inclusion at the configured grid resolution, so inspect grid-resolution sensitivity. This is a geometry-specific simulated proxy—not observed spray drift, runoff, or field validation.
-
-Before interpreting a protected-surface objective, quantify geometric rasterization error across grid sizes:
-
-```bash
-python scripts/check_protected_surface_resolution.py \
-  --polygon-csv data/site_polygon.csv \
-  --protected-surface-csv data/sidewalk_polygon.csv \
-  --heads-csv data/sprinkler_layout.csv \
-  --cell-sizes 2,1,0.5,0.25 \
-  --max-relative-error 0.05 \
-  --out out/protected-surface-resolution.csv
-```
-
-The optional `--heads-csv` evaluates one unchanged sprinkler layout at each resolution and reports the modelled water share reaching the protected polygon. `--max-water-share-spread 1.0` can optionally require that share to vary by no more than one percentage point across the tested grids. These are user-selected numerical tolerances, not engineering standards or proof of field performance. See [custom-site and resolution-check documentation](docs/CUSTOM_SITE_INPUTS.md).
-
-### Run the included field-evaluation example
-
-```bash
-campos-field-evaluate \
-  --polygon-csv examples/field_evaluation_demo/site_polygon.csv \
-  --heads-csv examples/field_evaluation_demo/sprinkler_layout.csv \
-  --observations examples/field_evaluation_demo/catch_can_observations.csv \
-  --outdir out/field-evaluation-demo
-```
-
-This example is **synthetic software smoke-test data only**, not field evidence or a calibration dataset. Read [the example notes](examples/field_evaluation_demo/README.md) before adapting the workflow to real measurements. The field-evaluation command uses measured per-head `flow_lpm` values in the layout CSV; if any are blank, pass `--flow-lpm` as a fallback.
-
-### Build a shareable field-evaluation report
-
-After running `campos-field-evaluate`, create HTML and Markdown summaries from its metrics JSON:
-
-```bash
-campos-field-report --input-json out/field-evaluation-demo/field_evaluation_metrics.json
-```
-
-The report includes overall and zone-stratified errors, input hashes, geometry/zone-label warnings, and model limitations. It does not issue a pass/fail certification.
-
-### Import a measured site polygon and existing sprinkler positions
-
-Custom input CSVs use metre-based coordinates. See the [input format and limitations](docs/CUSTOM_SITE_INPUTS.md); starter templates are in `data/templates/`.
-
-```bash
-python campos_sim.py --mode fixed --quick \
-  --polygon-csv data/templates/site_polygon_template.csv \
-  --heads-csv data/templates/sprinkler_layout_template.csv \
-  --outdir out/custom-site
-python scripts/build_design_report.py --input-dir out/custom-site
-```
-
-The checked-in coordinate templates are illustrative only, not surveyed measurements or installation recommendations. For field observations, fill the empty [catch-can template](data/templates/field_catch_can_template.csv), record calibration/holdout splits by whole run, and follow the [real-site validation protocol](docs/REAL_SITE_VALIDATION_PROTOCOL.md). Replace all example geometry, layout, and observation data with documented site measurements before field evaluation.
-
-### Generate a shareable report
-
-```bash
-python scripts/build_design_report.py --input-dir out/demo
-```
-
-This creates a self-contained `design_report.html` and `design_report.md`. The report summarizes the run; it does not convert AR changes into water savings or certify a real-site layout.
-
-## Model inputs and physics references
-
-campOS compares four search modes for rotary-sprinkler layouts:
-
-- **Movable-head optimization:** sprinkler positions, throw radii, and sector angles may change.
-- **Fixed-position retrofit optimization:** sprinkler coordinates remain unchanged; only radii and sector angles may change.
-- **Pareto search:** explores the trade-off between overspray and interior water deficit, with a dry-area constraint.
-
-### Use a measured sprinkler radial profile
-
-If you have catch-can measurements for the actual nozzle and operating pressure, provide a CSV with `radius_fraction,relative_rate` columns and run:
-
-```bash
-# With measured catch-can data
-python campos_sim.py --mode movable --quick --sites A --profile-csv data/catch_can_profile.csv --outdir out/profile-run
-
-# Without measurements: compare alternative assumed radial shapes
-python campos_sim.py --mode movable --quick --sites A --radial-slope -0.5 --outdir out/sensitivity-center-heavy
-python campos_sim.py --mode movable --quick --sites A --radial-slope 0 --outdir out/sensitivity-uniform
-python campos_sim.py --mode movable --quick --sites A --radial-slope 1 --outdir out/sensitivity-edge-heavy
-```
-
-For raw catch-can observations, use `scripts/prepare_radial_profile.py` to convert repeated depth readings into the loader's profile format. The measurement checklist, required raw CSV columns, endpoint assumptions, and validation limits are documented in [the radial-profile protocol](docs/RADIAL_PROFILE_PROTOCOL.md). The checked-in [CSV template](data/templates/catch_can_observations_template.csv) is intentionally empty and is not a dataset.
-
-The profile is area-normalized and changes the radial distribution shape. It does **not** supply absolute flow or validate the model by itself. If you have no catch-can data, use the default uniform-depth null model and compare sensitivity scenarios with `--radial-slope` (valid values are greater than -1):
-
-### Optional measured pressure-performance curve
-
-For a specific sprinkler, provide a measured table with `pressure_kpa,flow_lpm,throw_m` and choose a pressure within the table's measured range:
-
-```bash
-python campos_sim.py --mode fixed --quick --sites A --profile-csv data/catch_can_profile.csv --performance-csv data/performance.csv --pressure-kpa 250 --outdir out/calibrated
-```
-
-This is an invocation example, not a recommended pressure setting. The performance table must come from the actual sprinkler/nozzle or a documented test. When active, the model uses interpolated flow and throw and locks throw radius during optimization. The absolute field is an estimated precipitation rate in mm/h under uniform-sector assumptions, not field validation.
-
-### Public sprinkler-physics benchmark
-
-I added a reproducible check against published Rain Bird 5000 Series standard-angle nozzle data:
-
-```bash
-python scripts/benchmark_sprinkler_curve.py
-```
-
-The six-point CSV includes pressure, flow, throw radius, and manufacturer-published square/triangular precipitation rates. The benchmark compares those rates with a flow / grid-cell-area calculation using the chart's half-circle operating assumption. A 1 mm/h tolerance accounts for integer rounding. This is a public manufacturer-chart consistency check, **not independent field validation** and not a measurement of the local radial spray pattern. Source and transcription details are in [data/benchmarks/README.md](data/benchmarks/README.md).
-
-The same file is a runnable example of the pressure-performance option at 200–450 kPa:
-
-```bash
-python campos_sim.py --mode fixed --quick --sites A --performance-csv data/benchmarks/rainbird_5000_standard_1_5.csv --pressure-kpa 300 --outdir out/rainbird-example
-```
-
-Without a measured catch-can profile for this exact nozzle/pressure, the radial field remains a placeholder; do not interpret this example as a field-validated layout.
-
-## Optimization modes
-
-| Mode | Parameters allowed to change | Purpose |
-|---|---|---|
-| `movable` | Position `x/y`, radius `r`, start angle `a0`, arc width `w` | Explore a new layout using the legacy AR objective |
-| `fixed` | Radius `r`, start angle `a0`, arc width `w`; `x/y` fixed | Explore a retrofit without relocating heads |
-| `pareto-movable` | Position, radius, start angle, arc width | Explore overspray/deficit trade-offs with movable heads |
-| `pareto-fixed` | Radius, start angle, arc width; `x/y` fixed | Explore retrofit trade-offs without relocating heads |
-
-The built-in synthetic sites are **A** rectangle, **B** L-shape, **C** kidney, **D** wedge, and **E** roadside strip. They are generated polygons, not surveyed properties.
-
-### Explicit optimization policy
-
-The legacy `movable` and `fixed` modes remain available as a comparison baseline. Use `pareto-movable` or `pareto-fixed` when you want to examine the trade-off between overspray and interior deficit instead of optimizing AR alone.
-
-The Pareto policy can be set explicitly and is recorded in `run_metadata.json`:
-
-```bash
-python campos_sim.py --mode pareto-fixed --quick --sites C \
-  --dry-fraction-limit 0.02 \
-  --target-factor 1.0 \
-  --cu-drop-budget 0.03 \
-  --pareto-weights 0,0.25,0.5,0.75,1 \
-  --outdir out/pareto-policy
-```
-
-- `--dry-fraction-limit`: maximum fraction of lawn cells allowed below the configured dry threshold. This is a model constraint, not a plant-health guarantee.
-- `--target-factor`: target depth as a multiple of the baseline lawn mean. The default of 1.0 is a comparison convention, not an agronomic prescription.
-- `--cu-drop-budget`: maximum absolute CU loss allowed relative to baseline CU when selecting the displayed trade-off.
-- `--max-overspray-increase`: maximum allowed increase in Pareto f1 relative to baseline, as a fraction of baseline total modelled water. The default `0` forbids overspray regression; `0.01` permits up to one percentage point of baseline total water as additional outside-lawn water.
-- `--pareto-weights`: weights used to guide stochastic exploration toward different parts of the Pareto front. They are search controls, not evidence-based utility weights; the final selected point must meet the baseline-relative CU budget and overspray-increase tolerance and must not worsen interior deficit.
-
-These settings make assumptions explicit; they do not make the model field-validated. Compare several settings and report the full trade-off before treating any one selection as a preferred design.
-
-```mermaid
-flowchart LR
-    A[Synthetic polygon] --> B[Grid discretization]
-    B --> C[Baseline layout]
-    C --> D[AR optimization]
-    C --> E[Pareto search]
-    D --> F[CSV, plots, run metadata]
-    E --> F
-```
-
-## Matched optimization benchmark
-
-Run the legacy AR modes and Pareto modes against the same synthetic site, seed, grid, radial field, and baseline layout:
-
-```bash
-python scripts/compare_optimization_modes.py --quick --sites A
-```
-
-By default, the script compares all five synthetic sites; omit `--quick` for the configured full optimization iterations. It writes `benchmark_summary.csv`, a concise `README.md` report, and the raw simulation CSVs, plots, metadata, and console log under `out/optimization-benchmark/`. Set `--seed`, `--cell-size`, `--radial-slope`, `--dry-fraction-limit`, `--target-factor`, `--cu-drop-budget`, `--max-overspray-increase`, and `--pareto-weights` to reproduce or vary assumptions.
-
-The comparison is matched at the scenario/configuration level, but the algorithms optimize different objective functions and Pareto search is a stochastic finite-search approximation. Pareto f1 and legacy overspray share different denominators; Pareto and legacy dry-area metrics also use different thresholds. The benchmark therefore reports both objective-specific and shared metrics instead of collapsing them into a single winner score. It is a synthetic model comparison, not field validation or a water-savings estimate.
-
-
-## JSON configuration and matched design comparisons
-
-Run a reproducible configuration file (CLI flags override JSON values):
-
-```bash
-python campos_sim.py --config configs/run.example.json
-```
-
-Compare named scenarios while keeping geometry, seed, grid, radial assumptions, and measurement files fixed:
-
-```bash
-python scripts/compare_design_configs.py \
-  --spec configs/design_comparison.example.json \
-  --outdir out/design-comparison
-```
-
-The script writes `design_comparison.csv`, `comparison_manifest.json`, a Markdown summary, and a separate raw run directory per scenario. Scenario overrides are deliberately restricted; see [configuration and comparison rules](docs/CONFIGURATION_AND_COMPARISONS.md). Run metadata and generated reports distinguish user-supplied files, illustrative assumptions, unconfigured physics, and placeholder economics. A supplied measurement file is not by itself proof that the model is validated.
-
-## Parameter sensitivity and numerical robustness
-
-Run a reproducible sweep across optimizer seeds, grid resolutions, and assumed radial distributions:
-
-```bash
-python scripts/parameter_sensitivity.py --quick --sites A --seeds 7 19 41 --cell-sizes 0.5 1.0 --slopes -0.5 0 1
-```
-
-By default, the sweep covers sites A–E, three seeds, two grid sizes, and three radial slopes. It writes one row per run to `sensitivity_summary.csv`, with the requested configuration cross-checked against each run's metadata; raw outputs and plots remain in scenario subfolders. Omit `--quick` for the simulator's full iteration budget. The full default sweep is computationally expensive.
-
-This study checks sensitivity to stochastic search initialization, raster resolution, and illustrative radial-shape assumptions. It is **not** a formal probabilistic uncertainty analysis or empirical validation. The slopes are not measured sprinkler properties, and changes in the grid also change the raster approximation. For independent validation, use surveyed site geometry and held-out catch-can or field observations collected under documented conditions. The staged experiment design, calibration/holdout split, reporting requirements, and acceptance-threshold policy are in [the validation plan](docs/VALIDATION_PLAN.md). Do not interpret AR improvement as water savings.
-
-## Metrics: read them carefully
-
-The model reports several metrics that answer different questions. They are not interchangeable.
-
-- **AR (legacy single-objective metric):** total modelled applied water divided by the product of lawn-cell count and the mean depth of the driest quarter of lawn cells. Lower is better for this objective.
-- **AR metric improvement:** `1 - AR_optimized / AR_baseline`. This is **not water savings**. It expresses the relative change in a dimensionless low-quarter metric; optimized total discharge may increase.
-- **Overspray (`f1`):** in Pareto mode, water outside the lawn divided by the baseline layout's total modelled water. The separate legacy overspray metric is the outside-water share of that layout's own total water. These denominators differ.
-- **Interior deficit (`f2`):** average relative shortfall below a target depth over lawn cells. The target is a configurable multiple of the baseline mean lawn depth.
-- **Dry-area fraction:** share of lawn cells below a configured fraction of the target depth. Pareto candidates must satisfy the configured limit to enter the archive.
-- **CU:** a Christiansen-style uniformity metric reported for interpretation; it is not the Pareto search's primary objective.
-
-The standard-grid baseline and the full-circle reference are different comparisons. The full-circle layout is a deliberately naive reference, not a measured existing installation. The project brief reported low baseline overspray (approximately 0–1%) but edge dry patches (5.6–8.1%) for the standard-grid/preset-arc baseline; it did **not** establish an overspray reduction against that baseline.
-
-See [the model definition and limitations](docs/MODEL.md) for formulas and assumptions.
-
-## Historical figures and reproducibility
-
-Numbers quoted in earlier project materials are not presented here as current results because the corresponding raw result CSVs, configuration, and run metadata were not available for independent reproduction. Current claims should be based on committed or linked artifacts that can be rerun and inspected.
-
-## Assumptions and limitations
-
-- All lawn boundaries are synthetic; there is no real-site survey or field validation.
-- The radial precipitation profile and throw range are stylized placeholders, not manufacturer specifications.
-- Retrofit costs remain placeholders, not verified prices. Annual water savings, annual cost savings, and payback are not computed because AR is dimensionless and the model has no calibrated flow/volume conversion.
-- Wind, pressure loss, evaporation, drift, slope, and soil effects are not modelled.
-- Water depth is represented in relative model units, not litres.
-- Grid-based polygon coverage is approximate and depends on the configured cell size.
-- There is no calibrated manufacturer profile, lifecycle-cost analysis, uncertainty study, or operational safety assessment.
-
-Use campOS for exploratory comparisons and method development only—not for construction, irrigation scheduling, procurement, or savings claims.
-
-## Development and tests
-
-Install the development dependencies and run the test suite:
+To run the synthetic quickstart and verify the generated artifact manifest:
 
 ```bash
 python -m pip install -e ".[dev]"
-python -m pytest -q
+campos-start --help
+campos-verify-artifacts --help
 ```
 
-Tests cover fixed-position coordinate invariance, cache correctness across configurations, Pareto archive behavior, output generation, radial-profile preparation, sensitivity-run metadata, and the guard against deriving water-volume savings from AR. GitHub Actions runs the suite on Python 3.10, 3.11, and 3.12 for pushes and pull requests.
+See [artifact integrity](docs/ARTIFACT_INTEGRITY.md) for what the SHA-256 manifest verifies. File integrity is not model accuracy.
 
-## Project structure
+## Deployment and test evidence
 
-```text
-campos_sim.py                 CLI launcher
-src/campos/campos_sim.py      Optimization, CLI, and output orchestration
-src/campos/model.py            Synthetic geometry, sprinkler field, and base metrics
-tests/                        Regression and smoke tests
-docs/MODEL.md                 Metrics, assumptions, and limitations
-docs/RELEASE_NOTES_v0.1.0.md  Initial prototype notes
-examples/                     Reproducible example commands
-results/                      Curated results only; no generated files committed by default
-```
+- [Live Streamlit app](https://campos-optimizer.streamlit.app/)
+- [Python test workflow](https://github.com/HaochuanLin/campOS/actions/workflows/tests.yml)
+- [UI smoke workflow](https://github.com/HaochuanLin/campOS/actions/workflows/ui-smoke.yml)
+- [Artifact integrity workflow](https://github.com/HaochuanLin/campOS/actions/workflows/artifact-integrity.yml)
+- [Hosted-app reachability monitor](https://github.com/HaochuanLin/campOS/actions/workflows/hosted-smoke.yml)
+- [Phase 1 acceptance checklist](docs/PHASE1_ACCEPTANCE.md)
 
-## Roadmap
+Local CI tests and hosted reachability checks answer different questions. A successful local Streamlit test does not prove the deployed service is reachable; a rendered landing page does not prove the simulation and downloads work. The hosted monitor has previously observed redirects to authentication paths, while a user-provided browser screenshot showed the landing page rendering. This discrepancy must be resolved by checking the current monitor result and Streamlit Community Cloud configuration rather than treating either observation as conclusive.
 
-The roadmap prioritizes evidence and decision quality over feature count.
+## Project documents
 
-- [x] Make the legacy objective and its limitations explicit; keep it as a reproducible baseline.
-- [x] Add matched synthetic comparisons, configurable Pareto trade-offs, and sensitivity checks.
-- [x] Support custom polygon/layout inputs, configuration provenance, and shareable reports.
-- [x] Add radial-profile preparation and an observation-error evaluator with explicit calibration/holdout separation.
-- [x] Add geometry-topology checks and numerical regression tests for radial-profile normalization.
-- [ ] Publish a small, reviewed set of reproducible synthetic case studies with raw outputs, metadata, and a clear interpretation of each metric.
-- [ ] Audit and document the physical chain from pressure and nozzle performance to flow, throw, radial distribution, and applied depth; add conservation and dimensional-consistency tests.
-- [ ] Establish a documented validation protocol with predeclared acceptance criteria and truly independent holdout observations.
-- [ ] Only after adequate measured data exist, quantify uncertainty and evaluate real-site performance; keep economic analysis disabled until water-volume and cost inputs are defensible.
+- [Project charter and scope](docs/PROJECT_CHARTER.md)
+- [Model definition and limitations](docs/MODEL.md)
+- [Objective-function audit](docs/OBJECTIVE_AUDIT.md)
+- [Configuration and comparison methodology](docs/CONFIGURATION_AND_COMPARISONS.md)
+- [Model development roadmap](docs/MODEL_DEVELOPMENT_ROADMAP.md)
+- [Importing a custom site](docs/CUSTOM_SITE_INPUTS.md)
+- [Real-site data requirements](docs/REAL_SITE_DATA.md)
+- [Real-site validation protocol](docs/REAL_SITE_VALIDATION_PROTOCOL.md)
+- [Radial-profile measurement protocol](docs/RADIAL_PROFILE_PROTOCOL.md)
+- [Phase 1 acceptance checklist](docs/PHASE1_ACCEPTANCE.md)
+- [Contributing guide](CONTRIBUTING.md)
+- [Changelog](CHANGELOG.md)
 
-## Citation
+## Development priorities
 
-If you use campOS in research, cite the repository and the specific version or commit you used. See [CITATION.cff](CITATION.cff). No DOI has been assigned.
+1. Verify numerical invariants, geometry handling, grid sensitivity, and objective semantics.
+2. Improve hosted deployment and real-browser acceptance evidence.
+3. Calibrate the physical model with documented sprinkler measurements.
+4. Evaluate against pre-registered thresholds on independent holdout observations.
+5. Only then assess whether field trials support claims about reduced overspray or water use.
 
 ## License
 
-Released under the MIT License; see [LICENSE](LICENSE). Confirm code ownership and third-party license compatibility before making a formal release.
-
-
-### Observation error evaluation (paired data only)
-
-To report errors separately for calibration and independent holdout observations,
-prepare a CSV with `measured_mm,predicted_mm,split` columns, where `split` is
-`calibration` or `holdout`, then run:
-
-```bash
-python scripts/evaluate_observation_errors.py --input paired_depths.csv --out metrics.json
-```
-
-The evaluator reports bias, MAE, RMSE and related descriptive metrics; it does
-not generate predictions, tune parameters, verify that holdout data are truly
-independent, or declare the model validated. Define acceptance criteria before
-evaluating holdout data. See [the configuration and comparison guide](docs/CONFIGURATION_AND_COMPARISONS.md).
-
-
-### Optimizer sensitivity across grid resolutions
-
-For a surveyed custom lawn, sprinkler layout, and protected road/sidewalk polygon, rerun the Pareto optimizer at multiple grid sizes and compare the selected layouts:
-
-```bash
-python scripts/check_optimizer_resolution.py \
-  --polygon-csv data/site_polygon.csv \
-  --heads-csv data/sprinkler_layout.csv \
-  --protected-surface-csv data/sidewalk_polygon.csv \
-  --cell-sizes 2,1,0.5 \
-  --mode fixed \
-  --max-f1-spread 0.01 \
-  --max-f2-spread 0.02 \
-  --out out/optimizer-resolution.csv
-```
-
-This checks optimizer-output sensitivity separately from fixed-layout rasterization error. Thresholds are user-selected numerical tolerances, not universal engineering standards. It does not prove real-world performance or water savings; see [custom-site validation and resolution guidance](docs/CUSTOM_SITE_INPUTS.md).
-
-
-### Validate the model against catch-can observations
-
-After measuring the lawn boundary, sprinkler layout, watering duration, and catch-can depths, run pointwise predictions against an explicit calibration/holdout split:
-
-~~~bash
-python scripts/validate_catch_can_data.py \
-  --polygon-csv data/site_polygon.csv \
-  --heads-csv data/sprinkler_layout.csv \
-  --observations-csv data/catch_can_observations.csv \
-  --profile-csv data/measured_radial_profile.csv \
-  --duration-minutes 20 \
-  --out out/catch-can-predictions.csv \
-  --summary-json out/catch-can-validation-summary.json
-~~~
-
-The script requires at least three calibration and two independent holdout observations, fits a single scale factor using calibration rows only, and reports holdout RMSE, MAE, bias, and R² where defined. Add a flow_lpm column to the sprinkler CSV for individual measured flows, or use --flow-lpm for a common measured flow. Without measured flow, the unscaled field is relative rather than absolute precipitation. Do not tune against holdout rows or treat a fitted scale factor as proof of generalization. See [custom-site validation guidance](docs/CUSTOM_SITE_INPUTS.md).
-
-
-## Experimental AI-assisted residual correction
-
-campOS now includes an **optional Gaussian-process (GP) residual correction experiment**. It learns a smooth spatial correction from the difference between measured catch-can depth and the physical model's prediction. This is a small, interpretable ML component—not a large language model, autonomous controller, or learned sprinkler-physics simulator.
-
-Install the optional dependency and run the physical-model evaluation first:
-
-~~~bash
-python -m pip install -e ".[ai]"
-campos-field-evaluate \
-  --polygon-csv data/site_polygon.csv \
-  --heads-csv data/sprinkler_layout.csv \
-  --observations data/field_catch_can_observations.csv \
-  --outdir out/field-evaluation
-python scripts/ai_residual_correction.py \
-  --predictions-csv out/field-evaluation/paired_predictions.csv \
-  --outdir out/ai-residual-correction
-~~~
-
-For a predeclared acceptance rule that fails the command if AI holdout RMSE is more than 0 mm worse than the physical baseline, append `--max-holdout-rmse-increase-mm 0`. Choose and document the threshold before looking at holdout results; this gate is a model comparison rule, not proof of generalization.
-
-The GP uses only calibration rows to fit the spatial residual field and its kernel hyperparameters. It requires at least 8 calibration points, 3 holdout points at unique coordinates, and 5 unique calibration coordinates; calibration and holdout site/run pairs must be disjoint, preventing run-level leakage; repeated coordinates across separate runs are allowed. Outputs include corrected predictions, a model-based uncertainty estimate, holdout RMSE/MAE/bias, empirical holdout coverage and mean width of the nominal 95% intervals, and a side-by-side comparison against the uncorrected physical model. Small holdout sets make coverage estimates highly uncertain.
-
-**Important:** this is an experiment, not proof that AI improves prediction. The holdout results are for evaluation; do not repeatedly change the kernel or settings based on the same holdout set. Nearby catch cans can be spatially correlated, and a GP trained at one site may not generalize to another run, weather condition, sprinkler model, or pressure. Keep the physical model as the transparent baseline and require a separately collected external validation dataset before using AI-corrected results for real installation decisions. AI correction does not establish road wetting reduction or water savings.
-
-
-## Verify generated artifacts
-
-The quickstart manifest records the Python/runtime environment and SHA-256 digests for generated CSV, image, and run-metadata files. After running `campos-start`, verify that those files have not changed:
-
-```bash
-campos-start --outdir out/campos-quickstart
-campos-verify-artifacts --manifest out/campos-quickstart/quickstart_manifest.json
-```
-
-The verifier checks file presence, byte size, and SHA-256 digest; it exits non-zero if any artifact is missing or changed. This improves run integrity and reproducibility, but does not establish model accuracy or field validation. See [artifact integrity documentation](docs/ARTIFACT_INTEGRITY.md).
+campOS is distributed under the MIT License. See [LICENSE](LICENSE).
