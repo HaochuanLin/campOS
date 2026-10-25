@@ -106,12 +106,19 @@ Acceptance:
 **Known limitation:** these are synthetic contract tests of mathematical semantics. They do not establish that the model's spray field is physically calibrated or that real water consumption falls.
 
 ### Stage G — Numerical sensitivity check
-**Size:** one small deterministic test set.
+**Status: COMPLETE on 2026-10-25.** Verified on commit `1687d1d99bff391821f47000ab032302ea37fc30` by the [Python 3.10/3.11/3.12 matrix](https://github.com/HaochuanLin/campOS/actions/runs/40200987251), [UI smoke](https://github.com/HaochuanLin/campOS/actions/runs/40200987071), [artifact integrity](https://github.com/HaochuanLin/campOS/actions/runs/40200987023), and [hosted sidebar visual check](https://github.com/HaochuanLin/campOS/actions/runs/40200987003); all passed.
+
+Evidence and interpretation:
+- An axis-aligned 4 m × 3 m rectangle preserves its exact 12 m² raster area at cell sizes 1.0, 0.5, and 0.25 m.
+- A fixed, non-grid-aligned lawn polygon is compared with its shoelace area across 1.0, 0.5, 0.25, and 0.125 m grids. In this fixture the 0.125 m grid is within 0.2% of the exact area.
+- A uniform circular sprinkler field with an offset centre and 2.07 m radius is integrated against the analytic value `pi*r^2`. In this fixture the 0.125 m grid's integral error is below 0.1%, and the measured integral changes with resolution.
+- **Resolution limit:** grid-cell-centre classification can alias boundaries, so errors need not decrease monotonically at every refinement step. The fine-grid result is evidence for these fixtures only, not a universal accuracy guarantee. For a new surveyed site, compare at least two resolutions and inspect the change in lawn area and objective values before relying on the optimization.
+
 Acceptance:
-- [ ] Compare at least two grid resolutions on a fixed synthetic geometry.
-- [ ] Check area/depth/mass-balance invariants where the implementation supports them.
-- [ ] Report which metrics change with resolution and set a justified warning/limit.
-- [ ] Do not claim physical accuracy from numerical convergence alone.
+- [x] Compare at least two grid resolutions on fixed synthetic geometries, including a non-aligned polygon and sprinkler field.
+- [x] Check exact aligned-polygon area and compare non-aligned lawn area and sprinkler integral against analytic references.
+- [x] Record the resolution sensitivity and its limit: centre-sampled raster errors can plateau or worsen at intermediate resolutions; no universal cell-size threshold is claimed.
+- [x] Keep numerical consistency separate from physical calibration and field validation.
 
 ### Stage H — Physical-model input provenance
 **Size:** one data contract and its validation tests.
