@@ -1,0 +1,111 @@
+# campOS scorecard and one-conversation delivery plan
+
+Live application: https://campos-optimizer.streamlit.app/  
+Repository: https://github.com/HaochuanLin/campOS
+
+## Why tasks are intentionally small
+
+Each delivery stage is one independently verifiable outcome, sized for one focused work session. A stage is not complete because code was written: its acceptance checks must pass or its unresolved blocker must be explicitly recorded with evidence. Do not silently roll an unfinished stage into the next one.
+
+## Current scorecard (2026-10-25)
+
+Scores are engineering assessments of the evidence currently available, not measured product performance. They should be revised when new test or field evidence appears.
+
+| Dimension | Current | Near-term target | Reason |
+|---|---:|---:|---|
+| Product direction and scope | 7.0/10 | 8.0/10 | The core problem and limits are now explicit; first-use guidance can still be simpler. |
+| UI and first-run experience | 6.0/10 | 7.5/10 | The hosted landing page renders in a user-provided screenshot; contrast changes have not yet been visually re-verified after deployment. |
+| Software tests and regression safety | 7.0/10 | 8.0/10 | CI covers the Python suite, AppTest flows, CLI entry points, and artifact integrity; the latest main-branch result must be checked per change. |
+| Deployment and hosted reliability | 4.5/10 | 7.0/10 | A screenshot proves the page rendered for one browser session, while the hosted monitor observed redirects to authentication paths. The discrepancy remains unresolved. |
+| Optimization objective and numerical validity | 5.5/10 | 7.5/10 | Multiple modes and trade-off metrics exist, but the objective semantics and edge cases need a focused code-and-test audit. |
+| Physical-model validity | 3.5/10 | 6.0/10 | Inputs and model assumptions are documented, but measured sprinkler calibration and independent holdout evidence are not established here. |
+| AI value and generalization | 2.5/10 | 5.0/10 | An experimental residual-correction workflow exists; no evidence yet establishes generalization to new sites. |
+| Real-world evidence for less overspray / water use | 1.0/10 | 4.0/10 | No real-site measurement evidence has been provided, so no real-world reduction claim is established. |
+
+**Overall engineering maturity: 5.0/10 (provisional).** This is a weighted judgement, not an average of all rows: software/product readiness is materially ahead of scientific validation. The previous rough estimate of 5.8/10 was too generous if interpreted as end-to-end readiness, because it underweighted hosted-access uncertainty and the absence of field evidence.
+
+## Delivery stages
+
+Complete these in order unless new evidence changes the priority. Every stage below is intentionally narrow.
+
+### Stage A — Scorecard and bounded task plan
+**Status: COMPLETE in this commit.**
+
+Acceptance:
+- [x] Record a dimension-based score and explain the evidence/unknowns.
+- [x] Separate software maturity from physical and field validity.
+- [x] Define small, independently testable stages.
+- [x] State that incomplete stages cannot be called complete.
+
+### Stage B — Verify the sidebar contrast fix
+**Size:** one UI file plus, if practical, one focused test.
+Acceptance:
+- [ ] Check the current main-branch CI after the CSS commit.
+- [ ] Inspect the deployed page after redeployment.
+- [ ] Confirm number inputs, select controls, and labels are readable in the dark sidebar.
+- [ ] If any control remains low contrast, adjust only that styling and record what was visually verified.
+
+### Stage C — Prove one synthetic run end to end
+**Size:** one focused AppTest enhancement or test repair.
+Acceptance:
+- [ ] Run the default synthetic scenario in AppTest.
+- [ ] Assert the run completes and expected summary/plots or output controls exist.
+- [ ] Assert a user-visible failure message appears for a deliberately invalid case.
+- [ ] Record the actual CI result; do not infer success from the test file alone.
+
+### Stage D — Verify ZIP contents, not just buttons
+**Size:** one artifact-focused test.
+Acceptance:
+- [ ] Open the generated result ZIP in the test.
+- [ ] Assert required metadata and output files are present and non-empty.
+- [ ] Open the starter-template ZIP and assert all six CSV templates are present.
+- [ ] Test one corrupt/missing-template case and require a clear failure message.
+
+### Stage E — Resolve hosted monitor versus browser discrepancy
+**Size:** one workflow/configuration diagnosis.
+Acceptance:
+- [ ] Capture a fresh hosted-smoke run and inspect sanitized response headers/statuses.
+- [ ] Compare with the public browser route without exposing authentication tokens.
+- [ ] Identify whether the cause is app visibility, redirect handling, or a monitor limitation.
+- [ ] Make one targeted fix and rerun; otherwise record a reproducible blocker.
+
+### Stage F — Audit the overspray/coverage objective
+**Size:** one objective path and its tests; no new AI features.
+Acceptance:
+- [ ] Trace the exact formula and units for outside-lawn application, interior deficit, and uniformity.
+- [ ] Verify road/sidewalk geometry actually affects the relevant supported mode.
+- [ ] Add at least one synthetic counterexample where reducing overspray must not silently permit unacceptable interior deficit.
+- [ ] Document the formula, normalization, constraints, and test result.
+
+### Stage G — Numerical sensitivity check
+**Size:** one small deterministic test set.
+Acceptance:
+- [ ] Compare at least two grid resolutions on a fixed synthetic geometry.
+- [ ] Check area/depth/mass-balance invariants where the implementation supports them.
+- [ ] Report which metrics change with resolution and set a justified warning/limit.
+- [ ] Do not claim physical accuracy from numerical convergence alone.
+
+### Stage H — Physical-model input provenance
+**Size:** one data contract and its validation tests.
+Acceptance:
+- [ ] Mark each required parameter as measured, manufacturer-published, derived, assumed, or unavailable.
+- [ ] Reject or warn on missing critical units and non-finite values.
+- [ ] Ensure illustrative defaults cannot be mistaken for measured data.
+- [ ] Keep model calibration separate from holdout evaluation.
+
+### Stage I — Field-evaluation readiness (not field validation)
+**Size:** one checklist/template review.
+Acceptance:
+- [ ] Specify site boundary, head/nozzle, pressure, flow, weather/context, and catch-can fields.
+- [ ] Define a split that preserves independent holdout observations.
+- [ ] Specify error metrics and pre-registered acceptance thresholds before examining holdout results.
+- [ ] State clearly that this stage prepares evaluation; it does not prove savings.
+
+## Rules for reporting progress
+
+1. Report the exact stage and its acceptance checklist.
+2. Cite actual commit IDs and workflow runs when available.
+3. Separate **implemented**, **automatically tested**, **visually checked**, and **field validated**.
+4. If a check fails, the stage remains open until fixed or a concrete external blocker is documented.
+5. Never mark a stage complete just to end a conversation.
+6. Do not claim reduced road wetting or water savings without real measurements supporting that claim.
