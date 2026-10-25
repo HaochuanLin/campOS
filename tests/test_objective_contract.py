@@ -61,3 +61,30 @@ def test_pareto_f1_without_surveyed_protected_polygon_is_all_outside_lawn():
     f1, _, _ = sim.bi_eval(site, field, ref, cfg)
     expected = (field.sum() - field.ravel()[site.idx].sum()) / ref["W0"]
     assert np.isclose(f1, expected)
+
+
+def test_grid_resolution_converges_for_synthetic_sprinkler_integral():
+    """Grid refinement should improve the area integral for a circular head field."""
+    lawn = np.asarray([(-4, -4), (4, -4), (4, 4), (-4, 4)], dtype=float)
+    radius = 2.0
+    # For a unit relative field inside a full-circle throw, exact integral is pi*r^2.
+    exact = np.pi * radius**2
+    integrals = {}
+    for cell in (0.5, 0.25, 0.125):
+        cfg = dict(sim.CFG, cell=cell, margin=0.0)
+        site = sim.Site(lawn, cfg)
+        field = site.total([(0.0, 0.0, radius, 0.0, 360.0)])
+        integrals[cell] = float(field.sum() * cell**2)
+
+    errors = {cell: abs(value - exact) for cell, value in integrals.items()}
+    assert errors[0.25] < errors[0.5]
+    assert errors[0.125] < errors[0.25]
+
+
+def test_grid_resolution_preserves_aligned_lawn_area():
+    """For a grid-aligned rectangle, cell-centre rasterization preserves area."""
+    lawn = np.asarray([(0, 0), (4, 0), (4, 3), (0, 3)], dtype=float)
+    expected_area = 12.0
+    for cell in (1.0, 0.5, 0.25):
+        site = sim.Site(lawn, dict(sim.CFG, cell=cell, margin=1.0))
+        assert np.isclose(site.area, expected_area)
