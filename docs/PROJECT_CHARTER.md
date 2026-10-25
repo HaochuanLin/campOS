@@ -1,114 +1,91 @@
-# campOS Project Charter
+# campOS project charter
 
-## One-sentence definition
+## Product definition
 
-campOS is an open, reproducible decision-support prototype for comparing sprinkler-layout options on irregular lawns, with explicit assumptions and a staged path toward measurement-based validation.
+campOS is an open, reproducible decision-support prototype for comparing sprinkler layouts around irregular lawn boundaries. It helps users inspect the modelled trade-off between water applied outside the intended lawn and insufficient coverage inside it.
 
-## The problem it is meant to investigate
+**Live demo:** https://campos-optimizer.streamlit.app/  
+**Repository:** https://github.com/HaochuanLin/campOS
 
-Irregular lawn boundaries make sprinkler layout a trade-off problem. A layout can apply water beyond the lawn while still leaving some interior cells below a model-defined target. Moving heads may improve the search space but can imply retrofit work; keeping heads fixed is a different and often more constrained decision. A single aggregate score can hide these trade-offs.
+## The problem
 
-campOS is intended to help users compare these alternatives under the same documented scenario, inspect the resulting coverage metrics, and understand which conclusions are supported by the model—and which still require measurements.
+Sprinklers do not stop at a property boundary. A layout may wet pavement or a sidewalk while leaving dry areas inside the lawn. Moving heads may improve a modelled layout but require installation work; retaining existing heads imposes different constraints. A single aggregate score can conceal these conflicts.
 
-## The primary question
+campOS makes these trade-offs easier to inspect under explicit, reproducible assumptions. The intended outcome is better-informed comparison—not an automatic guarantee that a particular layout is correct.
 
-> Given a specified lawn geometry, sprinkler layout, and documented set of model assumptions, how do candidate layouts compare in modelled outside-lawn application, interior deficit, and distribution uniformity?
+## Primary decision question
 
-This is deliberately narrower than asking how much water a real property will save. That broader question requires a calibrated volume model, measured operating conditions, and appropriate field evidence.
+> For a defined lawn boundary, sprinkler layout, and documented set of operating assumptions, how do candidate layouts compare on outside-lawn application, interior deficit, and distribution uniformity?
 
-## Intended users and decisions
+This question is narrower than “How much water will this property save?” A credible savings estimate needs measured flow and operating time, calibrated sprinkler behavior, local conditions, and field evidence.
 
-The prototype is aimed at researchers, students, and landscape or irrigation practitioners exploring layout alternatives. It can support early-stage questions such as:
+## Intended users
 
-- Is a fixed-position retrofit worth comparing with a fully movable layout?
-- How does the apparent trade-off change when the objective or dry-area constraint changes?
-- Are results sensitive to random initialization, grid resolution, or assumed radial distribution?
-- Which inputs and measurements are needed before a simulated result can be trusted for a real site?
+- Students and researchers exploring irrigation-layout optimization.
+- Landscape and irrigation practitioners screening candidate configurations.
+- Developers testing transparent, reproducible optimization and validation workflows.
 
-It is not currently intended to issue construction-ready designs, control irrigation equipment, prescribe irrigation schedules, or certify regulatory or agronomic compliance.
+The current prototype is not a certified engineering tool, autonomous irrigation controller, or substitute for a qualified site assessment.
+
+## Current capabilities
+
+- Reproducible synthetic scenarios and fixed-head versus movable-head comparisons.
+- Pareto exploration of competing objectives, including a protected-surface polygon in supported modes.
+- Import of custom lawn polygons and sprinkler-layout CSVs in metre-based coordinates.
+- Optional measured radial profiles and pressure/flow/throw data.
+- Catch-can observation quality checks, pointwise prediction, and calibration/holdout evaluation.
+- Exportable artifacts and run metadata for auditability.
+
+These are software capabilities. They do not establish predictive accuracy or field performance.
+
+## Evidence boundaries
+
+Every input should be identified as measured, manufacturer-published, derived, assumed, or unavailable. Never silently substitute an assumption for a measurement.
+
+The built-in lawn shapes are synthetic. Grid-based metrics depend on discretization. Real sprinkler behavior can depend on nozzle design, pressure, wind, droplet drift, evaporation, overlapping patterns, soil infiltration, terrain, and system hydraulics. These effects are not all represented or validated in the current model.
+
+The project must not claim that campOS reduces road wetting, saves a specified amount of water, or produces installation-ready designs until those claims are supported by a documented field protocol and independent measurements.
 
 ## Product principles
 
-1. **Compare decisions, not just scores.** Show the baseline, candidate layout, assumptions, and multiple relevant metrics.
-2. **Keep comparisons fair.** Matched scenarios should share geometry, grid, random seed, radial assumptions, and measurement inputs unless the experiment explicitly studies one of those factors.
-3. **Make provenance inspectable.** Preserve configuration, input hashes where available, software environment, and raw machine-readable outputs.
-4. **Separate software correctness from model validity.** Passing tests establishes specified code behavior; it does not establish that the physics represents a real sprinkler installation.
-5. **Treat measurements as evidence, not decoration.** Record how observations were collected, which data were used for calibration, and which were held out for independent evaluation.
-6. **Do not convert proxy metrics into claims they cannot support.** AR improvement is not water savings. A manufacturer performance chart is not a measured radial spray profile. Synthetic sensitivity is not field validation.
-7. **Prefer a small number of reproducible case studies over a large number of unsupported features.**
+1. **Show trade-offs, not just a winner.** Report overspray, interior deficit, dry area, distribution uniformity, and relevant feasibility warnings separately where available.
+2. **Reproducibility by default.** Preserve seeds, configuration, input provenance, software details, and generated artifacts.
+3. **Fail visibly.** Invalid or missing inputs must produce actionable messages rather than silently becoming plausible-looking defaults.
+4. **Separate calibration from validation.** Do not tune on holdout data and then present it as independent evidence.
+5. **Make uncertainty visible.** A precise-looking number is not proof of a precise physical prediction.
+6. **Prefer evidence over feature count.** New optimization features must have a clear objective, tests, and documented limitations.
 
-## Current capability boundary
+## Development gates
 
-### Available in the prototype
+### Gate 1 — Product and deployment reliability
+- Tests cover startup, core user flows, input errors, and artifact generation.
+- The hosted page and health endpoint are checked separately from local CI.
+- Real browser tests verify a simulation run and downloaded ZIP contents.
+- User-facing documentation matches the actual UI.
 
-- Synthetic lawn geometries and imported polygon/layout CSV inputs.
-- Fixed-position and movable-head optimization modes.
-- Legacy AR optimization and Pareto exploration of modelled overspray versus interior deficit.
-- Configurable runs, matched scenario comparisons, parameter sensitivity checks, and run metadata.
-- Radial-profile preparation, optional pressure-performance tables, shareable HTML/Markdown reports, and descriptive paired-observation error metrics.
-- Automated tests for selected numerical, input-validation, and workflow behaviors.
+### Gate 2 — Objective and numerical audit
+- Objective terms, units, normalization, penalties, and feasibility rules are documented.
+- Baselines and candidates are compared under matched settings.
+- Regression tests cover geometry, grid sensitivity, deterministic behavior, and metric invariants.
 
-### Important limitations
+### Gate 3 — Physical calibration and independent evaluation
+- Inputs are sourced from measurements or identified manufacturer data.
+- Acceptance thresholds are chosen before inspecting holdout errors.
+- Evaluation uses independent observations and reports errors and failure cases.
+- Optional AI correction remains experimental until it demonstrates generalization.
 
-- Built-in site shapes are synthetic, not surveyed properties.
-- A user-supplied input file is not automatically verified or representative.
-- The radial distribution can remain an assumed placeholder even when aggregate flow/throw data are supplied.
-- Wind, drift, evaporation, pressure losses across a real network, soil response, and other operational effects are not comprehensively represented.
-- Grid discretization and stochastic optimization introduce numerical/search limitations.
-- Error metrics are meaningful only when measured/predicted pairs and calibration/holdout separation are methodologically sound.
-- Water-volume savings, financial savings, and payback are not established by the current model.
+### Gate 4 — Field trial
+- Collect a surveyed site boundary, head locations, nozzle and pressure data, flow, weather/context, and catch-can measurements.
+- Compare predicted and observed water distribution under a documented protocol.
+- Evaluate road/sidewalk wetting and water use directly before making claims about either.
 
-## Evidence ladder
+## Definition of done for a claim
 
-Use these levels when describing results. Do not skip a level merely because the codebase or test suite has grown.
+A claim is accepted only when its evidence is recorded, the method can be reproduced, limitations are stated, and a test or independent measurement supports it. A green software test proves only the tested software behavior. Synthetic simulation proves only what follows from the model and its assumptions.
 
-1. **Software behavior:** unit tests, regression tests, CLI smoke tests, input validation, and reproducible runs.
-2. **Numerical consistency:** dimensional checks, area/flow conservation, grid-resolution studies, and optimizer-seed sensitivity.
-3. **Component calibration:** documented manufacturer or laboratory data for the exact relevant nozzle, pressure, flow, throw, and radial distribution, with assumptions stated.
-4. **Independent predictive evaluation:** surveyed geometry and operating conditions, observations not used for tuning, predeclared error metrics and acceptance criteria, and repeatable collection procedures.
-5. **Decision usefulness:** only after the earlier levels are adequate, evaluate whether results support a real installation choice, water-volume estimate, or economic conclusion.
+## Immediate priorities
 
-Current work primarily strengthens levels 1 and 2 and prepares workflows for levels 3 and 4. It must not be described as completed field validation.
-
-## Recommended development sequence
-
-### Phase A — Establish a trustworthy research artifact
-
-- Keep the README centered on the problem, workflow, capabilities, and limitations.
-- Publish a small set of synthetic case studies with raw CSVs, run metadata, plots, and reproduction commands.
-- Make metric definitions, denominators, baselines, and objective differences easy to find.
-- Keep all benchmark comparisons matched and explain when objectives differ.
-
-### Phase B — Strengthen physical consistency
-
-- Stress-test the implemented surveyed protected-surface mask across grid resolutions and representative geometries; record rasterization error and fail fast when a protected region has no represented grid cells.
-- Collect independent catch-can observations on both lawn and protected surfaces before describing outputs as road/sidewalk-specific predictive results.
-- Extend wind/drift and pressure-loss physics only when parameters can be supported by documented measurements; do not add unidentifiable knobs just to make the model appear more realistic.
-- Preserve explicit units and conversions at each boundary, and keep manufacturer aggregate flow/throw data distinct from a measured spatial radial profile.
-- Continue testing full-circle and sector-flow conservation, orifice-flow monotonicity, and interpolation restricted to measured pressure ranges.
-
-### Phase C — Validate predictions
-
-- Define a measurement protocol before collecting data.
-- Separate calibration observations from independent holdout observations at the collection/design stage.
-- Predeclare error metrics and acceptance thresholds before viewing holdout results.
-- Report failed as well as successful cases and state the conditions to which conclusions apply.
-
-### Phase D — Consider real-world decision support
-
-Only after measured validation should the project consider credible water-volume estimates, economic analysis, or site-specific recommendations. Any such extension needs documented operating schedules, absolute flow, baseline use, prices, costs, and uncertainty—not an AR percentage conversion.
-
-## Definition of done for a meaningful change
-
-A change should normally include:
-
-- a clear user or research question it answers;
-- explicit inputs, units, assumptions, and expected behavior;
-- a regression test or a reproducible experiment;
-- machine-readable outputs where appropriate;
-- documentation of what the result does and does not demonstrate;
-- no stronger validity claim than the evidence supports.
-
-## Recommended public description
-
-> campOS is an open research prototype for exploring sprinkler-layout decisions on irregular lawns. It compares fixed and movable layouts, exposes trade-offs between modelled overspray and interior coverage deficit, and produces reproducible reports with input provenance. Its current cases are synthetic and its physics is only partially calibrated; the project focuses on transparent comparison and a path to independent validation rather than claiming guaranteed water savings or installation-ready designs.
+1. Close the gap between local CI evidence and hosted browser behavior.
+2. Audit the optimization objective against the stated road/sidewalk-protection goal.
+3. Validate physical assumptions and sensitivity before expanding AI features.
+4. Make the first-run experience and data templates understandable without expert setup.
