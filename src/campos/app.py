@@ -54,11 +54,19 @@ section[data-testid="stSidebar"] [data-testid="stNumberInput"] button {
 }
 section[data-testid="stSidebar"] [data-testid="stNumberInput"] button svg,
 section[data-testid="stSidebar"] [data-baseweb="select"] svg,
-section[data-testid="stSidebar"] [data-testid="stSelectbox"] svg {
+section[data-testid="stSidebar"] [data-testid="stSelectbox"] svg,
+section[data-testid="stSidebar"] [data-testid="stMultiSelect"] svg,
+section[data-testid="stSidebar"] [data-testid="stMultiSelect"] svg path {
   color: #102b2b !important;
   stroke: #102b2b !important;
   fill: #102b2b !important;
   opacity: 1 !important;
+}
+/* Multi-select clear/dropdown icons must remain visible on the light control surface. */
+section[data-testid="stSidebar"] [data-testid="stMultiSelect"] button {
+  color: #102b2b !important;
+  background: #d6e5da !important;
+  border-color: #9bb5a5 !important;
 }
 section[data-testid="stSidebar"] [data-testid="stFileUploaderDropzone"] {
   background: #f4faf6;
