@@ -31,7 +31,7 @@ def test_result_zip_contains_nonempty_named_artifacts():
 
 def test_starter_template_zip_contains_all_six_nonempty_csvs():
     template_dir = Path(__file__).resolve().parents[1] / "data" / "templates"
-    payloads, missing = read_template_payloads(template_dir, sorted(EXPECTED_TEMPLATES)
+    payloads, missing = read_template_payloads(template_dir, sorted(EXPECTED_TEMPLATES))
     assert missing == []
     assert set(payloads) == EXPECTED_TEMPLATES
     assert all(payload.strip() for payload in payloads.values())
