@@ -79,10 +79,12 @@ jobs:
 
             await page.screenshot({ path: 'artifacts/hosted-sidebar.png', fullPage: true }).catch(() => {});
             if (result.error) failures.push(result.error);
-            if (result.numberInput && (result.numberInput.contrast === null || result.numberInput.contrast < 4.5)) {
+            if (!result.numberInput) failures.push('number input control was not found');
+            else if (result.numberInput.contrast === null || result.numberInput.contrast < 4.5) {
               failures.push('number input contrast below WCAG AA 4.5:1');
             }
-            if (result.selectControl && (result.selectControl.contrast === null || result.selectControl.contrast < 4.5)) {
+            if (!result.selectControl) failures.push('select control was not found');
+            else if (result.selectControl.contrast === null || result.selectControl.contrast < 4.5) {
               failures.push('select control contrast below WCAG AA 4.5:1');
             }
 
