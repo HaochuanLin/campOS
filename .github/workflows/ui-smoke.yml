@@ -75,7 +75,24 @@ jobs:
           assert not app.exception, "\n".join(str(item) for item in app.exception)
           starter_downloads = app.get("download_button")
           assert any(item.label == "Download all starter templates (.zip)" for item in starter_downloads), "Starter-template ZIP is missing in surveyed-site mode"
-          print("Streamlit AppTest passed: synthetic run, result ZIP, and surveyed-site starter-template ZIP are available.")
+
+          # Exercise the user-visible failure path without relying on malformed external files.
+          # A mocked non-zero simulation process must never leave a stale successful result visible.
+          from subprocess import CompletedProcess
+          from unittest.mock import patch
+
+          app = AppTest.from_file("streamlit_app.py", default_timeout=120).run()
+          assert not app.exception, "\\n".join(str(item) for item in app.exception)
+          with patch(
+              "subprocess.run",
+              return_value=CompletedProcess(args=["campos-start"], returncode=2, stdout="", stderr="synthetic failure for AppTest"),
+          ):
+              next(button for button in app.button if button.label == "Run simulation").click().run()
+          assert not app.exception, "\\n".join(str(item) for item in app.exception)
+          errors = [item.value for item in app.error]
+          assert any("exited with code 2" in value for value in errors), f"Expected visible process-failure message, got: {errors}"
+          assert not any(item.label == "Download complete run bundle (.zip)" for item in app.get("download_button")), "Stale successful ZIP remained visible after failed run"
+          print("Streamlit AppTest passed: synthetic success, visible failure handling, no stale result, and starter-template ZIP.")
           PY
       - name: Start Streamlit and verify HTTP health
         run: |
