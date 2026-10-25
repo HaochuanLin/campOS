@@ -88,7 +88,7 @@ Acceptance:
 - [ ] Confirm public-access setting in Streamlit Community Cloud and rerun the monitor; this requires deployment-owner access.
 
 ### Stage F — Audit the overspray/coverage objective
-**Status: IN PROGRESS.** Code-path audit completed; contract tests added in commit `cddb2d3f528dcb88438700a559458d0994dec102`. Awaiting CI before acceptance.
+**Status: COMPLETE (2026-10-25).** Objective contract tests and all CI workflows passed on commit `3470c4bb5578cbccc12cef4235ddc9c98ee2a1c0`.
 
 **Formula and units audit (implementation semantics, not validated field physics):**
 - The Pareto reference is computed once from the baseline layout: (W_0=\sum_{\text{all grid cells}} D_0\), and (T=\text{target_factor}\times\operatorname{mean}(D_0\text{ on lawn})\). The simulator's default field is relative application intensity; with per-head flow/profile inputs it may represent estimated precipitation. It must not be interpreted as litres or water savings without calibrated flow and run-time assumptions.
@@ -100,8 +100,10 @@ Acceptance:
 Acceptance:
 - [x] Trace the formulas and distinguish fixed-baseline versus candidate-total normalization.
 - [x] Verify that surveyed protected-surface geometry affects the supported custom-site Pareto mode, while built-in synthetic sites reject that input.
-- [ ] Add/run synthetic counterexamples where lower protected-surface water accompanies unacceptable lawn deficit.
-- [ ] Run CI and record evidence; then document any discovered limitation and close the stage.
+- [x] Add/run synthetic counterexamples where lower protected-surface water accompanies unacceptable lawn deficit; tests verify the lower protected-water objective can coexist with worse lawn deficit and must be treated as a trade-off.
+- [x] CI passed: [Python matrix](https://github.com/HaochuanLin/campOS/actions/runs/40187230762), [UI smoke](https://github.com/HaochuanLin/campOS/actions/runs/40187230778), [artifact integrity](https://github.com/HaochuanLin/campOS/actions/runs/40187230741), [hosted sidebar visual](https://github.com/HaochuanLin/campOS/actions/runs/40187230717).
+
+**Known limitation:** these are synthetic contract tests of mathematical semantics. They do not establish that the model's spray field is physically calibrated or that real water consumption falls.
 
 ### Stage G — Numerical sensitivity check
 **Size:** one small deterministic test set.
