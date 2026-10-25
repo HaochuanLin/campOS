@@ -13,7 +13,7 @@ import tempfile
 
 import streamlit as st
 
-from campos.bundles import zip_bytes
+from campos.bundles import read_template_payloads, zip_bytes
 
 
 st.set_page_config(page_title="campOS — Irrigation intelligence", page_icon="💧", layout="wide", initial_sidebar_state="expanded")
@@ -212,14 +212,13 @@ with st.sidebar:
             ("Download radial-profile template", "catch_can_profile_template.csv"),
             ("Download pressure-performance template", "sprinkler_performance_template.csv"),
         )
+        template_payloads, missing_templates = read_template_payloads(
+            template_dir, [filename for _, filename in template_files]
+        )
         available_templates = [
             (label, filename, template_dir / filename)
             for label, filename in template_files
-            if (template_dir / filename).is_file()
-        ]
-        missing_templates = [
-            filename for _, filename in template_files
-            if not (template_dir / filename).is_file()
+            if filename in template_payloads
         ]
         if missing_templates:
             st.warning(
@@ -228,13 +227,12 @@ with st.sidebar:
                 + ". Individual downloads and the template bundle may be incomplete."
             )
         if available_templates:
-            template_payloads = {
-                filename: template_path.read_bytes()
-                for _, filename, template_path in available_templates
-            }
             st.download_button(
                 "Download all starter templates (.zip)",
-                data=zip_bytes(template_payloads),
+                data=zip_bytes({
+                    filename: template_payloads[filename]
+                    for _, filename, _ in available_templates
+                }),
                 file_name="campos-starter-templates.zip",
                 mime="application/zip",
                 key="download-starter-templates-bundle",
@@ -243,7 +241,7 @@ with st.sidebar:
             )
         for label, filename, template_path in available_templates:
             st.download_button(
-                label, data=template_path.read_bytes(), file_name=filename,
+                label, data=template_payloads[filename], file_name=filename,
                 mime="text/csv", key=f"template-{filename}", use_container_width=True,
             )
     else:
