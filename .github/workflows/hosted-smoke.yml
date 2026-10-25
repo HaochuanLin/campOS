@@ -45,6 +45,9 @@ jobs:
               echo "::error::$label did not return HTTP 200 (curl exit/redirect details redacted; see sanitized response headers below)."
               echo "Response headers (last redirect chain entries):"
               grep -Ei '^(HTTP/|location:|server:|content-type:)' "$headers" | tail -n 24 | sed 's/?[^ ]*/?[query redacted]/' || true
+              if grep -Eqi '^location: https://share\\.streamlit\\.io/-/auth/app|^location: https://[^/]+/-/login' "$headers"; then
+                echo "::error::Authentication redirect detected. Verify the app is configured for public access in Streamlit Community Cloud; a logged-in browser session can hide this deployment setting problem."
+              fi
               if [ -s "$body" ]; then
                 echo "Response body excerpt:"
                 head -c 600 "$body" || true
