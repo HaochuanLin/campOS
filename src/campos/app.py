@@ -72,8 +72,9 @@ section[data-testid="stSidebar"] [data-testid="stMultiSelect"] svg path {
 /* Multi-select clear/dropdown icons must remain visible on the light control surface. */
 section[data-testid="stSidebar"] [data-testid="stMultiSelect"] button {
   color: #102b2b !important;
-  background: #d6e5da !important;
-  border-color: #9bb5a5 !important;
+  background: transparent !important;
+  border-color: transparent !important;
+  box-shadow: none !important;
 }
 section[data-testid="stSidebar"] [data-testid="stFileUploaderDropzone"] {
   background: #f4faf6;
