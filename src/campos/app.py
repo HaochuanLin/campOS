@@ -54,13 +54,20 @@ section[data-testid="stSidebar"] [data-testid="stNumberInput"] button {
 }
 section[data-testid="stSidebar"] [data-testid="stNumberInput"] button svg,
 section[data-testid="stSidebar"] [data-baseweb="select"] svg,
-section[data-testid="stSidebar"] [data-testid="stSelectbox"] svg,
-section[data-testid="stSidebar"] [data-testid="stMultiSelect"] svg,
-section[data-testid="stSidebar"] [data-testid="stMultiSelect"] svg path {
+section[data-testid="stSidebar"] [data-testid="stSelectbox"] svg {
   color: #102b2b !important;
   stroke: #102b2b !important;
   fill: #102b2b !important;
   opacity: 1 !important;
+}
+/* Preserve native SVG fill geometry while darkening multi-select icon strokes. */
+section[data-testid="stSidebar"] [data-testid="stMultiSelect"] svg {
+  color: #102b2b !important;
+  stroke: #102b2b !important;
+  opacity: 1 !important;
+}
+section[data-testid="stSidebar"] [data-testid="stMultiSelect"] svg path {
+  stroke: #102b2b !important;
 }
 /* Multi-select clear/dropdown icons must remain visible on the light control surface. */
 section[data-testid="stSidebar"] [data-testid="stMultiSelect"] button {
