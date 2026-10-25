@@ -1,21 +1,32 @@
 # Contributing to campOS
 
-Thank you for considering a contribution. campOS is a research prototype, so clarity about assumptions and reproducibility is more important than making results look favorable.
+Thanks for helping improve campOS. This is a research prototype for reproducible sprinkler-layout comparisons. Correctness, clear assumptions, and honest evidence matter more than making a result look favorable.
 
-## Before opening an issue
+**Live demo:** https://campos-optimizer.streamlit.app/
 
-Include the command used, Python version, dependency versions, operating system, relevant output files, and the generated `run_metadata.json`. For suspected numerical bugs, provide the smallest configuration that reproduces the issue.
+## Before reporting a bug
 
-## Pull requests
+Include, where possible:
+- The exact command or UI action.
+- Python version, operating system, and dependency versions.
+- The smallest input/configuration that reproduces the issue.
+- The error message and relevant generated metadata.
+- Whether the run used synthetic inputs, measured inputs, or a mixture.
 
-- Keep documentation and user-facing output in English.
-- Do not silently change default parameters, the default random seed, or optimization behavior.
-- If a numerical change is necessary, explain the motivation and expected impact, add a regression test, and identify which outputs may change.
-- Keep generated runs out of the repository unless the CSVs, figures, metadata, and provenance have been reviewed together.
-- Do not present synthetic results as field measurements or placeholder costs as market data.
-- Prefer small, focused changes that can be tested independently.
+Remove private site details, credentials, and sensitive location information before sharing logs or datasets.
 
-## Development setup
+## Pull request expectations
+
+- Keep user-facing documentation in English and keep it consistent with the current app.
+- Explain the problem being solved and the behavior that should change.
+- Add or update tests for bug fixes and numerical changes.
+- Do not silently change default settings, random seeds, metric definitions, or optimization semantics.
+- For algorithm changes, state units, assumptions, expected trade-offs, and possible changes to output files.
+- Preserve reproducibility: record relevant configuration and update documentation when outputs change.
+- Never present synthetic outputs, placeholder costs, or calibration-set fit as independent field evidence.
+- Avoid committing generated output directories unless the artifacts are intentionally reviewed and required.
+
+## Local development
 
 ```bash
 python -m pip install -e ".[dev]"
@@ -23,8 +34,15 @@ python -m pytest -q
 python campos_sim.py --mode movable --quick --sites A --outdir out/demo
 ```
 
-The quick run is a smoke test, not a scientific validation. Full runs may take substantially longer.
+To run the web UI:
 
-## Reporting results
+```bash
+python -m pip install -e ".[ui]"
+streamlit run streamlit_app.py
+```
 
-When publishing a result, include the exact command, the generated `run_metadata.json`, CSV outputs, and figures. State whether `--quick` was used. If a claim depends on real-world performance, provide a documented validation protocol and the relevant measurements.
+A quick run is a software smoke test, not scientific validation.
+
+## Reviewing a result
+
+When reporting or publishing results, include the command, seed, configuration, input provenance, relevant CSVs/figures, and `run_metadata.json`. State whether quick mode was used. For claims about real-world water distribution or savings, include the measurement protocol, acceptance criteria, and independent evaluation data.
