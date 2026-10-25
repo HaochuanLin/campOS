@@ -53,9 +53,12 @@ section[data-testid="stSidebar"] [data-testid="stNumberInput"] button {
   border-color: #9bb5a5 !important;
 }
 section[data-testid="stSidebar"] [data-testid="stNumberInput"] button svg,
-section[data-testid="stSidebar"] [data-baseweb="select"] svg {
+section[data-testid="stSidebar"] [data-baseweb="select"] svg,
+section[data-testid="stSidebar"] [data-testid="stSelectbox"] svg {
   color: #102b2b !important;
   stroke: #102b2b !important;
+  fill: #102b2b !important;
+  opacity: 1 !important;
 }
 section[data-testid="stSidebar"] [data-testid="stFileUploaderDropzone"] {
   background: #f4faf6;
