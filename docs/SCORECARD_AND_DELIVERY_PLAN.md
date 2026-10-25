@@ -69,20 +69,23 @@ Acceptance:
 - [x] Record the actual passing CI run and commit.
 
 ### Stage D — Verify ZIP contents, not just buttons
-**Size:** one artifact-focused test.
-Acceptance:
-- [ ] Open the generated result ZIP in the test.
-- [ ] Assert required metadata and output files are present and non-empty.
-- [ ] Open the starter-template ZIP and assert all six CSV templates are present.
-- [ ] Test one corrupt/missing-template case and require a clear failure message.
+**Status: COMPLETE on 2026-10-25.** Verified by [Python matrix](https://github.com/HaochuanLin/campOS/actions/runs/40174064556), [UI smoke / AppTest](https://github.com/HaochuanLin/campOS/actions/runs/40174064581), and [artifact integrity](https://github.com/HaochuanLin/campOS/actions/runs/40174064618), all passing for commit `f493020f82345dc7a250920c35407edf717d7f5c`.
+
+Evidence:
+- [x] Open the generated result ZIP in tests; assert expected filenames, non-empty payloads, and ZIP CRC integrity.
+- [x] Open the starter-template ZIP in tests and assert all six CSV templates are present and non-empty.
+- [x] Reject unsafe archive paths.
+- [x] Simulate a missing template and assert a clear UI warning; no missing file is silently invented.
 
 ### Stage E — Resolve hosted monitor versus browser discrepancy
-**Size:** one workflow/configuration diagnosis.
+**Status: BLOCKED by deployment configuration, diagnosed on 2026-10-25.** [Hosted monitor run](https://github.com/HaochuanLin/campOS/actions/runs/40170233526) captured repeated HTTP 303 redirects: `share.streamlit.io/-/auth/app` → app `/-/login` → app root, for both the root page and `/_stcore/health`. This is an authentication/access-visibility redirect cycle, not evidence of a Python simulation failure. A logged-in browser session may still render the page, so the earlier screenshot does not disprove the unauthenticated monitor result. The repository cannot change the app's Community Cloud visibility setting; an owner must verify the app is set to public in Streamlit Community Cloud. The hosted monitor now emits a targeted diagnostic when this redirect signature occurs, while correctly failing the reachability check rather than falsely passing it.
+
 Acceptance:
-- [ ] Capture a fresh hosted-smoke run and inspect sanitized response headers/statuses.
-- [ ] Compare with the public browser route without exposing authentication tokens.
-- [ ] Identify whether the cause is app visibility, redirect handling, or a monitor limitation.
-- [ ] Make one targeted fix and rerun; otherwise record a reproducible blocker.
+- [x] Capture a hosted-smoke run and inspect sanitized response headers/statuses.
+- [x] Compare the unauthenticated HTTP probe with the previously observed logged-in browser rendering, without exposing authentication tokens.
+- [x] Identify the observed authentication redirect cycle.
+- [x] Add explicit diagnosis to the monitor workflow.
+- [ ] Confirm public-access setting in Streamlit Community Cloud and rerun the monitor; this requires deployment-owner access.
 
 ### Stage F — Audit the overspray/coverage objective
 **Size:** one objective path and its tests; no new AI features.
