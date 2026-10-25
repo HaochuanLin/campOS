@@ -38,6 +38,15 @@ section[data-testid="stSidebar"] textarea {
   color: #102b2b !important;
   -webkit-text-fill-color: #102b2b !important;
 }
+section[data-testid="stSidebar"] [data-testid="stNumberInput"] input {
+  color: #102b2b !important;
+  -webkit-text-fill-color: #102b2b !important;
+  background: #f4faf6 !important;
+}
+section[data-testid="stSidebar"] [data-testid="stNumberInput"] > div {
+  background: #f4faf6 !important;
+  border-color: #b8cbc1 !important;
+}
 section[data-testid="stSidebar"] [data-testid="stNumberInput"] button {
   color: #102b2b !important;
   background: #e4eee7 !important;
