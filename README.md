@@ -129,6 +129,7 @@ See [artifact integrity](docs/ARTIFACT_INTEGRITY.md) for what the SHA-256 manife
 - [Artifact integrity workflow](https://github.com/HaochuanLin/campOS/actions/workflows/artifact-integrity.yml)
 - [Hosted-app reachability monitor](https://github.com/HaochuanLin/campOS/actions/workflows/hosted-smoke.yml)
 - [Phase 1 acceptance checklist](docs/PHASE1_ACCEPTANCE.md)
+- [Evidence-based scorecard and small delivery stages](docs/SCORECARD_AND_DELIVERY_PLAN.md)
 
 Local CI tests and hosted reachability checks answer different questions. A successful local Streamlit test does not prove the deployed service is reachable; a rendered landing page does not prove the simulation and downloads work. The hosted monitor has previously observed redirects to authentication paths, while a user-provided browser screenshot showed the landing page rendering. This discrepancy must be resolved by checking the current monitor result and Streamlit Community Cloud configuration rather than treating either observation as conclusive.
 
