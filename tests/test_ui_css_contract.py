@@ -16,7 +16,7 @@ def test_sidebar_form_controls_have_explicit_high_contrast_styles():
         "color: #102b2b !important",
         "-webkit-text-fill-color: #102b2b !important",
         "background: #d6e5da !important",
-        "section[data-testid=\"stNumberInput\"] button svg",
+        "[data-testid=\"stNumberInput\"] button svg",
         "stroke: #102b2b !important",
     )
     missing = [rule for rule in required_rules if rule not in source]
