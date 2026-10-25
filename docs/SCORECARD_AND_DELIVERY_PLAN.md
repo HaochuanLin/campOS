@@ -38,20 +38,24 @@ Acceptance:
 - [x] State that incomplete stages cannot be called complete.
 
 ### Stage B — Verify the sidebar contrast fix
-**Status: COMPLETE on 2026-10-25, verified against main commit `1c32e95a82b23179876926b9c661c1b2e97fb83b`.**
+**Status: COMPLETE on 2026-10-25, verified against main CSS commit `589217105e4435b2fb2726fca4864e7cf76be3b3`.**
 
-**Evidence:** [Hosted Playwright contrast run #16](https://github.com/HaochuanLin/campOS/actions/runs/40167922038) passed on the deployed app (HTTP 200). The run inspected the live Streamlit frame, captured a screenshot, and measured computed foreground/background contrast:
-- Number input: **14.15:1** (dark text on `rgb(244, 250, 246)`).
-- Select control: **14.97:1** (dark text on white).
-- Number-input stepper button: **11.47:1** (dark text on `rgb(214, 229, 218)`).
-- All three exceed their workflow thresholds; `failures: []`.
-- [Python 3.10/3.11/3.12 tests](https://github.com/HaochuanLin/campOS/actions/runs/40167921969), [UI smoke test](https://github.com/HaochuanLin/campOS/actions/runs/40167921954), and [artifact integrity check](https://github.com/HaochuanLin/campOS/actions/runs/40167922018) also passed for the same commit.
+**Evidence:** [Hosted Playwright contrast run #21](https://github.com/HaochuanLin/campOS/actions/runs/40168541400) passed against the deployed app (HTTP 200), captured a screenshot, and measured computed styles after the final multi-select CSS adjustment:
+- Number input text: **14.15:1**.
+- Optimization-mode select text: **14.97:1**.
+- Number-input stepper: **11.47:1**.
+- Multi-select clear icon against the selected chip: **4.53:1**.
+- Multi-select clear/dropdown icons against the light control surface: **14.97:1**.
+- The screenshot confirms the sidebar labels and control contents are visually readable; automated report returned `failures: []`.
+- [Python test matrix (3.10, 3.11, 3.12)](https://github.com/HaochuanLin/campOS/actions/runs/40168541387), [UI smoke test](https://github.com/HaochuanLin/campOS/actions/runs/40168541399), and [artifact integrity](https://github.com/HaochuanLin/campOS/actions/runs/40168541397) passed for the same CSS commit.
+- Regression coverage was expanded in [the sidebar CSS contract test](https://github.com/HaochuanLin/campOS/blob/main/tests/test_ui_css_contract.py) and the [hosted visual workflow](https://github.com/HaochuanLin/campOS/blob/main/.github/workflows/hosted-sidebar-visual.yml) now checks the multi-select icons as well as the number input and ordinary select.
 
 Acceptance:
-- [x] Check the current main-branch CI after the CSS commit.
-- [x] Inspect the deployed page after redeployment using Playwright and save a screenshot artifact.
-- [x] Confirm number inputs, select controls, and stepper buttons meet the automated contrast thresholds. (The workflow checks these controls; it does not separately measure every sidebar label.)
-- [x] Apply targeted CSS fixes and add a regression contract test for the scoped selectors.
+- [x] Check main-branch CI after the CSS changes.
+- [x] Inspect the deployed page after redeployment with Playwright and save a screenshot artifact.
+- [x] Confirm number inputs, ordinary select controls, multi-select icons, and stepper buttons meet their automated contrast thresholds.
+- [x] Visually inspect sidebar labels and control readability; fix the low-contrast multi-select icons and re-check the deployed screenshot.
+- [x] Add regression checks so the multi-select icon contrast issue is caught in future changes.
 
 ### Stage C — Prove one synthetic run end to end
 **Size:** one focused AppTest enhancement or test repair.
