@@ -19,6 +19,10 @@ def test_sidebar_form_controls_have_explicit_high_contrast_styles():
         "[data-testid=\"stNumberInput\"] button svg",
         "stroke: #102b2b !important",
         "section[data-testid=\"stSidebar\"] [data-testid=\"stSelectbox\"] svg",
+        "section[data-testid=\"stSidebar\"] [data-testid=\"stMultiSelect\"] svg",
+        "section[data-testid=\"stSidebar\"] [data-testid=\"stMultiSelect\"] svg path",
+        "section[data-testid=\"stSidebar\"] [data-testid=\"stMultiSelect\"] button",
+        "border-color: #9bb5a5 !important",
         "opacity: 1 !important",
     )
     missing = [rule for rule in required_rules if rule not in source]
