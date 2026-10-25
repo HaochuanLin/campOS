@@ -93,7 +93,13 @@ jobs:
                 const inspect = el => {
                   if (!el) return null;
                   const s = getComputedStyle(el);
-                  return { color: s.color, background: s.backgroundColor, contrast: contrast(s.color, s.backgroundColor) };
+                  let bg = s.backgroundColor;
+                  let parent = el.parentElement;
+                  while (bg === 'rgba(0, 0, 0, 0)' && parent) {
+                    bg = getComputedStyle(parent).backgroundColor;
+                    parent = parent.parentElement;
+                  }
+                  return { color: s.color, background: bg, contrast: contrast(s.color, bg) };
                 };
                 return { numberInput: inspect(number), selectControl: inspect(select), stepperButton: inspect(stepper) };
               });
