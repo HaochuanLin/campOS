@@ -92,7 +92,25 @@ jobs:
           errors = [item.value for item in app.error]
           assert any("exited with code 2" in value for value in errors), f"Expected visible process-failure message, got: {errors}"
           assert not any(item.label == "Download complete run bundle (.zip)" for item in app.get("download_button")), "Stale successful ZIP remained visible after failed run"
-          print("Streamlit AppTest passed: synthetic success, visible failure handling, no stale result, and starter-template ZIP.")
+          # Missing-template deployments must warn clearly rather than pretending the bundle is complete.
+          from campos import bundles
+
+          app = AppTest.from_file("streamlit_app.py", default_timeout=120).run()
+          next(item for item in app.checkbox if item.label == "Use surveyed site CSVs").check().run()
+          original_read_templates = bundles.read_template_payloads
+
+          def with_one_missing_template(directory, filenames):
+              payloads, missing = original_read_templates(directory, filenames)
+              missing_name = "site_polygon_template.csv"
+              payloads.pop(missing_name, None)
+              return payloads, sorted(set(missing + [missing_name]))
+
+          with patch("campos.bundles.read_template_payloads", side_effect=with_one_missing_template):
+              app.run()
+          warnings = [item.value for item in app.warning]
+          assert any("Some starter templates are missing" in value and "site_polygon_template.csv" in value for value in warnings), f"Missing-template warning was not clear: {warnings}"
+
+          print("Streamlit AppTest passed: synthetic success, visible failure handling, no stale result, starter-template ZIP, and missing-template warning.")
           PY
       - name: Start Streamlit and verify HTTP health
         run: |
