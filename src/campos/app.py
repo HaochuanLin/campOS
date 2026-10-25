@@ -26,8 +26,26 @@ st.markdown("""
 .block-container { max-width: 1440px; padding-top: 1.6rem; padding-bottom: 3rem; }
 section[data-testid="stSidebar"] { background: #102b2b; }
 section[data-testid="stSidebar"] * { color: #f4faf6; }
+/* Keep form controls readable against the dark sidebar, including number inputs. */
+section[data-testid="stSidebar"] [data-baseweb="select"] > div {
+  background: #f4faf6 !important;
+  border-color: #b8cbc1 !important;
+}
 section[data-testid="stSidebar"] [data-baseweb="select"] div,
-section[data-testid="stSidebar"] input { color: #102b2b; }
+section[data-testid="stSidebar"] [data-baseweb="select"] input,
+section[data-testid="stSidebar"] input,
+section[data-testid="stSidebar"] textarea {
+  color: #102b2b !important;
+  -webkit-text-fill-color: #102b2b !important;
+}
+section[data-testid="stSidebar"] [data-testid="stNumberInput"] button {
+  color: #102b2b !important;
+  background: #e4eee7 !important;
+  border-color: #b8cbc1 !important;
+}
+section[data-testid="stSidebar"] [data-testid="stFileUploaderDropzone"] {
+  background: #f4faf6;
+}
 section[data-testid="stSidebar"] [data-testid="stFileUploaderDropzone"] * { color: #102b2b; }
 .hero { background: linear-gradient(118deg,#102b2b 0%,#155747 68%,#167d68 100%); padding: 2.2rem 2.4rem; border-radius: 24px; color:#f4faf6; margin: .2rem 0 1.2rem; box-shadow: 0 14px 36px rgba(16,43,43,.12); }
 .hero-kicker { text-transform:uppercase; letter-spacing:.16em; font-size:.72rem; font-weight:800; color:#c8f169; margin-bottom:.7rem; }
