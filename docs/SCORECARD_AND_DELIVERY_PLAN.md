@@ -38,12 +38,20 @@ Acceptance:
 - [x] State that incomplete stages cannot be called complete.
 
 ### Stage B — Verify the sidebar contrast fix
-**Size:** one UI file plus, if practical, one focused test.
+**Status: COMPLETE on 2026-10-25, verified against main commit `1c32e95a82b23179876926b9c661c1b2e97fb83b`.**
+
+**Evidence:** [Hosted Playwright contrast run #16](https://github.com/HaochuanLin/campOS/actions/runs/40167922038) passed on the deployed app (HTTP 200). The run inspected the live Streamlit frame, captured a screenshot, and measured computed foreground/background contrast:
+- Number input: **14.15:1** (dark text on `rgb(244, 250, 246)`).
+- Select control: **14.97:1** (dark text on white).
+- Number-input stepper button: **11.47:1** (dark text on `rgb(214, 229, 218)`).
+- All three exceed their workflow thresholds; `failures: []`.
+- [Python 3.10/3.11/3.12 tests](https://github.com/HaochuanLin/campOS/actions/runs/40167921969), [UI smoke test](https://github.com/HaochuanLin/campOS/actions/runs/40167921954), and [artifact integrity check](https://github.com/HaochuanLin/campOS/actions/runs/40167922018) also passed for the same commit.
+
 Acceptance:
-- [ ] Check the current main-branch CI after the CSS commit.
-- [ ] Inspect the deployed page after redeployment.
-- [ ] Confirm number inputs, select controls, and labels are readable in the dark sidebar.
-- [ ] If any control remains low contrast, adjust only that styling and record what was visually verified.
+- [x] Check the current main-branch CI after the CSS commit.
+- [x] Inspect the deployed page after redeployment using Playwright and save a screenshot artifact.
+- [x] Confirm number inputs, select controls, and stepper buttons meet the automated contrast thresholds. (The workflow checks these controls; it does not separately measure every sidebar label.)
+- [x] Apply targeted CSS fixes and add a regression contract test for the scoped selectors.
 
 ### Stage C — Prove one synthetic run end to end
 **Size:** one focused AppTest enhancement or test repair.
