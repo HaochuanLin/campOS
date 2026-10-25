@@ -14,10 +14,10 @@ Scores are engineering assessments of the evidence currently available, not meas
 | Dimension | Current | Near-term target | Reason |
 |---|---:|---:|---|
 | Product direction and scope | 7.0/10 | 8.0/10 | The core problem and limits are now explicit; first-use guidance can still be simpler. |
-| UI and first-run experience | 6.0/10 | 7.5/10 | The hosted landing page renders in a user-provided screenshot; contrast changes have not yet been visually re-verified after deployment. |
+| UI and first-run experience | 6.0/10 | 7.5/10 | Hosted contrast checks pass, but first-run guidance can be simpler and the public-access/authentication redirect discrepancy remains unresolved. |
 | Software tests and regression safety | 7.0/10 | 8.0/10 | CI covers the Python suite, AppTest flows, CLI entry points, and artifact integrity; the latest main-branch result must be checked per change. |
 | Deployment and hosted reliability | 4.5/10 | 7.0/10 | A screenshot proves the page rendered for one browser session, while the hosted monitor observed redirects to authentication paths. The discrepancy remains unresolved. |
-| Optimization objective and numerical validity | 5.5/10 | 7.5/10 | Multiple modes and trade-off metrics exist, but the objective semantics and edge cases need a focused code-and-test audit. |
+| Optimization objective and numerical validity | 6.0/10 | 7.5/10 | Formula-contract tests and synthetic grid-sensitivity checks now cover key semantics; physical calibration and site-specific resolution sensitivity remain unproven. |
 | Physical-model validity | 3.5/10 | 6.0/10 | Inputs and model assumptions are documented, but measured sprinkler calibration and independent holdout evidence are not established here. |
 | AI value and generalization | 2.5/10 | 5.0/10 | An experimental residual-correction workflow exists; no evidence yet establishes generalization to new sites. |
 | Real-world evidence for less overspray / water use | 1.0/10 | 4.0/10 | No real-site measurement evidence has been provided, so no real-world reduction claim is established. |
