@@ -18,6 +18,8 @@ def test_sidebar_form_controls_have_explicit_high_contrast_styles():
         "background: #d6e5da !important",
         "[data-testid=\"stNumberInput\"] button svg",
         "stroke: #102b2b !important",
+        "section[data-testid=\"stSelectbox\"] svg",
+        "opacity: 1 !important",
     )
     missing = [rule for rule in required_rules if rule not in source]
     assert not missing, f"Sidebar contrast styles are missing or changed: {missing}"
