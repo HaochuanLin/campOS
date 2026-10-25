@@ -203,6 +203,13 @@ with st.sidebar:
         else:
             st.caption("The protected-surface objective is active in Pareto modes only. Choose pareto-fixed or pareto-movable to optimize against a road/sidewalk polygon.")
         st.caption("Coordinates and radii must be in metres. These are illustrative examples, not surveyed measurements.")
+        st.warning(
+            "Model-input limits: a surveyed polygon/layout does not calibrate sprinkler physics. "
+            "A radial-profile CSV describes relative spray shape only; it does not provide absolute flow. "
+            "A pressure-flow-throw curve plus measured operating pressure can support an estimated depth field, "
+            "but wind, drift, network pressure losses, and field accuracy remain unvalidated. "
+            "campOS does not claim litres saved or payback from the optimization score."
+        )
         template_dir = Path(__file__).resolve().parents[2] / "data" / "templates"
         template_files = (
             ("Download lawn polygon example", "site_polygon_template.csv"),
