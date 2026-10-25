@@ -43,17 +43,25 @@ jobs:
               return null;
             });
 
-            // Streamlit hydrates after the initial HTML response; allow its frontend to mount first.
-            await page.waitForTimeout(6000);
-            await page.screenshot({ path: 'artifacts/hosted-sidebar.png', fullPage: true }).catch(() => {});
-            await page.waitForTimeout(2000);
-            const titleVisible = await page.getByText('Make every sprinkler', { exact: false }).first().isVisible().catch(() => false);
-            if (!titleVisible) failures.push('expected campOS landing-page heading was not visible');
-
+            // Poll for Streamlit's client-side app mount; HTTP 200 alone is not enough.
+            let titleVisible = false;
+            let sidebarVisible = false;
+            for (let attempt = 1; attempt <= 12; attempt++) {
+              titleVisible = await page.getByText('Make every sprinkler', { exact: false }).first().isVisible().catch(() => false);
+              sidebarVisible = await page.locator('[data-testid="stSidebar"]').first().isVisible().catch(() => false);
+              if (titleVisible && sidebarVisible) break;
+              console.log('Waiting for Streamlit mount, attempt ' + attempt + '/12; title=' + titleVisible + ', sidebar=' + sidebarVisible);
+              await page.waitForTimeout(5000);
+            }
+            await page.screenshot({ path: 'artifacts/hosted-sidebar.png', fullPage: true }).catch(error => {
+              failures.push('screenshot failed: ' + error.message);
+            });
+            if (!titleVisible) failures.push('expected campOS landing-page heading was not visible after waiting');
             const result = await page.evaluate(() => {
-              const sidebar = document.querySelector('section[data-testid="stSidebar"]');
+              const sidebar = document.querySelector('[data-testid="stSidebar"]');
               if (!sidebar) return { error: 'Streamlit sidebar was not found' };
               const number = sidebar.querySelector('[data-testid="stNumberInput"] input');
+              const stepper = sidebar.querySelector('[data-testid="stNumberInput"] button');
               const select = sidebar.querySelector('[data-baseweb="select"] > div');
               const rgb = value => {
                 const m = value.match(/[\d.]+/g);
@@ -77,7 +85,7 @@ jobs:
                 const s = getComputedStyle(el);
                 return { color: s.color, background: s.backgroundColor, contrast: contrast(s.color, s.backgroundColor) };
               };
-              return { numberInput: inspect(number), selectControl: inspect(select) };
+              return { numberInput: inspect(number), selectControl: inspect(select), stepperButton: inspect(stepper) };
             });
 
             if (result.error) failures.push(result.error);
@@ -88,6 +96,10 @@ jobs:
             if (!result.selectControl) failures.push('select control was not found');
             else if (result.selectControl.contrast === null || result.selectControl.contrast < 4.5) {
               failures.push('select control contrast below WCAG AA 4.5:1');
+            }
+            if (!result.stepperButton) failures.push('number input stepper button was not found');
+            else if (result.stepperButton.contrast === null || result.stepperButton.contrast < 3) {
+              failures.push('stepper button contrast below 3:1');
             }
 
             require('fs').writeFileSync('artifacts/contrast-report.json', JSON.stringify({
