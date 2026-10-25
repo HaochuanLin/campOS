@@ -20,11 +20,21 @@ streamlit run streamlit_app.py
 
 To publish a hosted demo on **Streamlit Community Cloud**, sign in to Streamlit and authorize access to this GitHub repository. Select repository `HaochuanLin/campOS`, branch `main`, and main file path `streamlit_app.py`. Streamlit installs dependencies from `requirements.txt`. If you already created the app, pushes to `main` should trigger a redeploy; check **Manage app → Logs** if the deployment fails. The hosted demo uses temporary runtime storage, so download outputs you need to keep. Do not upload private site surveys or sensitive location data to a public demo.
 
-The hosted demo is a shared web application with temporary runtime storage; download outputs you need to keep. Do not upload private site surveys or sensitive location data to a public demo. The app remains a research prototype and its outputs are not field-validated.
+The hosted demo uses temporary runtime storage; download outputs you need to keep. Do not upload private site surveys or sensitive location data to a public demo. Its outputs remain research results, not field-validated installation advice.
 
 The dedicated **UI smoke** workflow checks the Streamlit app render, a synthetic simulation run, both result/template ZIP download controls, required starter-template files, and the local Streamlit health endpoint. You can inspect the run history in [GitHub Actions](https://github.com/HaochuanLin/campOS/actions/workflows/ui-smoke.yml); the workflow also supports manual runs. A green CI run verifies the tested code path, not the availability or field accuracy of the hosted demo.
 
+The [hosted-app smoke monitor](https://github.com/HaochuanLin/campOS/actions/workflows/hosted-smoke.yml) independently probes the public app and Streamlit health endpoint on a schedule, and can be started manually. It is intentionally separate from pull-request CI because the deployed app follows `main`, not an unmerged branch. If it fails, inspect the sanitized redirect headers and the app's Streamlit Community Cloud settings/logs; an HTTP redirect alone does not prove a Python startup failure.
+
 Use the [Phase 1 acceptance checklist](docs/PHASE1_ACCEPTANCE.md) to distinguish automated CI evidence from checks that require the deployed browser app. Phase 1 stays open until both are verified.
+
+### Current acceptance status
+
+- **Repository automation:** the UI smoke, Python-version matrix, and artifact-integrity checks passed on the reviewed PR revision before merge; check the workflow links above for runs on the current `main` commit.
+- **Visible app page:** a browser screenshot provided on 2026-10-25 shows the hosted app's landing page rendering. This is useful visual evidence, but does not establish that a simulation completes or that downloaded ZIP files open correctly.
+- **Hosted health monitor:** the monitor has observed repeated redirects toward Streamlit authentication paths from its runner. This conflicts with the browser screenshot and remains unresolved; confirm public-access settings and rerun the monitor before marking deployment reachability accepted.
+- **Real browser interaction:** simulation, result ZIP, template ZIP, invalid-input messaging, and refresh recovery still require an interactive browser pass.
+- **Field validity:** no surveyed-site evidence is supplied yet; no real-world water-saving or road-wetting reduction claim is established.
 
 ## Project concept
 
