@@ -42,10 +42,9 @@ jobs:
                 failures=$((failures + 1))
               fi
             else
-              safe_result="$(printf '%s' "${result:-empty}" | sed -E 's#(https?://[^?[:space:]|]+)\\?[^[:space:]|]+#\\1?[query redacted]#g')"
-      echo "::error::$label did not return HTTP 200 (curl result: $safe_result)."
+              echo "::error::$label did not return HTTP 200 (curl exit/redirect details redacted; see sanitized response headers below)."
               echo "Response headers (last redirect chain entries):"
-              grep -Ei '^(HTTP/|location:|server:|content-type:)' "$headers" | tail -n 24 | sed -E 's#(location: https?://[^?[:space:]]+)\\?[^[:space:]]+#\\1?[query redacted]#I' || true
+              grep -Ei '^(HTTP/|location:|server:|content-type:)' "$headers" | tail -n 24 | sed 's/?[^ ]*/?[query redacted]/' || true
               if [ -s "$body" ]; then
                 echo "Response body excerpt:"
                 head -c 600 "$body" || true
