@@ -27,3 +27,17 @@ def test_sidebar_form_controls_have_explicit_high_contrast_styles():
     )
     missing = [rule for rule in required_rules if rule not in source]
     assert not missing, f"Sidebar contrast styles are missing or changed: {missing}"
+
+
+def test_custom_site_ui_discloses_calibration_and_water_savings_limits():
+    source = Path("src/campos/app.py").read_text(encoding="utf-8")
+
+    required_disclosures = (
+        "a surveyed polygon/layout does not calibrate sprinkler physics",
+        "A radial-profile CSV describes relative spray shape only",
+        "it does not provide absolute flow",
+        "wind, drift, network pressure losses, and field accuracy remain unvalidated",
+        "campOS does not claim litres saved or payback",
+    )
+    missing = [disclosure for disclosure in required_disclosures if disclosure not in source]
+    assert not missing, f"Custom-site calibration disclosures are missing or changed: {missing}"
