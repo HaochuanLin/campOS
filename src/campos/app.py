@@ -10,9 +10,10 @@ import shutil
 import subprocess
 import sys
 import tempfile
-import zipfile
 
 import streamlit as st
+
+from campos.bundles import zip_bytes
 
 
 st.set_page_config(page_title="campOS — Irrigation intelligence", page_icon="💧", layout="wide", initial_sidebar_state="expanded")
@@ -227,13 +228,13 @@ with st.sidebar:
                 + ". Individual downloads and the template bundle may be incomplete."
             )
         if available_templates:
-            template_bundle = io.BytesIO()
-            with zipfile.ZipFile(template_bundle, mode="w", compression=zipfile.ZIP_DEFLATED) as bundle_zip:
-                for _, filename, template_path in available_templates:
-                    bundle_zip.write(template_path, arcname=filename)
+            template_payloads = {
+                filename: template_path.read_bytes()
+                for _, filename, template_path in available_templates
+            }
             st.download_button(
                 "Download all starter templates (.zip)",
-                data=template_bundle.getvalue(),
+                data=zip_bytes(template_payloads),
                 file_name="campos-starter-templates.zip",
                 mime="application/zip",
                 key="download-starter-templates-bundle",
@@ -452,11 +453,7 @@ if run:
             for path in sorted(outdir.iterdir()):
                 if path.is_file():
                     artifacts[path.name] = path.read_bytes()
-            bundle_buffer = io.BytesIO()
-            with zipfile.ZipFile(bundle_buffer, mode="w", compression=zipfile.ZIP_DEFLATED) as bundle_zip:
-                for artifact_name, artifact_payload in artifacts.items():
-                    bundle_zip.writestr(artifact_name, artifact_payload)
-            bundle_bytes = bundle_buffer.getvalue()
+            bundle_bytes = zip_bytes(artifacts)
 
             tables = {}
             for name, payload in artifacts.items():
