@@ -94,7 +94,7 @@ def test_grid_resolution_preserves_aligned_lawn_area():
 
 
 
-def test_non_aligned_lawn_area_error_is_smallest_at_finest_tested_grid():
+def test_non_aligned_lawn_area_error_is_bounded_at_finest_tested_grid():
     """Quantify raster area sensitivity on a fixed non-grid-aligned lawn."""
     lawn = np.asarray([
         (0.13, 0.21), (4.27, 0.21), (4.27, 3.38),
