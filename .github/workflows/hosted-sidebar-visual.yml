@@ -43,9 +43,9 @@ jobs:
               return null;
             });
 
-            await page.getByText('Make every sprinkler', { exact: false }).first().waitFor({ state: 'visible', timeout: 60000 }).catch(() => {});
-            await page.locator('section[data-testid="stSidebar"]').waitFor({ state: 'visible', timeout: 30000 }).catch(() => {});
-            await page.waitForTimeout(2000);
+            // A first full-page capture allows Streamlit's client hydration/layout to settle.
+            await page.screenshot({ path: 'artifacts/hosted-sidebar.png', fullPage: true }).catch(() => {});
+            await page.waitForTimeout(3000);
             const titleVisible = await page.getByText('Make every sprinkler', { exact: false }).first().isVisible().catch(() => false);
             if (!titleVisible) failures.push('expected campOS landing-page heading was not visible');
 
@@ -79,7 +79,6 @@ jobs:
               return { numberInput: inspect(number), selectControl: inspect(select) };
             });
 
-            await page.screenshot({ path: 'artifacts/hosted-sidebar.png', fullPage: true }).catch(() => {});
             if (result.error) failures.push(result.error);
             if (!result.numberInput) failures.push('number input control was not found');
             else if (result.numberInput.contrast === null || result.numberInput.contrast < 4.5) {
