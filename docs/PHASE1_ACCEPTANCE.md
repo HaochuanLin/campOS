@@ -20,7 +20,9 @@ A green workflow proves only that these automated code paths passed in the CI en
 
 ## Hosted-app checks
 
-Open the [hosted Streamlit demo](https://campos-optimizer.streamlit.app/) in a fresh browser session.
+First inspect the [scheduled/manual hosted-app smoke monitor](https://github.com/HaochuanLin/campOS/actions/workflows/hosted-smoke.yml). It checks public root-page and Streamlit health-endpoint responses, with bounded redirects and sanitized diagnostics. A monitor failure must be investigated rather than ignored; redirects to authentication endpoints can indicate an access configuration issue, but do not by themselves prove an app startup failure.
+
+Then open the [hosted Streamlit demo](https://campos-optimizer.streamlit.app/) in a fresh browser session. A screenshot of the landing page is not a substitute for the interaction checks below.
 
 - [ ] The page renders fully; no blank screen or uncaught startup error.
 - [ ] Sidebar and main-page controls respond to interaction.
@@ -35,4 +37,4 @@ Record the date, browser, deployed commit/version if visible, and any error text
 
 ## Release gate
 
-Phase 1 is not complete until the latest CI run is green and the hosted-app checks above have been observed. Do not mark it complete based on code commits alone. Keep synthetic-demo results separate from field-validation evidence; this checklist is not evidence of water savings or field accuracy.
+Phase 1 is not complete until the latest CI run is green, the hosted reachability monitor's result is understood, and the hosted-app checks above have been observed. Do not mark it complete based on code commits alone. Keep synthetic-demo results separate from field-validation evidence; this checklist is not evidence of water savings or field accuracy.
