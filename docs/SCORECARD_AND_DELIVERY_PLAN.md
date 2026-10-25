@@ -58,12 +58,15 @@ Acceptance:
 - [x] Add regression checks so the multi-select icon contrast issue is caught in future changes.
 
 ### Stage C — Prove one synthetic run end to end
-**Size:** one focused AppTest enhancement or test repair.
+**Status: COMPLETE on 2026-10-25, verified by UI smoke run [#248](https://github.com/HaochuanLin/campOS/actions/runs/40168754046), commit `52cd5915470c307cf771c94dc7665942b431bb76`.**
+
+**Evidence:** The hosted GitHub Actions job passed dependency checks, CLI entry-point checks, the regression suite, Python compilation, a packaged synthetic quickstart with artifact checksum verification, Streamlit AppTest, and the HTTP health endpoint. AppTest confirms the default synthetic run exposes the complete-run ZIP download; a mocked non-zero subprocess exit shows a visible error and does not leave a stale successful ZIP visible. The surveyed-site flow exposes the starter-template ZIP and checks all six source CSV files exist.
+
 Acceptance:
-- [ ] Run the default synthetic scenario in AppTest.
-- [ ] Assert the run completes and expected summary/plots or output controls exist.
-- [ ] Assert a user-visible failure message appears for a deliberately invalid case.
-- [ ] Record the actual CI result; do not infer success from the test file alone.
+- [x] Run the default synthetic scenario in AppTest.
+- [x] Assert the run completes and the expected output control exists.
+- [x] Assert a user-visible failure message appears for a simulated invalid process result and no stale success download remains.
+- [x] Record the actual passing CI run and commit.
 
 ### Stage D — Verify ZIP contents, not just buttons
 **Size:** one artifact-focused test.
