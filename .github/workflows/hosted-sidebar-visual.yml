@@ -71,10 +71,10 @@ jobs:
                 const sidebar = document.querySelector('[data-testid="stSidebar"]');
                 if (!sidebar) return { error: 'Streamlit sidebar was not found' };
                 const number = sidebar.querySelector('[data-testid="stNumberInput"] input');
-                const select = sidebar.querySelector('[data-baseweb="select"] > div');
+                const select = sidebar.querySelector('[data-testid="stSelectbox"] [role="combobox"]') || sidebar.querySelector('[data-baseweb="select"]') || sidebar.querySelector('[data-testid="stSelectbox"]');
                 const stepper = sidebar.querySelector('[data-testid="stNumberInput"] button');
                 const rgb = value => {
-                  const m = value.match(/[\\d.]+/g);
+                  const m = value.match(/[0-9.]+/g);
                   return m && m.length >= 3 ? m.slice(0, 3).map(Number) : null;
                 };
                 const luminance = values => {
