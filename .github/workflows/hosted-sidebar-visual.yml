@@ -43,7 +43,9 @@ jobs:
               return null;
             });
 
-            await page.waitForTimeout(6000);
+            await page.getByText('Make every sprinkler', { exact: false }).first().waitFor({ state: 'visible', timeout: 60000 }).catch(() => {});
+            await page.locator('section[data-testid="stSidebar"]').waitFor({ state: 'visible', timeout: 30000 }).catch(() => {});
+            await page.waitForTimeout(2000);
             const titleVisible = await page.getByText('Make every sprinkler', { exact: false }).first().isVisible().catch(() => false);
             if (!titleVisible) failures.push('expected campOS landing-page heading was not visible');
 
