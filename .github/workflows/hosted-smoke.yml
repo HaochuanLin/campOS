@@ -1,0 +1,76 @@
+name: hosted-smoke
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "17 */6 * * *"
+
+permissions:
+  contents: read
+
+jobs:
+  hosted-app:
+    name: Check deployed Streamlit app
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Probe public app page and health endpoint
+        shell: bash
+        run: |
+          set -u
+          base_url="https://campos-optimizer.streamlit.app"
+          failures=0
+
+          probe() {
+            local label="$1"
+            local url="$2"
+            local body headers result status effective redirects
+            body="$(mktemp)"
+            headers="$(mktemp)"
+            # Limit redirect traversal so a redirect loop is diagnosed quickly.
+            result="$(curl --location --max-redirs 5 --silent --show-error \
+              --dump-header "$headers" --output "$body" \
+              --write-out '%{http_code}|%{url_effective}|%{num_redirects}' \
+              --max-time 20 "$url" 2>&1)" || true
+            status="${result%%|*}"
+            effective="$(printf '%s' "$result" | cut -d '|' -f 2)"
+            redirects="$(printf '%s' "$result" | cut -d '|' -f 3)"
+            if [ "$status" = "200" ]; then
+              echo "PASS: $label returned HTTP 200 (redirects=${redirects:-unknown}, effective_url=${effective:-unknown})."
+              if [ "$label" = "root page" ] && ! grep -Eqi 'streamlit|campOS|sprinkler|irrigation' "$body"; then
+                echo "::error::Root page returned HTTP 200 but its body did not look like the expected app."
+                failures=$((failures + 1))
+              fi
+            else
+              echo "::error::$label did not return HTTP 200 (curl exit/redirect details redacted; see sanitized response headers below)."
+              echo "Response headers (last redirect chain entries):"
+              grep -Ei '^(HTTP/|location:|server:|content-type:)' "$headers" | tail -n 24 | sed 's/?[^ ]*/?[query redacted]/' || true
+              if [ -s "$body" ]; then
+                echo "Response body excerpt:"
+                head -c 600 "$body" || true
+                echo
+              fi
+              failures=$((failures + 1))
+            fi
+            rm -f "$body" "$headers"
+          }
+
+          probe "root page" "$base_url/"
+          probe "Streamlit health endpoint" "$base_url/_stcore/health"
+
+          if [ "$failures" -ne 0 ]; then
+            echo "::error::Hosted app smoke check failed with $failures failing probe(s)."
+            echo "Use the logged Location headers to distinguish a redirect loop, access restriction, or app startup issue."
+            exit 1
+          fi
+      - name: Publish hosted-app check summary
+        if: always()
+        run: |
+          {
+            echo "## campOS hosted-app smoke check"
+            echo
+            echo "- Target: https://campos-optimizer.streamlit.app/"
+            echo "- Checks: root page and Streamlit health endpoint return HTTP 200, with bounded redirect handling."
+            echo "- Failure diagnostics include redirect headers and a short response excerpt."
+            echo "- Scope: deployment reachability only; this does not exercise browser downloads or prove field accuracy."
+          } >> "$GITHUB_STEP_SUMMARY"
