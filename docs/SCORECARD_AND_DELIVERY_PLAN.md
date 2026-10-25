@@ -88,12 +88,20 @@ Acceptance:
 - [ ] Confirm public-access setting in Streamlit Community Cloud and rerun the monitor; this requires deployment-owner access.
 
 ### Stage F — Audit the overspray/coverage objective
-**Size:** one objective path and its tests; no new AI features.
+**Status: IN PROGRESS.** Code-path audit completed; contract tests added in commit `cddb2d3f528dcb88438700a559458d0994dec102`. Awaiting CI before acceptance.
+
+**Formula and units audit (implementation semantics, not validated field physics):**
+- The Pareto reference is computed once from the baseline layout: (W_0=\sum_{\text{all grid cells}} D_0\), and (T=\text{target_factor}\times\operatorname{mean}(D_0\text{ on lawn})\). The simulator's default field is relative application intensity; with per-head flow/profile inputs it may represent estimated precipitation. It must not be interpreted as litres or water savings without calibrated flow and run-time assumptions.
+- Pareto objective (f_1=W_{\text{selected outside}}/W_0\). If a surveyed protected-surface polygon is supplied, selected outside water is the sum of grid-cell field values in that polygon; otherwise it is all modelled water outside the lawn. Thus the polygon affects the Pareto objective only in the custom-geometry workflow where it is accepted. Grid cells are centre-classified; (W_0) is a baseline normalizer, not candidate total water.
+- Pareto deficit (f_2=\operatorname{mean}_{i\in\text{lawn}}\max(0,1-D_i/T)\), dimensionless. The dry share is the fraction of lawn cells with (D_i<\text{dry\_thresh\_frac}\times T\). These are separate quantities: lower (f_1) does not cancel a higher (f_2); the selection policy applies its own explicit constraints.
+- Legacy metrics are different: (AR=\sum D/(n\times\text{mean of driest 25% lawn cells})\), overspray (=1-\sum D_{\text{lawn}}/\sum D_{\text{all}}\), and CU (=1-\operatorname{mean}(|D_i-\bar D|)/\bar D\). AR and CU are dimensionless for the default relative field; the reported outside share is relative to the candidate's own total, unlike Pareto (f_1)'s fixed baseline denominator. If the driest-quartile mean is near zero, the implementation returns a high penalty and infinite AR.
+- The road/sidewalk polygon is a *protected surface* proxy, not semantic road detection. The code rejects it when combined with built-in sites and requires a custom lawn polygon; overlap/touching is rejected. A protected polygon with no grid-cell centres at the selected resolution is rejected rather than silently scored as zero.
+
 Acceptance:
-- [ ] Trace the exact formula and units for outside-lawn application, interior deficit, and uniformity.
-- [ ] Verify road/sidewalk geometry actually affects the relevant supported mode.
-- [ ] Add at least one synthetic counterexample where reducing overspray must not silently permit unacceptable interior deficit.
-- [ ] Document the formula, normalization, constraints, and test result.
+- [x] Trace the formulas and distinguish fixed-baseline versus candidate-total normalization.
+- [x] Verify that surveyed protected-surface geometry affects the supported custom-site Pareto mode, while built-in synthetic sites reject that input.
+- [ ] Add/run synthetic counterexamples where lower protected-surface water accompanies unacceptable lawn deficit.
+- [ ] Run CI and record evidence; then document any discovered limitation and close the stage.
 
 ### Stage G — Numerical sensitivity check
 **Size:** one small deterministic test set.
