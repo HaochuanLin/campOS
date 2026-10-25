@@ -63,8 +63,8 @@ def test_pareto_f1_without_surveyed_protected_polygon_is_all_outside_lawn():
     assert np.isclose(f1, expected)
 
 
-def test_grid_resolution_converges_for_synthetic_sprinkler_integral():
-    """Grid refinement should improve the area integral for a circular head field."""
+def test_grid_resolution_sensitivity_for_synthetic_sprinkler_integral():
+    """Quantify raster integral error without assuming monotonic convergence."""
     lawn = np.asarray([(-4, -4), (4, -4), (4, 4), (-4, 4)], dtype=float)
     radius = 2.07
     head_x, head_y = 0.11, 0.27  # deliberately offset from every tested grid origin
